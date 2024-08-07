@@ -8,12 +8,13 @@ import os
 import sys
 from importlib.abc import Loader
 from types import ModuleType
+from pathlib import Path
 
-from predicators.pybullet_helpers.ikfast import IKFastInfo
-from predicators.utils import get_third_party_path
+from pybullet_helpers.ikfast import IKFastInfo
+from pybullet_helpers.utils import get_third_party_path
 
 
-def install_ikfast_module(ikfast_dir: str) -> None:
+def install_ikfast_module(ikfast_dir: Path) -> None:
     """One-time install an IKFast module for a specific robot.
 
     Assumes there is a subdirectory in envs/assets/ikfast with a
@@ -43,9 +44,8 @@ def install_ikfast_if_required(ikfast_info: IKFastInfo) -> str:
     We check if this file exists, if not we install IKFast by compiling
     it.
     """
-    ikfast_dir = os.path.join(get_third_party_path(), "ikfast",
-                              ikfast_info.module_dir)
-    glob_pattern = os.path.join(ikfast_dir, f"{ikfast_info.module_name}*.so")
+    ikfast_dir = get_third_party_path() / "ikfast" / ikfast_info.module_dir
+    glob_pattern = str(ikfast_dir / f"{ikfast_info.module_name}*.so")
     so_filepaths = glob.glob(glob_pattern)
 
     # We need to install.

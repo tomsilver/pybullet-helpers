@@ -1,8 +1,10 @@
 """Fetch Robotics Mobile Manipulator (Fetch)."""
 
-from predicators import utils
-from predicators.pybullet_helpers.robots.single_arm import \
+
+from pybullet_helpers.robots.single_arm import \
     SingleArmPyBulletRobot
+from pybullet_helpers.utils import get_assets_path
+from pathlib import Path
 
 
 class FetchPyBulletRobot(SingleArmPyBulletRobot):
@@ -13,9 +15,9 @@ class FetchPyBulletRobot(SingleArmPyBulletRobot):
         return "fetch"
 
     @classmethod
-    def urdf_path(cls) -> str:
-        return utils.get_env_asset_path(
-            "urdf/fetch_description/robots/fetch.urdf")
+    def urdf_path(cls) -> Path:
+        dir_path = get_assets_path() / "urdf"
+        return dir_path / "fetch_description" / "robots" / "fetch.urdf"
 
     @property
     def end_effector_name(self) -> str:

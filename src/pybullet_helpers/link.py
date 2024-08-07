@@ -3,7 +3,7 @@ from typing import NamedTuple
 
 import pybullet as p
 
-from predicators.pybullet_helpers.geometry import Pose, Pose3D, Quaternion, \
+from pybullet_helpers.geometry import Pose, Pose3D, Quaternion, \
     get_pose, multiply_poses
 
 BASE_LINK: int = -1

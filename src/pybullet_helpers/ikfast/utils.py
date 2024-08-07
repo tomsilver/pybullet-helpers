@@ -9,6 +9,7 @@ https://github.com/caelan/pybullet-planning/blob/master/pybullet_tools/ikfast/ik
 """
 from __future__ import annotations
 
+from dataclasses import dataclass
 import logging
 import time
 from itertools import islice
@@ -17,17 +18,29 @@ from typing import TYPE_CHECKING, Callable, Dict, Iterator, List, Optional, \
 
 import numpy as np
 
-from predicators.pybullet_helpers.geometry import Pose, matrix_from_quat, \
+from pybullet_helpers.geometry import Pose, matrix_from_quat, \
     multiply_poses
-from predicators.pybullet_helpers.ikfast.load import import_ikfast
-from predicators.pybullet_helpers.joint import JointInfo, JointPositions, \
+from pybullet_helpers.ikfast.load import import_ikfast
+from pybullet_helpers.joint import JointInfo, JointPositions, \
     get_joint_lower_limits, get_joint_positions, get_joint_upper_limits
-from predicators.pybullet_helpers.link import get_link_pose, \
+from pybullet_helpers.link import get_link_pose, \
     get_relative_link_pose
-from predicators.settings import CFG
 
 if TYPE_CHECKING:
-    from predicators.pybullet_helpers.robots import SingleArmPyBulletRobot
+    from pybullet_helpers.robots.single_arm import SingleArmPyBulletRobot
+
+
+
+@dataclass(frozen=True)
+class IKFastHyperparameters:
+    """Hyperparameters for IKFast."""
+
+    max_time: float = 0.05
+    max_attempts: int = 1000000000
+    max_distance: float = np.inf
+    max_candidates: int = 100
+    norm: float = np.inf
+
 
 
 def get_joint_difference_fn(
@@ -215,7 +228,7 @@ def ikfast_inverse_kinematics(
     max_time: float,
     max_distance: float,
     max_attempts: int,
-    norm: int,
+    norm: float,
     rng: np.random.Generator,
 ) -> Iterator[JointPositions]:
     """Run IKFast to compute joint positions for given target pose specified in
@@ -278,9 +291,13 @@ def ikfast_inverse_kinematics(
                 yield joint_positions
 
 
+
 def ikfast_closest_inverse_kinematics(
         robot: SingleArmPyBulletRobot,
-        world_from_target: Pose) -> List[JointPositions]:
+        world_from_target: Pose,
+        seed: int = 0,
+        hyperparameters: IKFastHyperparameters | None = None,
+        ) -> List[JointPositions]:
     """Runs IKFast and returns the solutions sorted in order of closest
     distance to the robot's current joint positions.
 
@@ -294,12 +311,14 @@ def ikfast_closest_inverse_kinematics(
     A list of joint states that satisfy the given arguments.
     If no solutions are found, an empty list is returned.
     """
+    if hyperparameters is None:
+        hyperparameters = IKFastHyperparameters()
+
     # Check settings that we won't go into infinite loop
-    if not (CFG.ikfast_max_time < np.inf or CFG.ikfast_max_attempts < np.inf
-            or CFG.ikfast_max_candidates < np.inf):
+    if not (hyperparameters.max_time < np.inf or hyperparameters.max_attempts < np.inf
+            or hyperparameters.max_candidates < np.inf):
         raise ValueError(
-            "At least one of CFG.ikfast_max_time, CFG.ikfast_max_attempts, "
-            "CFG.ikfast_max_candidates must be finite.")
+            "At least one of max_time, max_attempts, max_candidates must be finite.")
 
     start_time = time.perf_counter()
     ik_joint_infos, _ = get_ikfast_joints(robot)
@@ -309,23 +328,25 @@ def ikfast_closest_inverse_kinematics(
 
     generator = ikfast_inverse_kinematics(robot,
                                           world_from_target,
-                                          max_time=CFG.ikfast_max_time,
-                                          max_distance=CFG.ikfast_max_distance,
-                                          max_attempts=CFG.ikfast_max_attempts,
-                                          norm=CFG.ikfast_norm,
-                                          rng=np.random.default_rng(CFG.seed))
+                                          max_time=hyperparameters.max_time,
+                                          max_distance=hyperparameters.max_distance,
+                                          max_attempts=hyperparameters.max_attempts,
+                                          norm=hyperparameters.norm,
+                                          rng=np.random.default_rng(seed))
 
     # Only use up to the max candidates specified
-    if CFG.ikfast_max_candidates < np.inf:  # pragma: no cover
-        generator = islice(generator, CFG.ikfast_max_candidates)
+    if hyperparameters.max_candidates < np.inf:  # pragma: no cover
+        generator = islice(generator, hyperparameters.max_candidates)
 
     joint_difference_fn = get_joint_difference_fn(ik_joint_infos)
+
+    norm = hyperparameters.norm
 
     def difference_from_current(joint_positions: JointPositions) -> float:
         """Difference of given joint positions from current joint positions."""
         return np.linalg.norm(  # type: ignore
             joint_difference_fn(current_joint_positions, joint_positions),
-            ord=CFG.ikfast_norm)
+            ord=norm)
 
     # Sort solutions by distance to current joint positions
     candidate_solutions = list(generator)

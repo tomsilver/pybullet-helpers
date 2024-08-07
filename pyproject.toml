@@ -11,6 +11,8 @@ requires-python = ">=3.10"
 dependencies = [
    "numpy>=1.23.5",
    "pybullet==3.2.6",
+   "gymnasium==0.29.1",
+   "tomsutils@git+https://github.com/tomsilver/toms-utils.git"
 ]
 
 [project.optional-dependencies]
@@ -46,3 +48,10 @@ strict_equality = true
 disallow_untyped_calls = true
 warn_unreachable = true
 exclude = ["venv/*"]
+
+[[tool.mypy.overrides]]
+module = [
+    "pybullet.*",
+    "pybullet_utils.*",
+]
+ignore_missing_imports = true

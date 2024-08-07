@@ -4,11 +4,10 @@ from __future__ import annotations
 from typing import NamedTuple, Tuple
 
 import numpy as np
+import numpy.typing as npt
 import pybullet as p
 from pybullet_utils.transformations import euler_from_quaternion, \
     quaternion_from_euler
-
-from predicators.structs import Array
 
 Pose3D = Tuple[float, float, float]
 Quaternion = Tuple[float, float, float, float]
@@ -67,7 +66,7 @@ def multiply_poses(*poses: Pose) -> Pose:
     return pose
 
 
-def matrix_from_quat(quat: Quaternion) -> Array:
+def matrix_from_quat(quat: Quaternion) -> npt.NDArray[np.float64]:
     """Get 3x3 rotation matrix from quaternion (xyzw)."""
     return np.array(p.getMatrixFromQuaternion(quat)).reshape(3, 3)
 

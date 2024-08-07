@@ -2,7 +2,7 @@
 
 import pybullet as p
 
-from predicators.pybullet_helpers.geometry import Pose3D
+from pybullet_helpers.geometry import Pose3D
 
 
 def create_gui_connection(
@@ -10,6 +10,7 @@ def create_gui_connection(
         camera_yaw: float = 90,
         camera_pitch: float = -24,
         camera_target: Pose3D = (1.65, 0.75, 0.42),
+        background_rgb: tuple[float, float, float] = (0, 0, 0),
         disable_preview_windows: bool = True) -> int:  # pragma: no cover
     """Creates a PyBullet GUI connection and initializes the camera.
 
@@ -17,7 +18,7 @@ def create_gui_connection(
 
     Not covered by unit tests because unit tests need to be headless.
     """
-    physics_client_id = p.connect(p.GUI)
+    physics_client_id = p.connect(p.GUI, options=(f"--background_color_red={background_rgb[0]} --background_color_green={background_rgb[1]} --background_color_blue={background_rgb[2]}"))
     # Disable the PyBullet GUI preview windows for faster rendering.
     if disable_preview_windows:
         p.configureDebugVisualizer(p.COV_ENABLE_GUI,

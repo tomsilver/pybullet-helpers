@@ -1,10 +1,11 @@
 """Franka Emika Panda robot."""
 from typing import Optional
+from pathlib import Path
 
-from predicators import utils
-from predicators.pybullet_helpers.ikfast import IKFastInfo
-from predicators.pybullet_helpers.robots.single_arm import \
+from pybullet_helpers.ikfast import IKFastInfo
+from pybullet_helpers.robots.single_arm import \
     SingleArmPyBulletRobot
+from pybullet_helpers.utils import get_assets_path
 
 
 class PandaPyBulletRobot(SingleArmPyBulletRobot):
@@ -15,9 +16,9 @@ class PandaPyBulletRobot(SingleArmPyBulletRobot):
         return "panda"
 
     @classmethod
-    def urdf_path(cls) -> str:
-        return utils.get_env_asset_path(
-            "urdf/franka_description/robots/panda_arm_hand.urdf")
+    def urdf_path(cls) -> Path:
+        dir_path = get_assets_path() / "urdf"
+        return dir_path / "franka_description" / "robots" / "panda_arm_hand.urdf"
 
     @property
     def end_effector_name(self) -> str:

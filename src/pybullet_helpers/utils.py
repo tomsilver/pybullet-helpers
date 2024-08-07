@@ -1,10 +1,17 @@
-"""Utilities."""
+"""Utility functions."""
 
-from typing import Set
+from pathlib import Path
 
-from pybullet_helpers.structs import Dog
+def get_root_path() -> Path:
+    """Get the path to the root directory of this package."""
+    return Path(__file__).parent
 
 
-def get_good_dogs_of_breed(dogs: Set[Dog], breed: str) -> Set:
-    """Get all good dogs of the specified breed."""
-    return {d for d in dogs if d.is_good() and d.breed == breed}
+def get_assets_path() -> Path:
+    """Return the absolute path to the assets directory."""
+    return get_root_path() / "assets"
+
+
+def get_third_party_path() -> Path:
+    """Return the absolute path to the third party directory."""
+    return get_root_path() / "third_party"

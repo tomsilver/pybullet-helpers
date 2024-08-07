@@ -2,16 +2,26 @@
 from __future__ import annotations
 
 from typing import Collection, Iterator, Optional, Sequence
+from dataclasses import dataclass
 
 import numpy as np
 import pybullet as p
 from numpy.typing import NDArray
 
-from predicators import utils
-from predicators.pybullet_helpers.joint import JointPositions
-from predicators.pybullet_helpers.link import get_link_state
-from predicators.pybullet_helpers.robots import SingleArmPyBulletRobot
-from predicators.settings import CFG
+from tomsutils.motion_planning import BiRRT
+from pybullet_helpers.joint import JointPositions
+from pybullet_helpers.link import get_link_state
+from pybullet_helpers.robots.single_arm import SingleArmPyBulletRobot
+
+
+@dataclass(frozen=True)
+class MotionPlanningHyperparameters:
+    """Hyperparameters for motion planning."""
+
+    birrt_extend_num_interp: int = 10
+    birrt_num_attempts: int = 10
+    birrt_num_iters: int = 100
+    birrt_smooth_amt: int = 50
 
 
 def run_motion_planning(
@@ -23,15 +33,19 @@ def run_motion_planning(
     physics_client_id: int,
     held_object: Optional[int] = None,
     base_link_to_held_obj: Optional[NDArray] = None,
+    hyperparameters: MotionPlanningHyperparameters | None = None,
 ) -> Optional[Sequence[JointPositions]]:
     """Run BiRRT to find a collision-free sequence of joint positions.
 
     Note that this function changes the state of the robot.
     """
+    if hyperparameters is None:
+        hyperparameters = MotionPlanningHyperparameters()
+
     rng = np.random.default_rng(seed)
     joint_space = robot.action_space
     joint_space.seed(seed)
-    num_interp = CFG.pybullet_birrt_extend_num_interp
+    num_interp = hyperparameters.birrt_extend_num_interp
 
     def _sample_fn(pt: JointPositions) -> JointPositions:
         new_pt: JointPositions = list(joint_space.sample())
@@ -88,13 +102,13 @@ def run_motion_planning(
         to_ee = robot.forward_kinematics(to_pt).position
         return sum(np.subtract(from_ee, to_ee)**2)
 
-    birrt = utils.BiRRT(_sample_fn,
-                        _extend_fn,
-                        _collision_fn,
-                        _distance_fn,
-                        rng,
-                        num_attempts=CFG.pybullet_birrt_num_attempts,
-                        num_iters=CFG.pybullet_birrt_num_iters,
-                        smooth_amt=CFG.pybullet_birrt_smooth_amt)
+    birrt = BiRRT(_sample_fn,
+                  _extend_fn,
+                  _collision_fn,
+                  _distance_fn,
+                  rng,
+                  num_attempts=hyperparameters.birrt_num_attempts,
+                  num_iters=hyperparameters.birrt_num_iters,
+                  smooth_amt=hyperparameters.birrt_smooth_amt)
 
     return birrt.query(initial_positions, target_positions)

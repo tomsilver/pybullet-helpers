@@ -5,19 +5,27 @@ given robot.
 """
 
 from typing import Sequence
+from dataclasses import dataclass
 
 import numpy as np
 import pybullet as p
 
-from predicators.pybullet_helpers.geometry import Pose3D, Quaternion
-from predicators.pybullet_helpers.joint import JointPositions, \
+from pybullet_helpers.geometry import Pose3D, Quaternion
+from pybullet_helpers.joint import JointPositions, \
     get_joint_infos, get_joints
-from predicators.pybullet_helpers.link import get_link_pose
-from predicators.settings import CFG
+from pybullet_helpers.link import get_link_pose
 
 
 class InverseKinematicsError(ValueError):
     """Thrown when inverse kinematics fails to find a solution."""
+
+
+@dataclass(frozen=True)
+class InverseKinematicsHyperparameters:
+    """Hyperparameters for inverse kinematics."""
+
+    convergence_atol: float = 1e-3
+    max_iters: int = 100
 
 
 def pybullet_inverse_kinematics(
@@ -28,6 +36,7 @@ def pybullet_inverse_kinematics(
     joints: Sequence[int],
     physics_client_id: int,
     validate: bool = True,
+    hyperparameters: InverseKinematicsHyperparameters | None = None,
 ) -> JointPositions:
     """Runs IK and returns joint positions for the given (free) joints.
 
@@ -36,6 +45,9 @@ def pybullet_inverse_kinematics(
     position is reached. If the target position is not reached after a
     maximum number of iters, an exception is raised.
     """
+    if hyperparameters is None:
+        hyperparameters = InverseKinematicsHyperparameters()
+
     # Figure out which joint each dimension of the return of IK corresponds to.
     all_joints = get_joints(robot, physics_client_id=physics_client_id)
     joint_infos = get_joint_infos(robot,
@@ -57,8 +69,7 @@ def pybullet_inverse_kinematics(
 
     # Running IK once is often insufficient, so we run it multiple times until
     # convergence. If it does not converge, an error is raised.
-    convergence_tol = CFG.pybullet_ik_tol
-    for _ in range(CFG.pybullet_max_ik_iters):
+    for _ in range(hyperparameters.max_iters):
         free_joint_vals = p.calculateInverseKinematics(
             robot,
             end_effector,
@@ -81,7 +92,7 @@ def pybullet_inverse_kinematics(
         ee_link_pose = get_link_pose(robot, end_effector, physics_client_id)
         if np.allclose(ee_link_pose.position,
                        target_position,
-                       atol=convergence_tol):
+                       atol=hyperparameters.convergence_atol):
             break
     else:
         raise InverseKinematicsError("Inverse kinematics failed to converge.")

@@ -4,7 +4,7 @@ from typing import List, NamedTuple, Sequence, Tuple
 import numpy as np
 import pybullet as p
 
-from predicators.pybullet_helpers.geometry import Pose3D, Quaternion
+from pybullet_helpers.geometry import Pose3D, Quaternion
 
 # Joint Positions (i.e., angles) of each joint in the body.
 # Not to be conflated with PyBullet joint states which include
