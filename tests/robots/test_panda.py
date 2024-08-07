@@ -5,21 +5,18 @@ import numpy as np
 import pytest
 from pybullet_utils.transformations import quaternion_from_euler
 
-from predicators import utils
-from predicators.pybullet_helpers.geometry import Pose
-from predicators.pybullet_helpers.joint import get_joint_infos, get_joints
-from predicators.pybullet_helpers.robots import PandaPyBulletRobot
+from pybullet_helpers.geometry import Pose
+from pybullet_helpers.joint import get_joint_infos, get_joints
+from pybullet_helpers.robots.panda import PandaPyBulletRobot
 
 
 @pytest.fixture(scope="function", name="panda")
 def _panda_fixture(physics_client_id) -> PandaPyBulletRobot:
     """Get a PandaPyBulletRobot instance."""
     # Use reset control, so we can see effects of actions without stepping.
-    utils.reset_config({"pybullet_control_mode": "reset"})
-
     home_pose = Pose((0.5, 0.0, 0.5),
                      quaternion_from_euler(np.pi, 0, np.pi / 2))
-    panda = PandaPyBulletRobot(home_pose, physics_client_id)
+    panda = PandaPyBulletRobot(home_pose, physics_client_id, control_mode="reset")
     assert panda.get_name() == "panda"
     assert panda.physics_client_id == physics_client_id
     # Panda must have IKFast
@@ -101,7 +98,7 @@ def test_panda_pybullet_robot_inverse_kinematics_incorrect_solution(panda):
     pose = Pose((0.25, 0.25, 0.25), (0.7071, 0.7071, 0.0, 0.0))
     # Note: the ikfast_closest_inverse_kinematics import happens
     # in the single_arm.py module, not the panda.py module.
-    with patch("predicators.pybullet_helpers.robots.single_arm."
+    with patch("pybullet_helpers.robots.single_arm."
                "ikfast_closest_inverse_kinematics") as ikfast_mock:
         # Patch return value of IKFast to be an incorrect solution
         ikfast_mock.return_value = [[1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]]

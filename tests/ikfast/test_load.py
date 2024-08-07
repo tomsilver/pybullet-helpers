@@ -4,13 +4,13 @@ from unittest.mock import call, patch
 
 import pytest
 
-import predicators.pybullet_helpers.ikfast.load
-from predicators.pybullet_helpers.ikfast import IKFastInfo
-from predicators.pybullet_helpers.ikfast.load import \
+import pybullet_helpers.ikfast.load
+from pybullet_helpers.ikfast import IKFastInfo
+from pybullet_helpers.ikfast.load import \
     install_ikfast_if_required, install_ikfast_module
-from predicators.utils import get_third_party_path
+from pybullet_helpers.utils import get_third_party_path
 
-_MODULE_PATH = predicators.pybullet_helpers.ikfast.load.__name__
+_MODULE_PATH = pybullet_helpers.ikfast.load.__name__
 
 
 @pytest.fixture(scope="module", name="ikfast_info")

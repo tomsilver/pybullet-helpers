@@ -4,18 +4,14 @@ import numpy as np
 import pybullet as p
 import pytest
 
-from predicators import utils
-from predicators.pybullet_helpers.geometry import Pose
-from predicators.pybullet_helpers.inverse_kinematics import \
+from pybullet_helpers.utils import get_assets_path
+from pybullet_helpers.geometry import Pose
+from pybullet_helpers.inverse_kinematics import \
     pybullet_inverse_kinematics
-from predicators.pybullet_helpers.joint import get_kinematic_chain
-from predicators.pybullet_helpers.link import BASE_LINK, get_link_pose, \
+from pybullet_helpers.joint import get_kinematic_chain
+from pybullet_helpers.link import BASE_LINK, get_link_pose, \
     get_link_state
-from predicators.pybullet_helpers.robots import \
-    create_single_arm_pybullet_robot
-from predicators.pybullet_helpers.robots.fetch import FetchPyBulletRobot
-from predicators.pybullet_helpers.robots.panda import PandaPyBulletRobot
-from predicators.settings import CFG
+from pybullet_helpers.robots.fetch import FetchPyBulletRobot
 
 
 @pytest.fixture(scope="module", name="scene_attributes")
@@ -31,8 +27,8 @@ def _setup_pybullet_test_scene():
 
     p.resetSimulation(physicsClientId=physics_client_id)
 
-    fetch_id = p.loadURDF(
-        utils.get_env_asset_path("urdf/fetch_description/robots/fetch.urdf"),
+    urdf_path = get_assets_path() / "urdf" / "fetch_description" / "robots"/ "fetch.urdf"
+    fetch_id = p.loadURDF(urdf_path,
         useFixedBase=True,
         physicsClientId=physics_client_id)
     scene["fetch_id"] = fetch_id
@@ -200,19 +196,19 @@ def test_fetch_pybullet_robot(physics_client_id):
     action_arr = np.array(joint_target, dtype=np.float32)
 
     # Not a valid control mode.
-    utils.reset_config({"pybullet_control_mode": "not a real control mode"})
+    robot._control_mode = "not a real control mode"
     with pytest.raises(NotImplementedError) as e:
         robot.set_motors(action_arr)
     assert "Unrecognized pybullet_control_mode" in str(e)
 
     # Reset control mode.
-    utils.reset_config({"pybullet_control_mode": "reset"})
+    robot._control_mode = "reset"
     robot.set_motors(action_arr)  # just make sure it doesn't crash
 
     # Position control mode.
-    utils.reset_config({"pybullet_control_mode": "position"})
+    robot._pybullet_control_mode = "position"
     robot.set_motors(action_arr)
-    for _ in range(CFG.pybullet_sim_steps_per_action):
+    for _ in range(20):
         p.stepSimulation(physicsClientId=physics_client_id)
     recovered_ee_pos = robot.get_state()[:3]
 
@@ -226,22 +222,3 @@ def test_fetch_pybullet_robot(physics_client_id):
     assert robot.link_from_name("gripper_link")
     with pytest.raises(ValueError):
         robot.link_from_name("non_existent_link")
-
-
-def test_create_single_arm_pybullet_robot(physics_client_id):
-    """Tests for create_single_arm_pybullet_robot()."""
-    physics_client_id = p.connect(p.DIRECT)
-
-    # Fetch
-    robot = create_single_arm_pybullet_robot("fetch", physics_client_id)
-    assert isinstance(robot, FetchPyBulletRobot)
-    assert robot.tool_link_name == "gripper_link"
-
-    # Panda
-    robot = create_single_arm_pybullet_robot("panda", physics_client_id)
-    assert isinstance(robot, PandaPyBulletRobot)
-
-    # Unknown robot
-    with pytest.raises(NotImplementedError) as e:
-        create_single_arm_pybullet_robot("not a real robot", physics_client_id)
-    assert "Unrecognized robot name" in str(e)

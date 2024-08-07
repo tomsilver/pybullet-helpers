@@ -3,11 +3,11 @@ from unittest.mock import call, patch
 
 import pytest
 
-import predicators.pybullet_helpers.link
-from predicators.pybullet_helpers.geometry import Pose, multiply_poses
-from predicators.pybullet_helpers.link import LinkState, get_relative_link_pose
+import pybullet_helpers.link
+from pybullet_helpers.geometry import Pose, multiply_poses
+from pybullet_helpers.link import LinkState, get_relative_link_pose
 
-_MODULE_PATH = predicators.pybullet_helpers.link.__name__
+_MODULE_PATH = pybullet_helpers.link.__name__
 
 
 def test_link_state():

@@ -5,15 +5,15 @@ import time
 import numpy as np
 import pybullet as p
 
-from predicators import utils
-from predicators.envs.pybullet_env import create_pybullet_block
-from predicators.pybullet_helpers.camera import create_gui_connection
-from predicators.pybullet_helpers.geometry import Pose
-from predicators.pybullet_helpers.joint import JointPositions
-from predicators.pybullet_helpers.link import get_link_state
-from predicators.pybullet_helpers.motion_planning import run_motion_planning
-from predicators.pybullet_helpers.robots import \
-    create_single_arm_pybullet_robot
+from pybullet_helpers.utils import get_assets_path, create_pybullet_block
+from pybullet_helpers.camera import create_gui_connection
+from pybullet_helpers.geometry import Pose
+from pybullet_helpers.joint import JointPositions
+from pybullet_helpers.link import get_link_state
+from pybullet_helpers.motion_planning import run_motion_planning, MotionPlanningHyperparameters
+
+from pybullet_helpers.robots.panda import PandaPyBulletRobot
+from pybullet_helpers.robots.fetch import FetchPyBulletRobot
 
 USE_GUI = False
 
@@ -24,8 +24,7 @@ def test_run_motion_planning(physics_client_id):
     ee_orn = p.getQuaternionFromEuler([0.0, np.pi / 2, -np.pi])
     ee_home_pose = Pose(ee_home_position, ee_orn)
     seed = 123
-    robot = create_single_arm_pybullet_robot("fetch", physics_client_id,
-                                             ee_home_pose)
+    robot = FetchPyBulletRobot(ee_home_pose, physics_client_id)
     robot_init_state = tuple(ee_home_position) + tuple(
         ee_orn, ) + (robot.open_fingers, )
     robot.reset_state(robot_init_state)
@@ -56,7 +55,8 @@ def test_run_motion_planning(physics_client_id):
     # Should fail because the target collides with the table.
     table_pose = (1.35, 0.75, 0.0)
     table_orientation = [0., 0., 0., 1.]
-    table_id = p.loadURDF(utils.get_env_asset_path("urdf/table.urdf"),
+    table_urdf_path = get_assets_path() / "urdf" / "table.urdf"
+    table_id = p.loadURDF(table_urdf_path,
                           useFixedBase=True,
                           physicsClientId=physics_client_id)
     p.resetBasePositionAndOrientation(table_id,
@@ -107,10 +107,7 @@ def test_run_motion_planning(physics_client_id):
     assert path is not None
     p.removeBody(block_id, physicsClientId=physics_client_id)
     # Should fail because the hyperparameters are too limited.
-    utils.reset_config({
-        "pybullet_birrt_num_iters": 1,
-        "pybullet_birrt_num_attempts": 1,
-    })
+    hyperparameters = MotionPlanningHyperparameters(birrt_num_attempts=1, birrt_num_iters=1)
     block_id = create_pybullet_block(
         color=(1.0, 0.0, 0.0, 1.0),
         half_extents=(0.2, 0.01, 0.3),
@@ -127,7 +124,8 @@ def test_run_motion_planning(physics_client_id):
                                joint_target,
                                collision_bodies={table_id, block_id},
                                seed=seed,
-                               physics_client_id=physics_client_id)
+                               physics_client_id=physics_client_id,
+                               hyperparameters=hyperparameters)
     assert path is None
     p.removeBody(block_id, physicsClientId=physics_client_id)
 
@@ -141,8 +139,6 @@ def test_move_to_shelf():
 
     Also notably, the held object must be collision-checked like the robot.
     """
-    utils.reset_config({"pybullet_control_mode": "reset"})
-
     # Set up scene.
     x_lb = 1.2
     x_ub = 1.5
@@ -190,7 +186,8 @@ def test_move_to_shelf():
         physics_client_id = p.connect(p.DIRECT)
 
     # Load table.
-    table_id = p.loadURDF(utils.get_env_asset_path("urdf/table.urdf"),
+    table_urdf_path = get_assets_path() / "urdf" / "table.urdf"
+    table_id = p.loadURDF(table_urdf_path,
                           useFixedBase=True,
                           physicsClientId=physics_client_id)
     p.resetBasePositionAndOrientation(table_id,
@@ -299,8 +296,8 @@ def test_move_to_shelf():
                                       physicsClientId=physics_client_id)
 
     # Create robot, initialized to be grasping the block.
-    robot = create_single_arm_pybullet_robot("panda", physics_client_id,
-                                             home_pose)
+    robot = PandaPyBulletRobot(home_pose, physics_client_id, control_mode="reset")
+
     # Close the fingers.
     joint_state = robot.get_joints()
     joint_state[robot.left_finger_joint_idx] = robot.closed_fingers

@@ -3,7 +3,7 @@
 import numpy as np
 import pybullet as p
 
-from predicators.pybullet_helpers.geometry import Pose, get_pose, \
+from pybullet_helpers.geometry import Pose, get_pose, \
     matrix_from_quat
 
 

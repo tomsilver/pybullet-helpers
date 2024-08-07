@@ -2,7 +2,7 @@
 
 import pybullet as p
 
-from predicators.pybullet_helpers.joint import JointInfo
+from pybullet_helpers.joint import JointInfo
 
 
 def test_joint_info():
