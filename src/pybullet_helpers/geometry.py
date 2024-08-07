@@ -1,4 +1,5 @@
 """PyBullet helper class for geometry utilities."""
+
 from __future__ import annotations
 
 from typing import NamedTuple, Tuple
@@ -6,8 +7,7 @@ from typing import NamedTuple, Tuple
 import numpy as np
 import numpy.typing as npt
 import pybullet as p
-from pybullet_utils.transformations import euler_from_quaternion, \
-    quaternion_from_euler
+from pybullet_utils.transformations import euler_from_quaternion, quaternion_from_euler
 
 Pose3D = Tuple[float, float, float]
 Quaternion = Tuple[float, float, float, float]
@@ -20,6 +20,7 @@ class Pose(NamedTuple):
     We use a NamedTuple as it supports retrieving by integer indexing
     and most closely follows the PyBullet API.
     """
+
     # Cartesian (x, y, z) position
     position: Pose3D
     # Quaternion in (x, y, z, w) representation
@@ -51,17 +52,18 @@ class Pose(NamedTuple):
 
     def allclose(self, other: Pose, atol: float = 1e-6) -> bool:
         """Return whether this pose is close enough to another pose."""
-        return np.allclose(self.position, other.position, atol=atol) and \
-            np.allclose(self.orientation, other.orientation, atol=atol)
+        return np.allclose(self.position, other.position, atol=atol) and np.allclose(
+            self.orientation, other.orientation, atol=atol
+        )
 
 
 def multiply_poses(*poses: Pose) -> Pose:
     """Multiplies poses (which are essentially transforms) together."""
     pose = poses[0]
     for next_pose in poses[1:]:
-        pybullet_pose = p.multiplyTransforms(pose.position, pose.orientation,
-                                             next_pose.position,
-                                             next_pose.orientation)
+        pybullet_pose = p.multiplyTransforms(
+            pose.position, pose.orientation, next_pose.position, next_pose.orientation
+        )
         pose = Pose(pybullet_pose[0], pybullet_pose[1])
     return pose
 
@@ -74,5 +76,6 @@ def matrix_from_quat(quat: Quaternion) -> npt.NDArray[np.float64]:
 def get_pose(body: int, physics_client_id: int) -> Pose:
     """Get the pose of a body."""
     pybullet_pose = p.getBasePositionAndOrientation(
-        body, physicsClientId=physics_client_id)
+        body, physicsClientId=physics_client_id
+    )
     return Pose(pybullet_pose[0], pybullet_pose[1])

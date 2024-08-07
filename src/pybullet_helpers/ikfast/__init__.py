@@ -6,6 +6,7 @@ from typing import List, NamedTuple
 
 class IKFastInfo(NamedTuple):
     """IKFast information for a given robot."""
+
     module_dir: str
     module_name: str
     base_link: str

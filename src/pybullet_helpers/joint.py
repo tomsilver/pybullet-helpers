@@ -1,4 +1,5 @@
 """PyBullet helper class for joint utilities."""
+
 from typing import List, NamedTuple, Sequence, Tuple
 
 import numpy as np
@@ -18,6 +19,7 @@ class JointInfo(NamedTuple):
     We use a NamedTuple as it supports retrieving by integer indexing
     and most closely follows the PyBullet API.
     """
+
     jointIndex: int
     jointName: str
     jointType: int
@@ -59,8 +61,7 @@ class JointInfo(NamedTuple):
         """Whether the given value violates the joint's limits."""
         if self.is_circular:
             return False
-        return self.jointLowerLimit > value - tol or \
-               value + tol > self.jointUpperLimit
+        return self.jointLowerLimit > value - tol or value + tol > self.jointUpperLimit
 
 
 class JointState(NamedTuple):
@@ -69,6 +70,7 @@ class JointState(NamedTuple):
     We use a NamedTuple as it supports retrieving by integer indexing
     and most closely follows the PyBullet API.
     """
+
     jointPosition: float
     jointVelocity: float
     jointReactionForces: Sequence[float]
@@ -88,7 +90,8 @@ def get_joints(body: int, physics_client_id: int) -> List[int]:
 def get_joint_info(body: int, joint: int, physics_client_id: int) -> JointInfo:
     """Get the info for the given joint for a body."""
     raw_joint_info: List = list(
-        p.getJointInfo(body, joint, physicsClientId=physics_client_id))
+        p.getJointInfo(body, joint, physicsClientId=physics_client_id)
+    )
     # Decode the byte strings for joint name and link name
     raw_joint_info[1] = raw_joint_info[1].decode("UTF-8")
     raw_joint_info[12] = raw_joint_info[12].decode("UTF-8")
@@ -97,18 +100,16 @@ def get_joint_info(body: int, joint: int, physics_client_id: int) -> JointInfo:
     return joint_info
 
 
-def get_joint_infos(body: int, joints: List[int],
-                    physics_client_id: int) -> List[JointInfo]:
+def get_joint_infos(
+    body: int, joints: List[int], physics_client_id: int
+) -> List[JointInfo]:
     """Get the infos for the given joints for a body."""
-    return [
-        get_joint_info(body, joint_id, physics_client_id)
-        for joint_id in joints
-    ]
+    return [get_joint_info(body, joint_id, physics_client_id) for joint_id in joints]
 
 
 def get_joint_limits(
-        body: int, joints: List[int],
-        physics_client_id: int) -> Tuple[List[float], List[float]]:
+    body: int, joints: List[int], physics_client_id: int
+) -> Tuple[List[float], List[float]]:
     """Get the joint limits for the given joints for a body. Circular joints do
     not have limits (represented by ±np.inf).
 
@@ -127,20 +128,23 @@ def get_joint_limits(
     return lower_limits, upper_limits
 
 
-def get_joint_lower_limits(body: int, joints: List[int],
-                           physics_client_id: int) -> List[float]:
+def get_joint_lower_limits(
+    body: int, joints: List[int], physics_client_id: int
+) -> List[float]:
     """Get the lower joint limits for the given joints for a body."""
     return get_joint_limits(body, joints, physics_client_id)[0]
 
 
-def get_joint_upper_limits(body: int, joints: List[int],
-                           physics_client_id: int) -> List[float]:
+def get_joint_upper_limits(
+    body: int, joints: List[int], physics_client_id: int
+) -> List[float]:
     """Get the upper joint limits for the given joints for a body."""
     return get_joint_limits(body, joints, physics_client_id)[1]
 
 
-def get_kinematic_chain(body: int, end_effector: int,
-                        physics_client_id: int) -> List[int]:
+def get_kinematic_chain(
+    body: int, end_effector: int, physics_client_id: int
+) -> List[int]:
     """Get all the free joints from robot body base to end effector.
 
     Includes the end effector.
@@ -154,18 +158,22 @@ def get_kinematic_chain(body: int, end_effector: int,
     return kinematic_chain
 
 
-def get_joint_states(body: int, joints: List[int],
-                     physics_client_id: int) -> List[JointState]:
+def get_joint_states(
+    body: int, joints: List[int], physics_client_id: int
+) -> List[JointState]:
     """Get the joint states for the given joints for a body."""
     joint_states = [
-        JointState(*raw_joint_state) for raw_joint_state in p.getJointStates(
-            body, joints, physicsClientId=physics_client_id)
+        JointState(*raw_joint_state)
+        for raw_joint_state in p.getJointStates(
+            body, joints, physicsClientId=physics_client_id
+        )
     ]
     return joint_states
 
 
-def get_joint_positions(body: int, joints: List[int],
-                        physics_client_id: int) -> List[float]:
+def get_joint_positions(
+    body: int, joints: List[int], physics_client_id: int
+) -> List[float]:
     """Get the joint positions for the given joints for a body."""
     return [
         joint_state.jointPosition

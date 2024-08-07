@@ -7,8 +7,8 @@ import logging
 import os
 import sys
 from importlib.abc import Loader
-from types import ModuleType
 from pathlib import Path
+from types import ModuleType
 
 from pybullet_helpers.ikfast import IKFastInfo
 from pybullet_helpers.utils import get_third_party_path
@@ -34,7 +34,8 @@ def install_ikfast_module(ikfast_dir: Path) -> None:
     if exit_value != 0:
         raise RuntimeError(
             f"IKFast install failed with exit code {exit_value}. "
-            "Check messages above.")
+            "Check messages above."
+        )
 
 
 def install_ikfast_if_required(ikfast_info: IKFastInfo) -> str:
@@ -51,14 +52,14 @@ def install_ikfast_if_required(ikfast_info: IKFastInfo) -> str:
     # We need to install.
     if not so_filepaths:
         logging.warning(
-            f"IKFast module {ikfast_info.module_name} not found; installing.")
+            f"IKFast module {ikfast_info.module_name} not found; installing."
+        )
         install_ikfast_module(ikfast_dir)
         so_filepaths = glob.glob(glob_pattern)
 
     if len(so_filepaths) != 1:  # pragma: no cover
         # Shouldn't ever happen.
-        raise ValueError(
-            f"Found {len(so_filepaths)} .so files in {ikfast_dir}.")
+        raise ValueError(f"Found {len(so_filepaths)} .so files in {ikfast_dir}.")
 
     module_filepath = so_filepaths[0]
     return module_filepath
@@ -80,8 +81,9 @@ def import_ikfast(ikfast_info: IKFastInfo) -> ModuleType:
 
     # Import the module.
     # See https://docs.python.org/3/library/importlib.html.
-    spec = importlib.util.spec_from_file_location(ikfast_info.module_name,
-                                                  module_filepath)
+    spec = importlib.util.spec_from_file_location(
+        ikfast_info.module_name, module_filepath
+    )
     if spec is None or spec.loader is None:  # pragma: no cover
         # Shouldn't ever happen unless there's corruption or tampering.
         raise ImportError("IKFast module could not be found.")

@@ -1,10 +1,10 @@
 """Franka Emika Panda robot."""
-from typing import Optional
+
 from pathlib import Path
+from typing import Optional
 
 from pybullet_helpers.ikfast import IKFastInfo
-from pybullet_helpers.robots.single_arm import \
-    SingleArmPyBulletRobot
+from pybullet_helpers.robots.single_arm import SingleArmPyBulletRobot
 from pybullet_helpers.utils import get_assets_path
 
 

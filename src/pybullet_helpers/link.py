@@ -1,10 +1,10 @@
 """PyBullet helper class for link utilities."""
+
 from typing import NamedTuple
 
 import pybullet as p
 
-from pybullet_helpers.geometry import Pose, Pose3D, Quaternion, \
-    get_pose, multiply_poses
+from pybullet_helpers.geometry import Pose, Pose3D, Quaternion, get_pose, multiply_poses
 
 BASE_LINK: int = -1
 
@@ -15,6 +15,7 @@ class LinkState(NamedTuple):
     We use a NamedTuple as it supports retrieving by integer indexing
     and most closely follows the PyBullet API.
     """
+
     linkWorldPosition: Pose3D
     linkWorldOrientation: Quaternion
     localInertialFramePosition: Pose3D
@@ -30,8 +31,7 @@ class LinkState(NamedTuple):
     @property
     def pose(self) -> Pose:
         """Pose of link in world frame."""
-        return Pose(self.worldLinkFramePosition,
-                    self.worldLinkFrameOrientation)
+        return Pose(self.worldLinkFramePosition, self.worldLinkFrameOrientation)
 
 
 def get_link_state(
@@ -62,11 +62,11 @@ def get_link_pose(body: int, link: int, physics_client_id: int) -> Pose:
     return link_state.pose
 
 
-def get_relative_link_pose(body: int, link1: int, link2: int,
-                           physics_client_id: int) -> Pose:
+def get_relative_link_pose(
+    body: int, link1: int, link2: int, physics_client_id: int
+) -> Pose:
     """Get the pose of link1 relative to link2 on the same body."""
     world_from_link1 = get_link_pose(body, link1, physics_client_id)
     world_from_link2 = get_link_pose(body, link2, physics_client_id)
-    link2_from_link1 = multiply_poses(world_from_link2.invert(),
-                                      world_from_link1)
+    link2_from_link1 = multiply_poses(world_from_link2.invert(), world_from_link1)
     return link2_from_link1

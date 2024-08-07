@@ -1,10 +1,9 @@
 """Fetch Robotics Mobile Manipulator (Fetch)."""
 
-
-from pybullet_helpers.robots.single_arm import \
-    SingleArmPyBulletRobot
-from pybullet_helpers.utils import get_assets_path
 from pathlib import Path
+
+from pybullet_helpers.robots.single_arm import SingleArmPyBulletRobot
+from pybullet_helpers.utils import get_assets_path
 
 
 class FetchPyBulletRobot(SingleArmPyBulletRobot):

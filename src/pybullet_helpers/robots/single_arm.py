@@ -1,23 +1,32 @@
 """Abstract class for single armed manipulators with PyBullet helper
 functions."""
+
 import abc
 from functools import cached_property
+from pathlib import Path
 from typing import List, Optional
 
 import numpy as np
 import pybullet as p
 from gymnasium.spaces import Box
-from pathlib import Path
 
 from pybullet_helpers.geometry import Pose
 from pybullet_helpers.ikfast import IKFastInfo
-from pybullet_helpers.ikfast.utils import \
-    ikfast_closest_inverse_kinematics
-from pybullet_helpers.inverse_kinematics import \
-    InverseKinematicsError, pybullet_inverse_kinematics
-from pybullet_helpers.joint import JointInfo, JointPositions, \
-    get_joint_infos, get_joint_lower_limits, get_joint_positions, \
-    get_joint_upper_limits, get_joints, get_kinematic_chain
+from pybullet_helpers.ikfast.utils import ikfast_closest_inverse_kinematics
+from pybullet_helpers.inverse_kinematics import (
+    InverseKinematicsError,
+    pybullet_inverse_kinematics,
+)
+from pybullet_helpers.joint import (
+    JointInfo,
+    JointPositions,
+    get_joint_infos,
+    get_joint_lower_limits,
+    get_joint_positions,
+    get_joint_upper_limits,
+    get_joints,
+    get_kinematic_chain,
+)
 from pybullet_helpers.link import BASE_LINK, get_link_state
 
 
@@ -25,11 +34,11 @@ class SingleArmPyBulletRobot(abc.ABC):
     """A single-arm fixed-base PyBullet robot with a two-finger gripper."""
 
     def __init__(
-            self,
-            ee_home_pose: Pose,
-            physics_client_id: int,
-            base_pose: Pose = Pose.identity(),
-            control_mode: str = "position",
+        self,
+        ee_home_pose: Pose,
+        physics_client_id: int,
+        base_pose: Pose = Pose.identity(),
+        control_mode: str = "position",
     ) -> None:
         # The home positions and orientations should be "reasonable" because
         # IK will always reset to home before starting. Bad home poses will
@@ -104,8 +113,7 @@ class SingleArmPyBulletRobot(abc.ABC):
     @cached_property
     def base_link_name(self) -> str:
         """Name of the base link for the robot."""
-        base_info = p.getBodyInfo(self.robot_id,
-                                  physicsClientId=self.physics_client_id)
+        base_info = p.getBodyInfo(self.robot_id, physicsClientId=self.physics_client_id)
         base_name = base_info[0].decode(encoding="UTF-8")
         return base_name
 
@@ -117,8 +125,9 @@ class SingleArmPyBulletRobot(abc.ABC):
         Note these are joint indices not body IDs, and that the arm
         joints may be a subset of all the robot joints.
         """
-        joint_ids = get_kinematic_chain(self.robot_id, self.end_effector_id,
-                                        self.physics_client_id)
+        joint_ids = get_kinematic_chain(
+            self.robot_id, self.end_effector_id, self.physics_client_id
+        )
         # NOTE: pybullet tools assumes sorted arm joints.
         joint_ids = sorted(joint_ids)
         joint_ids.extend([self.left_finger_id, self.right_finger_id])
@@ -128,8 +137,10 @@ class SingleArmPyBulletRobot(abc.ABC):
     def arm_joint_names(self) -> List[str]:
         """The names of the arm joints."""
         return [
-            info.jointName for info in get_joint_infos(
-                self.robot_id, self.arm_joints, self.physics_client_id)
+            info.jointName
+            for info in get_joint_infos(
+                self.robot_id, self.arm_joints, self.physics_client_id
+            )
         ]
 
     @cached_property
@@ -139,8 +150,7 @@ class SingleArmPyBulletRobot(abc.ABC):
         This may be a superset of the arm joints.
         """
         all_joint_ids = get_joints(self.robot_id, self.physics_client_id)
-        return get_joint_infos(self.robot_id, all_joint_ids,
-                               self.physics_client_id)
+        return get_joint_infos(self.robot_id, all_joint_ids, self.physics_client_id)
 
     @cached_property
     def joint_names(self) -> List[str]:
@@ -210,14 +220,16 @@ class SingleArmPyBulletRobot(abc.ABC):
     @cached_property
     def joint_lower_limits(self) -> JointPositions:
         """Lower bound on the arm joint limits."""
-        return get_joint_lower_limits(self.robot_id, self.arm_joints,
-                                      self.physics_client_id)
+        return get_joint_lower_limits(
+            self.robot_id, self.arm_joints, self.physics_client_id
+        )
 
     @cached_property
     def joint_upper_limits(self) -> JointPositions:
         """Upper bound on the arm joint limits."""
-        return get_joint_upper_limits(self.robot_id, self.arm_joints,
-                                      self.physics_client_id)
+        return get_joint_upper_limits(
+            self.robot_id, self.arm_joints, self.physics_client_id
+        )
 
     @property
     @abc.abstractmethod
@@ -234,8 +246,7 @@ class SingleArmPyBulletRobot(abc.ABC):
     @cached_property
     def initial_joint_positions(self) -> JointPositions:
         """The joint values for the robot in its home pose."""
-        joint_positions = self.inverse_kinematics(self._ee_home_pose,
-                                                  validate=True)
+        joint_positions = self.inverse_kinematics(self._ee_home_pose, validate=True)
         # The initial joint values for the fingers should be open. IK may
         # return anything for them.
         joint_positions[self.left_finger_joint_idx] = self.open_fingers
@@ -244,8 +255,9 @@ class SingleArmPyBulletRobot(abc.ABC):
 
     def get_joints(self) -> JointPositions:
         """Get the joint positions from the current PyBullet state."""
-        return get_joint_positions(self.robot_id, self.arm_joints,
-                                   self.physics_client_id)
+        return get_joint_positions(
+            self.robot_id, self.arm_joints, self.physics_client_id
+        )
 
     def set_joints(self, joint_positions: JointPositions) -> None:
         """Directly set the joint positions.
@@ -281,8 +293,9 @@ class SingleArmPyBulletRobot(abc.ABC):
         elif self._control_mode == "reset":
             self.set_joints(joint_positions)
         else:
-            raise NotImplementedError("Unrecognized pybullet_control_mode: "
-                                      f"{self._control_mode }")
+            raise NotImplementedError(
+                "Unrecognized pybullet_control_mode: " f"{self._control_mode }"
+            )
 
     def go_home(self) -> None:
         """Move the robot to its home end-effector pose."""
@@ -299,14 +312,15 @@ class SingleArmPyBulletRobot(abc.ABC):
         ee_link_state = get_link_state(
             self.robot_id,
             self.end_effector_id,
-            physics_client_id=self.physics_client_id)
+            physics_client_id=self.physics_client_id,
+        )
         position = ee_link_state.worldLinkFramePosition
         orientation = ee_link_state.worldLinkFrameOrientation
         return Pose(position, orientation)
 
-    def _validate_joints_state(self, joint_positions: JointPositions,
-                               target_pose: Pose,
-                               validation_atol: float) -> None:
+    def _validate_joints_state(
+        self, joint_positions: JointPositions, target_pose: Pose, validation_atol: float
+    ) -> None:
         """Validate that the given joint positions matches the target pose.
 
         This method should NOT be used during simulation mode as it
@@ -320,19 +334,18 @@ class SingleArmPyBulletRobot(abc.ABC):
         ee_pos = get_link_state(
             self.robot_id,
             self.end_effector_id,
-            physics_client_id=self.physics_client_id).worldLinkFramePosition
+            physics_client_id=self.physics_client_id,
+        ).worldLinkFramePosition
         target_pos = target_pose.position
-        pos_is_close = np.allclose(ee_pos,
-                                   target_pos,
-                                   atol=validation_atol)
+        pos_is_close = np.allclose(ee_pos, target_pos, atol=validation_atol)
 
         # Reset joint positions before returning/raising error
         self.set_joints(initial_joint_states)
 
         if not pos_is_close:
             raise ValueError(
-                f"Joint states do not match target pose {target_pos} "
-                f"from {ee_pos}")
+                f"Joint states do not match target pose {target_pos} " f"from {ee_pos}"
+            )
 
     @classmethod
     def ikfast_info(cls) -> Optional[IKFastInfo]:
@@ -342,8 +355,7 @@ class SingleArmPyBulletRobot(abc.ABC):
         """
         return None
 
-    def _ikfast_inverse_kinematics(self,
-                                   end_effector_pose: Pose) -> JointPositions:
+    def _ikfast_inverse_kinematics(self, end_effector_pose: Pose) -> JointPositions:
         """IK using IKFast.
 
         Returns the joint positions.
@@ -355,7 +367,8 @@ class SingleArmPyBulletRobot(abc.ABC):
         if not ik_solutions:
             raise InverseKinematicsError(
                 f"No IK solution found for target pose {end_effector_pose} "
-                "using IKFast")
+                "using IKFast"
+            )
 
         # Use first solution as it is closest to current joint state
         joint_positions = ik_solutions[0]
@@ -363,17 +376,20 @@ class SingleArmPyBulletRobot(abc.ABC):
         # Add fingers to state
         final_joint_state = list(joint_positions)
         first_finger_idx, second_finger_idx = sorted(
-            [self.left_finger_joint_idx, self.right_finger_joint_idx])
+            [self.left_finger_joint_idx, self.right_finger_joint_idx]
+        )
         final_joint_state.insert(first_finger_idx, self.open_fingers)
         final_joint_state.insert(second_finger_idx, self.open_fingers)
 
         return final_joint_state
 
-    def inverse_kinematics(self,
-                           end_effector_pose: Pose,
-                           validate: bool,
-                           set_joints: bool = True,
-                           validation_atol: float = 1e-3) -> JointPositions:
+    def inverse_kinematics(
+        self,
+        end_effector_pose: Pose,
+        validate: bool,
+        set_joints: bool = True,
+        validation_atol: float = 1e-3,
+    ) -> JointPositions:
         """Compute joint positions from a target end effector position, based
         on the robot's current joint positions. Uses IKFast if the robot has
         IKFast info specified.
@@ -396,13 +412,12 @@ class SingleArmPyBulletRobot(abc.ABC):
         should not be used within simulation.
         """
         if self.ikfast_info():
-            joint_positions = self._ikfast_inverse_kinematics(
-                end_effector_pose)
+            joint_positions = self._ikfast_inverse_kinematics(end_effector_pose)
             if validate:
                 try:
-                    self._validate_joints_state(joint_positions,
-                                                end_effector_pose,
-                                                validation_atol)
+                    self._validate_joints_state(
+                        joint_positions, end_effector_pose, validation_atol
+                    )
                 except ValueError as e:
                     raise InverseKinematicsError(e)
 

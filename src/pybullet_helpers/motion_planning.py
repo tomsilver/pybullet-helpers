@@ -1,14 +1,15 @@
 """Motion Planning in PyBullet."""
+
 from __future__ import annotations
 
-from typing import Collection, Iterator, Optional, Sequence
 from dataclasses import dataclass
+from typing import Collection, Iterator, Optional, Sequence
 
 import numpy as np
 import pybullet as p
 from numpy.typing import NDArray
-
 from tomsutils.motion_planning import BiRRT
+
 from pybullet_helpers.joint import JointPositions
 from pybullet_helpers.link import get_link_state
 from pybullet_helpers.robots.single_arm import SingleArmPyBulletRobot
@@ -61,19 +62,24 @@ def run_motion_planning(
             world_to_base_link = get_link_state(
                 robot.robot_id,
                 robot.end_effector_id,
-                physics_client_id=physics_client_id).com_pose
-            world_to_held_obj = p.multiplyTransforms(world_to_base_link[0],
-                                                     world_to_base_link[1],
-                                                     base_link_to_held_obj[0],
-                                                     base_link_to_held_obj[1])
+                physics_client_id=physics_client_id,
+            ).com_pose
+            world_to_held_obj = p.multiplyTransforms(
+                world_to_base_link[0],
+                world_to_base_link[1],
+                base_link_to_held_obj[0],
+                base_link_to_held_obj[1],
+            )
             p.resetBasePositionAndOrientation(
                 held_object,
                 world_to_held_obj[0],
                 world_to_held_obj[1],
-                physicsClientId=physics_client_id)
+                physicsClientId=physics_client_id,
+            )
 
-    def _extend_fn(pt1: JointPositions,
-                   pt2: JointPositions) -> Iterator[JointPositions]:
+    def _extend_fn(
+        pt1: JointPositions, pt2: JointPositions
+    ) -> Iterator[JointPositions]:
         pt1_arr = np.array(pt1)
         pt2_arr = np.array(pt2)
         num = int(np.ceil(max(abs(pt1_arr - pt2_arr)))) * num_interp
@@ -86,12 +92,13 @@ def run_motion_planning(
         _set_state(pt)
         p.performCollisionDetection(physicsClientId=physics_client_id)
         for body in collision_bodies:
-            if p.getContactPoints(robot.robot_id,
-                                  body,
-                                  physicsClientId=physics_client_id):
+            if p.getContactPoints(
+                robot.robot_id, body, physicsClientId=physics_client_id
+            ):
                 return True
             if held_object is not None and p.getContactPoints(
-                    held_object, body, physicsClientId=physics_client_id):
+                held_object, body, physicsClientId=physics_client_id
+            ):
                 return True
         return False
 
@@ -100,15 +107,17 @@ def run_motion_planning(
         # orientations as well in the near future.
         from_ee = robot.forward_kinematics(from_pt).position
         to_ee = robot.forward_kinematics(to_pt).position
-        return sum(np.subtract(from_ee, to_ee)**2)
+        return sum(np.subtract(from_ee, to_ee) ** 2)
 
-    birrt = BiRRT(_sample_fn,
-                  _extend_fn,
-                  _collision_fn,
-                  _distance_fn,
-                  rng,
-                  num_attempts=hyperparameters.birrt_num_attempts,
-                  num_iters=hyperparameters.birrt_num_iters,
-                  smooth_amt=hyperparameters.birrt_smooth_amt)
+    birrt = BiRRT(
+        _sample_fn,
+        _extend_fn,
+        _collision_fn,
+        _distance_fn,
+        rng,
+        num_attempts=hyperparameters.birrt_num_attempts,
+        num_iters=hyperparameters.birrt_num_iters,
+        smooth_amt=hyperparameters.birrt_smooth_amt,
+    )
 
     return birrt.query(initial_positions, target_positions)

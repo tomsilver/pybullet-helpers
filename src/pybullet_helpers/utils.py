@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+
 def get_root_path() -> Path:
     """Get the path to the root directory of this package."""
     return Path(__file__).parent
