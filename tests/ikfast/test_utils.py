@@ -1,14 +1,21 @@
 """Test for IKFast utilities module."""
+
 from unittest.mock import Mock
 
 import numpy as np
 import pytest
 
 from pybullet_helpers.geometry import Pose
-from pybullet_helpers.ikfast.utils import get_base_from_ee, \
-    get_ikfast_joints, get_joint_difference_fn, get_ordered_ancestors, \
-    ikfast_closest_inverse_kinematics, ikfast_inverse_kinematics, \
-    violates_joint_limits, IKFastHyperparameters
+from pybullet_helpers.ikfast.utils import (
+    IKFastHyperparameters,
+    get_base_from_ee,
+    get_ikfast_joints,
+    get_joint_difference_fn,
+    get_ordered_ancestors,
+    ikfast_closest_inverse_kinematics,
+    ikfast_inverse_kinematics,
+    violates_joint_limits,
+)
 
 
 @pytest.fixture(scope="module", name="robot_with_no_ikfast_info")
@@ -33,8 +40,9 @@ def test_get_joint_difference_fn():
     joint_vals1 = np.random.rand(7)
     joint_vals2 = np.random.rand(7)
     expected_difference = joint_vals1 - joint_vals2
-    assert np.allclose(difference_fn(list(joint_vals1), list(joint_vals2)),
-                       expected_difference)
+    assert np.allclose(
+        difference_fn(list(joint_vals1), list(joint_vals2)), expected_difference
+    )
 
     # Joint values are different lengths
     with pytest.raises(ValueError):
@@ -112,6 +120,10 @@ def test_ikfast_inverse_kinematics_raises_error(robot_with_no_ikfast_info):
 def test_ikfast_closest_inverse_kinematics_raises_error():
     """Test ikfast_closest_inverse_kinematics raises error if max time,
     candidates or attempts is infinite."""
-    hyperparameters = IKFastHyperparameters(max_time=np.inf, max_attempts=np.inf, max_distance=np.inf)
+    hyperparameters = IKFastHyperparameters(
+        max_time=np.inf, max_attempts=np.inf, max_distance=np.inf
+    )
     with pytest.raises(ValueError):
-        ikfast_closest_inverse_kinematics(Mock(), Pose.identity(), hyperparameters=hyperparameters)
+        ikfast_closest_inverse_kinematics(
+            Mock(), Pose.identity(), hyperparameters=hyperparameters
+        )

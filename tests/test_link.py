@@ -1,4 +1,5 @@
 """Tests for link PyBullet helper utilities."""
+
 from unittest.mock import call, patch
 
 import pytest
@@ -28,25 +29,23 @@ def test_link_state():
     assert pose.orientation == (0.0, 0.0, 0.0, 1.0)
 
 
-@pytest.mark.parametrize("body, link1, link2, physics_client_id",
-                         [(0, 1, 2, 0), (1, 2, 8, 2)])
+@pytest.mark.parametrize(
+    "body, link1, link2, physics_client_id", [(0, 1, 2, 0), (1, 2, 8, 2)]
+)
 def test_get_relative_link_pose(body, link1, link2, physics_client_id):
     """Tests for get_relative_link_pose()."""
-    world_from_link1 = Pose(position=(0.5, 0.5, 0.5),
-                            orientation=(0.0, 0.0, 0.0, 1.0))
-    world_from_link2 = Pose(position=(1.0, 1.0, 1.0),
-                            orientation=(0.0, 1.0, 0.0, 1.0))
-    link2_from_link1 = multiply_poses(world_from_link2.invert(),
-                                      world_from_link1)
+    world_from_link1 = Pose(position=(0.5, 0.5, 0.5), orientation=(0.0, 0.0, 0.0, 1.0))
+    world_from_link2 = Pose(position=(1.0, 1.0, 1.0), orientation=(0.0, 1.0, 0.0, 1.0))
+    link2_from_link1 = multiply_poses(world_from_link2.invert(), world_from_link1)
 
     with patch(f"{_MODULE_PATH}.get_link_pose") as mock_get_link_pose:
         mock_get_link_pose.side_effect = [world_from_link1, world_from_link2]
-        relative_link_pose = get_relative_link_pose(body, link1, link2,
-                                                    physics_client_id)
+        relative_link_pose = get_relative_link_pose(
+            body, link1, link2, physics_client_id
+        )
         assert relative_link_pose == link2_from_link1
 
         assert mock_get_link_pose.call_count == 2
-        mock_get_link_pose.assert_has_calls([
-            call(body, link1, physics_client_id),
-            call(body, link2, physics_client_id)
-        ])
+        mock_get_link_pose.assert_has_calls(
+            [call(body, link1, physics_client_id), call(body, link2, physics_client_id)]
+        )
