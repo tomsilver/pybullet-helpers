@@ -2,7 +2,7 @@
 
 ![workflow](https://github.com/tomsilver/pybullet-helpers/actions/workflows/ci.yml/badge.svg)
 
-A basic starter for Python packages with GitHub continuous integration.
+Some utility functions for PyBullet. Copied and modified from [predicators](https://github.com/Learning-and-Intelligent-Systems/predicators).
 
 ## Requirements
 
