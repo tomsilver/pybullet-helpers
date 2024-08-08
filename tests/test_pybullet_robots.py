@@ -29,7 +29,7 @@ def _setup_pybullet_test_scene():
         get_assets_path() / "urdf" / "fetch_description" / "robots" / "fetch.urdf"
     )
     fetch_id = p.loadURDF(
-        urdf_path, useFixedBase=True, physicsClientId=physics_client_id
+        str(urdf_path), useFixedBase=True, physicsClientId=physics_client_id
     )
     scene["fetch_id"] = fetch_id
 
@@ -123,7 +123,7 @@ def test_pybullet_inverse_kinematics(scene_attributes):
         scene_attributes["ee_id"],
         scene_attributes["physics_client_id"],
     )
-    assert not np.allclose(ee_link_state[4], target_position, atol=CFG.pybullet_ik_tol)
+    assert not np.allclose(ee_link_state[4], target_position, atol=1e-3)
     # With validate = True, IK does work.
     _reset_joints()
     joint_positions = pybullet_inverse_kinematics(
@@ -147,7 +147,7 @@ def test_pybullet_inverse_kinematics(scene_attributes):
         scene_attributes["ee_id"],
         scene_attributes["physics_client_id"],
     )
-    assert np.allclose(ee_link_state[4], target_position, atol=CFG.pybullet_ik_tol)
+    assert np.allclose(ee_link_state[4], target_position, atol=1e-3)
     # With validate = True, if the position is impossible to reach, an error
     # is raised.
     target_position = [
@@ -193,15 +193,6 @@ def test_fetch_pybullet_robot(physics_client_id):
     assert robot.left_finger_joint_idx == 7
     assert robot.right_finger_joint_idx == 8
 
-    robot_state = np.array(
-        ee_home_position + tuple(ee_orn) + (robot.open_fingers,), dtype=np.float32
-    )
-    robot.reset_state(robot_state)
-    recovered_state = robot.get_state()
-    assert np.allclose(robot_state[:3], recovered_state[:3], atol=1e-3)
-    assert np.isclose(robot_state[-1], recovered_state[-1], atol=1e-3)
-    assert np.allclose(robot.get_joints(), robot.initial_joint_positions, atol=1e-2)
-
     ee_delta = (-0.01, 0.0, 0.01)
     ee_target_position = np.add(ee_home_position, ee_delta)
     ee_target = Pose(ee_target_position, ee_orn)
@@ -226,7 +217,7 @@ def test_fetch_pybullet_robot(physics_client_id):
     robot.set_motors(action_arr)
     for _ in range(20):
         p.stepSimulation(physicsClientId=physics_client_id)
-    recovered_ee_pos = robot.get_state()[:3]
+    recovered_ee_pos = robot.get_ee_pose().position
 
     # IK is currently not precise enough to increase this tolerance.
     assert np.allclose(ee_target_position, recovered_ee_pos, atol=1e-2)
