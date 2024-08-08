@@ -1,7 +1,6 @@
 """Utility functions."""
 
 from pathlib import Path
-from typing import Sequence
 
 import pybullet as p
 
@@ -24,10 +23,9 @@ def get_third_party_path() -> Path:
 def create_pybullet_block(
     color: tuple[float, float, float, float],
     half_extents: tuple[float, float, float],
-    mass: float,
-    friction: float,
-    orientation: Sequence[float],
     physics_client_id: int,
+    mass: float = 0,
+    friction: float | None = None,
 ) -> int:
     """A generic utility for creating a new block.
 
@@ -35,7 +33,8 @@ def create_pybullet_block(
     """
     # The poses here are not important because they are overwritten by
     # the state values when a task is reset.
-    pose = (0, 0, 0)
+    position = (0, 0, 0)
+    orientation = (1, 0, 0, 0)
 
     # Create the collision shape.
     collision_id = p.createCollisionShape(
@@ -55,15 +54,69 @@ def create_pybullet_block(
         baseMass=mass,
         baseCollisionShapeIndex=collision_id,
         baseVisualShapeIndex=visual_id,
-        basePosition=pose,
+        basePosition=position,
         baseOrientation=orientation,
         physicsClientId=physics_client_id,
     )
-    p.changeDynamics(
-        block_id,
-        linkIndex=-1,  # -1 for the base
-        lateralFriction=friction,
+
+    if friction:
+        p.changeDynamics(
+            block_id,
+            linkIndex=-1,  # -1 for the base
+            lateralFriction=friction,
+            physicsClientId=physics_client_id,
+        )
+
+    return block_id
+
+
+def create_pybullet_cylinder(
+    color: tuple[float, float, float, float],
+    radius: float,
+    length: float,
+    physics_client_id: int,
+    mass: float = 0,
+    friction: float | None = None,
+) -> int:
+    """A generic utility for creating a cylinder.
+
+    Returns the PyBullet ID of the newly created cylinder.
+    """
+    # The poses here are not important because they are overwritten by
+    # the state values when a task is reset.
+    position = (0, 0, 0)
+    orientation = (1, 0, 0, 0)
+
+    # Create the collision shape.
+    collision_id = p.createCollisionShape(
+        p.GEOM_CYLINDER, radius=radius, length=length, physicsClientId=physics_client_id
+    )
+
+    # Create the visual_shape.
+    visual_id = p.createVisualShape(
+        p.GEOM_CYLINDER,
+        radius=radius,
+        length=length,
+        rgbaColor=color,
         physicsClientId=physics_client_id,
     )
 
-    return block_id
+    # Create the body.
+    cylinder_id = p.createMultiBody(
+        baseMass=mass,
+        baseCollisionShapeIndex=collision_id,
+        baseVisualShapeIndex=visual_id,
+        basePosition=position,
+        baseOrientation=orientation,
+        physicsClientId=physics_client_id,
+    )
+
+    if friction:
+        p.changeDynamics(
+            cylinder_id,
+            linkIndex=-1,  # -1 for the base
+            lateralFriction=friction,
+            physicsClientId=physics_client_id,
+        )
+
+    return cylinder_id

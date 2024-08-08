@@ -87,9 +87,6 @@ def test_run_motion_planning(physics_client_id):
     block_id = create_pybullet_block(
         color=(1.0, 0.0, 0.0, 1.0),
         half_extents=(0.2, 0.01, 0.3),
-        mass=0,  # immoveable
-        friction=1,
-        orientation=block_orientation,
         physics_client_id=physics_client_id,
     )
     p.resetBasePositionAndOrientation(
@@ -115,9 +112,6 @@ def test_run_motion_planning(physics_client_id):
     block_id = create_pybullet_block(
         color=(1.0, 0.0, 0.0, 1.0),
         half_extents=(0.2, 0.01, 0.3),
-        mass=0,  # immoveable
-        friction=1,
-        orientation=block_orientation,
         physics_client_id=physics_client_id,
     )
     p.resetBasePositionAndOrientation(
