@@ -20,7 +20,7 @@ class FetchPyBulletRobot(SingleArmPyBulletRobot):
         return dir_path / "fetch_description" / "robots" / "fetch.urdf"
 
     @property
-    def home_joint_positions(self) -> JointPositions:
+    def default_home_joint_positions(self) -> JointPositions:
         return [
             -0.5591804653688366,
             -0.5948112040931831,

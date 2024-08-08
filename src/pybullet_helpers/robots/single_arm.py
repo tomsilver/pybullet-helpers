@@ -38,6 +38,7 @@ class SingleArmPyBulletRobot(abc.ABC):
         physics_client_id: int,
         base_pose: Pose = Pose.identity(),
         control_mode: str = "position",
+        home_joint_positions: JointPositions | None = None,
     ) -> None:
         self.physics_client_id = physics_client_id
 
@@ -46,6 +47,11 @@ class SingleArmPyBulletRobot(abc.ABC):
 
         # Control mode for the robot.
         self._control_mode = control_mode
+
+        # Home joint positions.
+        self._home_joint_positions = (
+            home_joint_positions or self.default_home_joint_positions
+        )
 
         # Load the robot and set base position and orientation.
         self.robot_id = p.loadURDF(
@@ -73,9 +79,14 @@ class SingleArmPyBulletRobot(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def home_joint_positions(self) -> JointPositions:
+    def default_home_joint_positions(self) -> JointPositions:
         """The default joint values for the robot."""
         raise NotImplementedError("Override me!")
+
+    @property
+    def home_joint_positions(self) -> JointPositions:
+        """The home joint positions for this robot."""
+        return self._home_joint_positions
 
     @property
     def action_space(self) -> Box:
@@ -311,7 +322,7 @@ class SingleArmPyBulletRobot(abc.ABC):
 
     def go_home(self) -> None:
         """Move the robot to its home end-effector pose."""
-        self.set_motors(self.home_joint_positions)
+        self.set_motors(self.default_home_joint_positions)
 
     def forward_kinematics(self, joint_positions: JointPositions) -> Pose:
         """Compute the end effector pose that would result if the robot arm

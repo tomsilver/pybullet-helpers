@@ -22,7 +22,7 @@ class PandaPyBulletRobot(SingleArmPyBulletRobot):
         return dir_path / "franka_description" / "robots" / "panda_arm_hand.urdf"
 
     @property
-    def home_joint_positions(self) -> JointPositions:
+    def default_home_joint_positions(self) -> JointPositions:
         return [
             -1.6760817784086874,
             -0.8633617886115512,
