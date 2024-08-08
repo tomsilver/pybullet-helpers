@@ -25,8 +25,9 @@ def test_run_motion_planning(physics_client_id):
     ee_home_position = (1.35, 0.75, 0.75)
     ee_orn = p.getQuaternionFromEuler([0.0, np.pi / 2, -np.pi])
     ee_home_pose = Pose(ee_home_position, ee_orn)
+    base_pose = Pose(position=(0.75, 0.7441, 0.0))
     seed = 123
-    robot = FetchPyBulletRobot(ee_home_pose, physics_client_id)
+    robot = FetchPyBulletRobot(ee_home_pose, physics_client_id, base_pose=base_pose)
     joint_initial = robot.get_joints()
     # Should succeed with a path of length 2.
     joint_target = list(joint_initial)
@@ -60,7 +61,7 @@ def test_run_motion_planning(physics_client_id):
     table_orientation = [0.0, 0.0, 0.0, 1.0]
     table_urdf_path = get_assets_path() / "urdf" / "table.urdf"
     table_id = p.loadURDF(
-        table_urdf_path, useFixedBase=True, physicsClientId=physics_client_id
+        str(table_urdf_path), useFixedBase=True, physicsClientId=physics_client_id
     )
     p.resetBasePositionAndOrientation(
         table_id, table_pose, table_orientation, physicsClientId=physics_client_id
@@ -204,7 +205,7 @@ def test_move_to_shelf():
     # Load table.
     table_urdf_path = get_assets_path() / "urdf" / "table.urdf"
     table_id = p.loadURDF(
-        table_urdf_path, useFixedBase=True, physicsClientId=physics_client_id
+        str(table_urdf_path), useFixedBase=True, physicsClientId=physics_client_id
     )
     p.resetBasePositionAndOrientation(
         table_id, table_pose, table_orientation, physicsClientId=physics_client_id
