@@ -19,7 +19,7 @@ def test_run_motion_planning(physics_client_id):
     base_pose = Pose(position=(0.75, 0.7441, 0.0))
     seed = 123
     robot = FetchPyBulletRobot(physics_client_id, base_pose=base_pose)
-    joint_initial = robot.get_joints()
+    joint_initial = robot.get_joint_positions()
     # Should succeed with a path of length 2.
     joint_target = list(joint_initial)
     path = run_motion_planning(
