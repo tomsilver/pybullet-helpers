@@ -203,17 +203,17 @@ def test_fetch_pybullet_robot(physics_client_id):
     action_arr = np.array(joint_target, dtype=np.float32)
 
     # Not a valid control mode.
-    robot._control_mode = "not a real control mode"
+    robot._control_mode = "not a real control mode"  # pylint: disable=protected-access
     with pytest.raises(NotImplementedError) as e:
         robot.set_motors(action_arr)
     assert "Unrecognized pybullet_control_mode" in str(e)
 
     # Reset control mode.
-    robot._control_mode = "reset"
+    robot._control_mode = "reset"  # pylint: disable=protected-access
     robot.set_motors(action_arr)  # just make sure it doesn't crash
 
     # Position control mode.
-    robot._pybullet_control_mode = "position"
+    robot._pybullet_control_mode = "position"  # pylint: disable=protected-access
     robot.set_motors(action_arr)
     for _ in range(20):
         p.stepSimulation(physicsClientId=physics_client_id)
