@@ -35,15 +35,10 @@ class SingleArmPyBulletRobot(abc.ABC):
 
     def __init__(
         self,
-        ee_home_pose: Pose,
         physics_client_id: int,
         base_pose: Pose = Pose.identity(),
         control_mode: str = "position",
     ) -> None:
-        # The home positions and orientations should be "reasonable" because
-        # IK will always reset to home before starting. Bad home poses will
-        # lead to IK failure cases in some situations.
-        self._ee_home_pose = ee_home_pose
         self.physics_client_id = physics_client_id
 
         # Pose of base of robot.
@@ -74,6 +69,12 @@ class SingleArmPyBulletRobot(abc.ABC):
     @abc.abstractmethod
     def urdf_path(cls) -> Path:
         """Get the path to the URDF file for the robot."""
+        raise NotImplementedError("Override me!")
+
+    @property
+    @abc.abstractmethod
+    def home_joint_positions(self) -> JointPositions:
+        """The default joint values for the robot."""
         raise NotImplementedError("Override me!")
 
     @property
@@ -176,7 +177,7 @@ class SingleArmPyBulletRobot(abc.ABC):
             if joint_info.linkName == link_name:
                 return joint_info.jointIndex
         raise ValueError(f"Could not find link {link_name}")
-
+    
     @property
     @abc.abstractmethod
     def left_finger_joint_name(self) -> str:
@@ -243,16 +244,6 @@ class SingleArmPyBulletRobot(abc.ABC):
         """The value at which the finger joints should be closed."""
         raise NotImplementedError("Override me!")
 
-    @cached_property
-    def initial_joint_positions(self) -> JointPositions:
-        """The joint values for the robot in its home pose."""
-        joint_positions = self.inverse_kinematics(self._ee_home_pose, validate=True)
-        # The initial joint values for the fingers should be open. IK may
-        # return anything for them.
-        joint_positions[self.left_finger_joint_idx] = self.open_fingers
-        joint_positions[self.right_finger_joint_idx] = self.open_fingers
-        return joint_positions
-
     def get_joints(self) -> JointPositions:
         """Get the joint positions from the current PyBullet state."""
         return get_joint_positions(
@@ -277,7 +268,7 @@ class SingleArmPyBulletRobot(abc.ABC):
                 physicsClientId=self.physics_client_id,
             )
 
-    def get_ee_pose(self) -> Pose:
+    def get_end_effector_pose(self) -> Pose:
         """Get the robot end-effector pose based on the current PyBullet
         state."""
         ee_link_state = get_link_state(
@@ -320,7 +311,7 @@ class SingleArmPyBulletRobot(abc.ABC):
 
     def go_home(self) -> None:
         """Move the robot to its home end-effector pose."""
-        self.set_motors(self.initial_joint_positions)
+        self.set_motors(self.home_joint_positions)
 
     def forward_kinematics(self, joint_positions: JointPositions) -> Pose:
         """Compute the end effector pose that would result if the robot arm
@@ -422,8 +413,6 @@ class SingleArmPyBulletRobot(abc.ABC):
         recommended when using IKFast because IK is meant to be run
         sequentially from nearby states, since it is very sensitive to
         initialization.
-
-        The target orientation is always self._ee_orientation.
 
         If validate is True, we guarantee that the returned joint positions
         would result in end_effector_pose if run through

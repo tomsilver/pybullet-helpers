@@ -217,7 +217,7 @@ def test_fetch_pybullet_robot(physics_client_id):
     robot.set_motors(action_arr)
     for _ in range(20):
         p.stepSimulation(physicsClientId=physics_client_id)
-    recovered_ee_pos = robot.get_ee_pose().position
+    recovered_ee_pos = robot.get_end_effector_pose().position
 
     # IK is currently not precise enough to increase this tolerance.
     assert np.allclose(ee_target_position, recovered_ee_pos, atol=1e-2)

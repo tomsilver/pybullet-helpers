@@ -4,6 +4,7 @@ from pathlib import Path
 
 from pybullet_helpers.robots.single_arm import SingleArmPyBulletRobot
 from pybullet_helpers.utils import get_assets_path
+from pybullet_helpers.joint import JointPositions
 
 
 class FetchPyBulletRobot(SingleArmPyBulletRobot):
@@ -17,6 +18,9 @@ class FetchPyBulletRobot(SingleArmPyBulletRobot):
     def urdf_path(cls) -> Path:
         dir_path = get_assets_path() / "urdf"
         return dir_path / "fetch_description" / "robots" / "fetch.urdf"
+    
+    def home_joint_positions(self) -> JointPositions:
+        import ipdb; ipdb.set_trace()
 
     @property
     def end_effector_name(self) -> str:
