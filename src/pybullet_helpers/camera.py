@@ -6,10 +6,10 @@ from pybullet_helpers.geometry import Pose3D
 
 
 def create_gui_connection(
-    camera_distance: float = 0.8,
-    camera_yaw: float = 90,
-    camera_pitch: float = -24,
-    camera_target: Pose3D = (1.65, 0.75, 0.42),
+    camera_distance: float = 1.5,
+    camera_yaw: float = 0,
+    camera_pitch: float = -15,
+    camera_target: Pose3D = (0, 0, 0.5),
     background_rgb: tuple[float, float, float] = (0, 0, 0),
     disable_preview_windows: bool = True,
 ) -> int:  # pragma: no cover

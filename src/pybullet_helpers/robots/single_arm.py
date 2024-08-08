@@ -243,6 +243,16 @@ class SingleArmPyBulletRobot(abc.ABC):
             self.robot_id, self.arm_joints, self.physics_client_id
         )
 
+    def get_joint_limits_from_name(self, joint_name: str) -> tuple[float, float]:
+        """Get the lower and upper limits for a given joint."""
+        assert (
+            joint_name in self.arm_joint_names
+        ), f"Unrecognized joint name {joint_name}"
+        idx = self.arm_joint_names.index(joint_name)
+        lower = self.joint_lower_limits[idx]
+        upper = self.joint_upper_limits[idx]
+        return (lower, upper)
+
     @property
     @abc.abstractmethod
     def open_fingers(self) -> float:
@@ -255,7 +265,7 @@ class SingleArmPyBulletRobot(abc.ABC):
         """The value at which the finger joints should be closed."""
         raise NotImplementedError("Override me!")
 
-    def get_joints(self) -> JointPositions:
+    def get_joint_positions(self) -> JointPositions:
         """Get the joint positions from the current PyBullet state."""
         return get_joint_positions(
             self.robot_id, self.arm_joints, self.physics_client_id
@@ -350,7 +360,7 @@ class SingleArmPyBulletRobot(abc.ABC):
         resets the joint states.
         """
         # Store current joint positions so we can reset
-        initial_joint_states = self.get_joints()
+        initial_joint_states = self.get_joint_positions()
 
         # Set joint states, forward kinematics to determine EE position
         self.set_joints(joint_positions)
