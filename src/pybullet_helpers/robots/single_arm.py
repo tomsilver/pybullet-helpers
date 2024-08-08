@@ -31,7 +31,7 @@ from pybullet_helpers.link import BASE_LINK, get_link_state
 
 
 class SingleArmPyBulletRobot(abc.ABC):
-    """A single-arm fixed-base PyBullet robot with a two-finger gripper."""
+    """A single-arm fixed-base PyBullet robot."""
 
     def __init__(
         self,
@@ -131,8 +131,8 @@ class SingleArmPyBulletRobot(abc.ABC):
 
     @cached_property
     def arm_joints(self) -> list[int]:
-        """The PyBullet joint IDs of the joints of the robot arm, including the
-        fingers, as determined by the kinematic chain.
+        """The PyBullet joint IDs of the joints of the robot arm as determined
+        by the kinematic chain.
 
         Note these are joint indices not body IDs, and that the arm
         joints may be a subset of all the robot joints.
@@ -142,7 +142,6 @@ class SingleArmPyBulletRobot(abc.ABC):
         )
         # NOTE: pybullet tools assumes sorted arm joints.
         joint_ids = sorted(joint_ids)
-        joint_ids.extend([self.left_finger_id, self.right_finger_id])
         return joint_ids
 
     @cached_property
@@ -189,46 +188,6 @@ class SingleArmPyBulletRobot(abc.ABC):
                 return joint_info.jointIndex
         raise ValueError(f"Could not find link {link_name}")
 
-    @property
-    @abc.abstractmethod
-    def left_finger_joint_name(self) -> str:
-        """The name of the left finger joint."""
-        raise NotImplementedError("Override me!")
-
-    @property
-    @abc.abstractmethod
-    def right_finger_joint_name(self) -> str:
-        """The name of the right finger joint."""
-        raise NotImplementedError("Override me!")
-
-    @cached_property
-    def left_finger_id(self) -> int:
-        """The PyBullet joint ID for the left finger."""
-        return self.joint_from_name(self.left_finger_joint_name)
-
-    @cached_property
-    def right_finger_id(self) -> int:
-        """The PyBullet joint ID for the right finger."""
-        return self.joint_from_name(self.right_finger_joint_name)
-
-    @cached_property
-    def left_finger_joint_idx(self) -> int:
-        """The index into the joints corresponding to the left finger.
-
-        Note this is not the joint ID, but the index of the joint within
-        the list of arm joints.
-        """
-        return self.arm_joints.index(self.left_finger_id)
-
-    @cached_property
-    def right_finger_joint_idx(self) -> int:
-        """The index into the joints corresponding to the right finger.
-
-        Note this is not the joint ID, but the index of the joint within
-        the list of arm joints.
-        """
-        return self.arm_joints.index(self.right_finger_id)
-
     @cached_property
     def joint_lower_limits(self) -> JointPositions:
         """Lower bound on the arm joint limits."""
@@ -252,18 +211,6 @@ class SingleArmPyBulletRobot(abc.ABC):
         lower = self.joint_lower_limits[idx]
         upper = self.joint_upper_limits[idx]
         return (lower, upper)
-
-    @property
-    @abc.abstractmethod
-    def open_fingers(self) -> float:
-        """The value at which the finger joints should be open."""
-        raise NotImplementedError("Override me!")
-
-    @property
-    @abc.abstractmethod
-    def closed_fingers(self) -> float:
-        """The value at which the finger joints should be closed."""
-        raise NotImplementedError("Override me!")
 
     def get_joint_positions(self) -> JointPositions:
         """Get the joint positions from the current PyBullet state."""
@@ -301,14 +248,6 @@ class SingleArmPyBulletRobot(abc.ABC):
             ee_link_state.worldLinkFramePosition,
             ee_link_state.worldLinkFrameOrientation,
         )
-
-    def get_finger_state(self) -> float:
-        """Get the state of the gripper fingers."""
-        return p.getJointState(
-            self.robot_id,
-            self.left_finger_id,
-            physicsClientId=self.physics_client_id,
-        )[0]
 
     def set_motors(self, joint_positions: JointPositions) -> None:
         """Update the motors to move toward the given joint positions."""
@@ -403,18 +342,9 @@ class SingleArmPyBulletRobot(abc.ABC):
                 "using IKFast"
             )
 
-        # Use first solution as it is closest to current joint state
+        # Use first solution as it is closest to current joint state.
         joint_positions = ik_solutions[0]
-
-        # Add fingers to state
-        final_joint_state = list(joint_positions)
-        first_finger_idx, second_finger_idx = sorted(
-            [self.left_finger_joint_idx, self.right_finger_joint_idx]
-        )
-        final_joint_state.insert(first_finger_idx, self.open_fingers)
-        final_joint_state.insert(second_finger_idx, self.open_fingers)
-
-        return final_joint_state
+        return list(joint_positions)
 
     def inverse_kinematics(
         self,
@@ -467,3 +397,87 @@ class SingleArmPyBulletRobot(abc.ABC):
             self.set_joints(joint_positions)
 
         return joint_positions
+
+
+class SingleArmTwoFingerGripperPyBulletRobot(SingleArmPyBulletRobot):
+    """A single-arm fixed-base PyBullet robot with a two-finger gripper."""
+
+    @cached_property
+    def arm_joints(self) -> list[int]:
+        """Add the fingers to the arm joints."""
+        joint_ids = super().arm_joints
+        joint_ids.extend([self.left_finger_id, self.right_finger_id])
+        return joint_ids
+
+    @property
+    @abc.abstractmethod
+    def left_finger_joint_name(self) -> str:
+        """The name of the left finger joint."""
+        raise NotImplementedError("Override me!")
+
+    @property
+    @abc.abstractmethod
+    def right_finger_joint_name(self) -> str:
+        """The name of the right finger joint."""
+        raise NotImplementedError("Override me!")
+
+    @cached_property
+    def left_finger_id(self) -> int:
+        """The PyBullet joint ID for the left finger."""
+        return self.joint_from_name(self.left_finger_joint_name)
+
+    @cached_property
+    def right_finger_id(self) -> int:
+        """The PyBullet joint ID for the right finger."""
+        return self.joint_from_name(self.right_finger_joint_name)
+
+    @cached_property
+    def left_finger_joint_idx(self) -> int:
+        """The index into the joints corresponding to the left finger.
+
+        Note this is not the joint ID, but the index of the joint within
+        the list of arm joints.
+        """
+        return self.arm_joints.index(self.left_finger_id)
+
+    @cached_property
+    def right_finger_joint_idx(self) -> int:
+        """The index into the joints corresponding to the right finger.
+
+        Note this is not the joint ID, but the index of the joint within
+        the list of arm joints.
+        """
+        return self.arm_joints.index(self.right_finger_id)
+
+    @property
+    @abc.abstractmethod
+    def open_fingers(self) -> float:
+        """The value at which the finger joints should be open."""
+        raise NotImplementedError("Override me!")
+
+    @property
+    @abc.abstractmethod
+    def closed_fingers(self) -> float:
+        """The value at which the finger joints should be closed."""
+        raise NotImplementedError("Override me!")
+
+    def get_finger_state(self) -> float:
+        """Get the state of the gripper fingers."""
+        return p.getJointState(
+            self.robot_id,
+            self.left_finger_id,
+            physicsClientId=self.physics_client_id,
+        )[0]
+
+    def _ikfast_inverse_kinematics(self, end_effector_pose: Pose) -> JointPositions:
+        """IKFast doesn't handle fingers, so we add them afterwards."""
+        joint_state = super()._ikfast_inverse_kinematics(end_effector_pose)
+
+        # Add fingers to state.
+        first_finger_idx, second_finger_idx = sorted(
+            [self.left_finger_joint_idx, self.right_finger_joint_idx]
+        )
+        joint_state.insert(first_finger_idx, self.open_fingers)
+        joint_state.insert(second_finger_idx, self.open_fingers)
+
+        return joint_state

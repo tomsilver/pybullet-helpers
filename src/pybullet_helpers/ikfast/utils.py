@@ -30,7 +30,9 @@ from pybullet_helpers.joint import (
 from pybullet_helpers.link import get_link_pose, get_relative_link_pose
 
 if TYPE_CHECKING:
-    from pybullet_helpers.robots.single_arm import SingleArmPyBulletRobot
+    from pybullet_helpers.robots.single_arm import (
+        SingleArmPyBulletRobot,
+    )
 
 
 @dataclass(frozen=True)

@@ -12,7 +12,7 @@ from tomsutils.motion_planning import BiRRT
 
 from pybullet_helpers.joint import JointPositions
 from pybullet_helpers.link import get_link_state
-from pybullet_helpers.robots.single_arm import SingleArmPyBulletRobot
+from pybullet_helpers.robots.single_arm import SingleArmTwoFingerGripperPyBulletRobot
 
 
 @dataclass(frozen=True)
@@ -26,7 +26,7 @@ class MotionPlanningHyperparameters:
 
 
 def run_motion_planning(
-    robot: SingleArmPyBulletRobot,
+    robot: SingleArmTwoFingerGripperPyBulletRobot,
     initial_positions: JointPositions,
     target_positions: JointPositions,
     collision_bodies: Collection[int],
