@@ -1,6 +1,6 @@
 """PyBullet helper class for joint utilities."""
 
-from typing import List, NamedTuple, Sequence, Tuple
+from typing import NamedTuple, Sequence
 
 import numpy as np
 import pybullet as p
@@ -10,7 +10,7 @@ from pybullet_helpers.geometry import Pose3D, Quaternion
 # Joint Positions (i.e., angles) of each joint in the body.
 # Not to be conflated with PyBullet joint states which include
 # positions, velocities and forces.
-JointPositions = List[float]
+JointPositions = list[float]
 
 
 class JointInfo(NamedTuple):
@@ -82,14 +82,14 @@ def get_num_joints(body: int, physics_client_id: int) -> int:
     return p.getNumJoints(body, physicsClientId=physics_client_id)
 
 
-def get_joints(body: int, physics_client_id: int) -> List[int]:
+def get_joints(body: int, physics_client_id: int) -> list[int]:
     """Get joint indices for a body."""
     return list(range(get_num_joints(body, physics_client_id)))
 
 
 def get_joint_info(body: int, joint: int, physics_client_id: int) -> JointInfo:
     """Get the info for the given joint for a body."""
-    raw_joint_info: List = list(
+    raw_joint_info: list = list(
         p.getJointInfo(body, joint, physicsClientId=physics_client_id)
     )
     # Decode the byte strings for joint name and link name
@@ -101,15 +101,15 @@ def get_joint_info(body: int, joint: int, physics_client_id: int) -> JointInfo:
 
 
 def get_joint_infos(
-    body: int, joints: List[int], physics_client_id: int
-) -> List[JointInfo]:
+    body: int, joints: list[int], physics_client_id: int
+) -> list[JointInfo]:
     """Get the infos for the given joints for a body."""
     return [get_joint_info(body, joint_id, physics_client_id) for joint_id in joints]
 
 
 def get_joint_limits(
-    body: int, joints: List[int], physics_client_id: int
-) -> Tuple[List[float], List[float]]:
+    body: int, joints: list[int], physics_client_id: int
+) -> tuple[list[float], list[float]]:
     """Get the joint limits for the given joints for a body. Circular joints do
     not have limits (represented by ±np.inf).
 
@@ -129,22 +129,22 @@ def get_joint_limits(
 
 
 def get_joint_lower_limits(
-    body: int, joints: List[int], physics_client_id: int
-) -> List[float]:
+    body: int, joints: list[int], physics_client_id: int
+) -> list[float]:
     """Get the lower joint limits for the given joints for a body."""
     return get_joint_limits(body, joints, physics_client_id)[0]
 
 
 def get_joint_upper_limits(
-    body: int, joints: List[int], physics_client_id: int
-) -> List[float]:
+    body: int, joints: list[int], physics_client_id: int
+) -> list[float]:
     """Get the upper joint limits for the given joints for a body."""
     return get_joint_limits(body, joints, physics_client_id)[1]
 
 
 def get_kinematic_chain(
     body: int, end_effector: int, physics_client_id: int
-) -> List[int]:
+) -> list[int]:
     """Get all the free joints from robot body base to end effector.
 
     Includes the end effector.
@@ -159,8 +159,8 @@ def get_kinematic_chain(
 
 
 def get_joint_states(
-    body: int, joints: List[int], physics_client_id: int
-) -> List[JointState]:
+    body: int, joints: list[int], physics_client_id: int
+) -> list[JointState]:
     """Get the joint states for the given joints for a body."""
     joint_states = [
         JointState(*raw_joint_state)
@@ -172,8 +172,8 @@ def get_joint_states(
 
 
 def get_joint_positions(
-    body: int, joints: List[int], physics_client_id: int
-) -> List[float]:
+    body: int, joints: list[int], physics_client_id: int
+) -> list[float]:
     """Get the joint positions for the given joints for a body."""
     return [
         joint_state.jointPosition

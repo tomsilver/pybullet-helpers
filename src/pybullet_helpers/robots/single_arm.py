@@ -4,7 +4,7 @@ functions."""
 import abc
 from functools import cached_property
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional
 
 import numpy as np
 import pybullet as p
@@ -118,7 +118,7 @@ class SingleArmPyBulletRobot(abc.ABC):
         return base_name
 
     @cached_property
-    def arm_joints(self) -> List[int]:
+    def arm_joints(self) -> list[int]:
         """The PyBullet joint IDs of the joints of the robot arm, including the
         fingers, as determined by the kinematic chain.
 
@@ -134,7 +134,7 @@ class SingleArmPyBulletRobot(abc.ABC):
         return joint_ids
 
     @cached_property
-    def arm_joint_names(self) -> List[str]:
+    def arm_joint_names(self) -> list[str]:
         """The names of the arm joints."""
         return [
             info.jointName
@@ -144,7 +144,7 @@ class SingleArmPyBulletRobot(abc.ABC):
         ]
 
     @cached_property
-    def joint_infos(self) -> List[JointInfo]:
+    def joint_infos(self) -> list[JointInfo]:
         """Get the joint info for each joint of the robot.
 
         This may be a superset of the arm joints.
@@ -153,7 +153,7 @@ class SingleArmPyBulletRobot(abc.ABC):
         return get_joint_infos(self.robot_id, all_joint_ids, self.physics_client_id)
 
     @cached_property
-    def joint_names(self) -> List[str]:
+    def joint_names(self) -> list[str]:
         """Get the names of all the joints in the robot."""
         joint_names = [info.jointName for info in self.joint_infos]
         return joint_names

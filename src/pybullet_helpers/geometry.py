@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
-from typing import NamedTuple, Tuple
+from typing import NamedTuple
 
 import numpy as np
 import numpy.typing as npt
 import pybullet as p
 from pybullet_utils.transformations import euler_from_quaternion, quaternion_from_euler
 
-Pose3D = Tuple[float, float, float]
-Quaternion = Tuple[float, float, float, float]
-RollPitchYaw = Tuple[float, float, float]
+Pose3D = tuple[float, float, float]
+Quaternion = tuple[float, float, float, float]
+RollPitchYaw = tuple[float, float, float]
 
 
 class Pose(NamedTuple):

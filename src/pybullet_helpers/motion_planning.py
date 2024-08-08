@@ -32,8 +32,8 @@ def run_motion_planning(
     collision_bodies: Collection[int],
     seed: int,
     physics_client_id: int,
-    held_object: Optional[int] = None,
-    base_link_to_held_obj: Optional[NDArray] = None,
+    held_object: int | None = None,
+    base_link_to_held_obj: NDArray | None = None,
     hyperparameters: MotionPlanningHyperparameters | None = None,
 ) -> Optional[Sequence[JointPositions]]:
     """Run BiRRT to find a collision-free sequence of joint positions.
