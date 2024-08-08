@@ -121,7 +121,7 @@ def test_ikfast_closest_inverse_kinematics_raises_error():
     """Test ikfast_closest_inverse_kinematics raises error if max time,
     candidates or attempts is infinite."""
     hyperparameters = IKFastHyperparameters(
-        max_time=np.inf, max_attempts=np.inf, max_distance=np.inf
+        max_time=np.inf, max_attempts=np.inf, max_candidates=np.inf
     )
     with pytest.raises(ValueError):
         ikfast_closest_inverse_kinematics(
