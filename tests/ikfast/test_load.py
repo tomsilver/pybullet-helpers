@@ -55,7 +55,7 @@ def test_install_ikfast_if_required_installs_ikfast_module(ikfast_info):
         expected_ikfast_dir / "ikfast_cool_arm.cpython-39-x86_64-linux-gnu.so"
     )
 
-    expected_glob_pattern = expected_ikfast_dir / f"{ikfast_info.module_name}*.so"
+    expected_glob_pattern = str(expected_ikfast_dir / f"{ikfast_info.module_name}*.so")
 
     with (
         patch(f"{_MODULE_PATH}.install_ikfast_module") as mock_install_ikfast_module,
