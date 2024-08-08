@@ -89,7 +89,7 @@ def create_pybullet_cylinder(
 
     # Create the collision shape.
     collision_id = p.createCollisionShape(
-        p.GEOM_CYLINDER, radius=radius, length=length, physicsClientId=physics_client_id
+        p.GEOM_CYLINDER, radius=radius, height=length, physicsClientId=physics_client_id
     )
 
     # Create the visual_shape.
