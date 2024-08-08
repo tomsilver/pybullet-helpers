@@ -14,7 +14,7 @@ import logging
 import time
 from dataclasses import dataclass
 from itertools import islice
-from typing import TYPE_CHECKING, Callable, Dict, Iterator, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Callable, Iterator
 
 import numpy as np
 
@@ -45,7 +45,7 @@ class IKFastHyperparameters:
 
 
 def get_joint_difference_fn(
-    joint_infos: List[JointInfo],
+    joint_infos: list[JointInfo],
 ) -> Callable[[JointPositions, JointPositions], JointPositions]:
     """Determine the difference between two joint positions. Returns a function
     that takes two joint positions and returns the difference between them.
@@ -65,7 +65,7 @@ def get_joint_difference_fn(
 
 
 def violates_joint_limits(
-    joint_infos: List[JointInfo], joint_positions: JointPositions
+    joint_infos: list[JointInfo], joint_positions: JointPositions
 ) -> bool:
     """Check if the given joint positions violate the joint limits."""
     if len(joint_infos) != len(joint_positions):
@@ -76,7 +76,7 @@ def violates_joint_limits(
     )
 
 
-def get_ordered_ancestors(robot: SingleArmPyBulletRobot, link: int) -> List[int]:
+def get_ordered_ancestors(robot: SingleArmPyBulletRobot, link: int) -> list[int]:
     """Get the ancestors of the given link in order from ancestor to the given
     link itself.
 
@@ -89,7 +89,7 @@ def get_ordered_ancestors(robot: SingleArmPyBulletRobot, link: int) -> List[int]
         raise ValueError(f"Robot {robot.get_name()} has no IKFast info")
 
     # Mapping of link ID to parent link ID for each link in the robot
-    link_to_parent_link: Dict[int, int] = {
+    link_to_parent_link: dict[int, int] = {
         info.jointIndex: info.parentIndex for info in robot.joint_infos
     }
     # Note: it is important to recognize we use the IKFastInfo base and
@@ -142,7 +142,7 @@ def get_base_from_ee(
 
 def get_ikfast_joints(
     robot: SingleArmPyBulletRobot,
-) -> Tuple[List[JointInfo], List[JointInfo]]:
+) -> tuple[list[JointInfo], list[JointInfo]]:
     """Determines the joints that are used by IKFast for the given robot.
 
     Assumptions:
@@ -179,9 +179,9 @@ def get_ikfast_joints(
 
 def free_joints_generator(
     robot: SingleArmPyBulletRobot,
-    free_joint_infos: List[JointInfo],
+    free_joint_infos: list[JointInfo],
     max_distance: float,
-) -> Iterator[Union[JointPositions, np.ndarray]]:
+) -> Iterator[JointPositions | np.ndarray]:
     """A generator that samples joint positions for free joints in the given
     robot that are within the joint limits.
 
@@ -274,7 +274,7 @@ def ikfast_inverse_kinematics(
             break
 
         # Call IKFast to compute candidates for sampled free joint positions
-        ik_candidates: Optional[List[JointPositions]] = ikfast.get_ik(  # type: ignore
+        ik_candidates: list[JointPositions] | None = ikfast.get_ik(  # type: ignore
             rot_matrix, position, list(free_positions)
         )
         if ik_candidates is None:
@@ -299,7 +299,7 @@ def ikfast_closest_inverse_kinematics(
     world_from_target: Pose,
     seed: int = 0,
     hyperparameters: IKFastHyperparameters | None = None,
-) -> List[JointPositions]:
+) -> list[JointPositions]:
     """Runs IKFast and returns the solutions sorted in order of closest
     distance to the robot's current joint positions.
 
