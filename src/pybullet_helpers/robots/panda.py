@@ -5,11 +5,11 @@ from typing import Optional
 
 from pybullet_helpers.ikfast import IKFastInfo
 from pybullet_helpers.joint import JointPositions
-from pybullet_helpers.robots.single_arm import SingleArmPyBulletRobot
+from pybullet_helpers.robots.single_arm import SingleArmTwoFingerGripperPyBulletRobot
 from pybullet_helpers.utils import get_assets_path
 
 
-class PandaPyBulletRobot(SingleArmPyBulletRobot):
+class PandaPyBulletRobot(SingleArmTwoFingerGripperPyBulletRobot):
     """Franka Emika Panda which we assume is fixed on some base."""
 
     @classmethod

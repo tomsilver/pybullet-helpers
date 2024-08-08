@@ -3,11 +3,11 @@
 from pathlib import Path
 
 from pybullet_helpers.joint import JointPositions
-from pybullet_helpers.robots.single_arm import SingleArmPyBulletRobot
+from pybullet_helpers.robots.single_arm import SingleArmTwoFingerGripperPyBulletRobot
 from pybullet_helpers.utils import get_assets_path
 
 
-class FetchPyBulletRobot(SingleArmPyBulletRobot):
+class FetchPyBulletRobot(SingleArmTwoFingerGripperPyBulletRobot):
     """A Fetch robot with a fixed base and only one arm in use."""
 
     @classmethod
