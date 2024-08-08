@@ -12,7 +12,10 @@ from tomsutils.motion_planning import BiRRT
 
 from pybullet_helpers.joint import JointPositions
 from pybullet_helpers.link import get_link_state
-from pybullet_helpers.robots.single_arm import SingleArmTwoFingerGripperPyBulletRobot
+from pybullet_helpers.robots.single_arm import (
+    SingleArmPyBulletRobot,
+    SingleArmTwoFingerGripperPyBulletRobot,
+)
 
 
 @dataclass(frozen=True)
@@ -26,7 +29,7 @@ class MotionPlanningHyperparameters:
 
 
 def run_motion_planning(
-    robot: SingleArmTwoFingerGripperPyBulletRobot,
+    robot: SingleArmPyBulletRobot,
     initial_positions: JointPositions,
     target_positions: JointPositions,
     collision_bodies: Collection[int],
@@ -51,8 +54,9 @@ def run_motion_planning(
     def _sample_fn(pt: JointPositions) -> JointPositions:
         new_pt: JointPositions = list(joint_space.sample())
         # Don't change the fingers.
-        new_pt[robot.left_finger_joint_idx] = pt[robot.left_finger_joint_idx]
-        new_pt[robot.right_finger_joint_idx] = pt[robot.right_finger_joint_idx]
+        if isinstance(robot, SingleArmTwoFingerGripperPyBulletRobot):
+            new_pt[robot.left_finger_joint_idx] = pt[robot.left_finger_joint_idx]
+            new_pt[robot.right_finger_joint_idx] = pt[robot.right_finger_joint_idx]
         return new_pt
 
     def _set_state(pt: JointPositions) -> None:

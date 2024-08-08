@@ -3,10 +3,10 @@
 import numpy as np
 import pybullet as p
 
-from pybullet_helpers.robots.single_arm import SingleArmTwoFingerGripperPyBulletRobot
+from pybullet_helpers.robots.single_arm import SingleArmPyBulletRobot
 
 
-def run_interactive_joint_gui(robot: SingleArmTwoFingerGripperPyBulletRobot) -> None:
+def run_interactive_joint_gui(robot: SingleArmPyBulletRobot) -> None:
     """Visualize a robot's joint space."""
     initial_joints = robot.get_joint_positions()
 
