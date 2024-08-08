@@ -9,7 +9,7 @@ description = "Some utility functions for PyBullet."
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-   "numpy>=1.23.5",
+   "numpy>=1.23.5,<2.0",
    "pybullet==3.2.6",
    "gymnasium==0.29.1",
    "tomsutils@git+https://github.com/tomsilver/toms-utils.git"
