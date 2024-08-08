@@ -16,12 +16,9 @@ USE_GUI = False
 
 def test_run_motion_planning(physics_client_id):
     """Tests for run_motion_planning()."""
-    ee_home_position = (1.35, 0.75, 0.75)
-    ee_orn = p.getQuaternionFromEuler([0.0, np.pi / 2, -np.pi])
-    ee_home_pose = Pose(ee_home_position, ee_orn)
     base_pose = Pose(position=(0.75, 0.7441, 0.0))
     seed = 123
-    robot = FetchPyBulletRobot(ee_home_pose, physics_client_id, base_pose=base_pose)
+    robot = FetchPyBulletRobot(physics_client_id, base_pose=base_pose)
     joint_initial = robot.get_joints()
     # Should succeed with a path of length 2.
     joint_target = list(joint_initial)
@@ -37,8 +34,9 @@ def test_run_motion_planning(physics_client_id):
     assert np.allclose(path[0], joint_initial)
     assert np.allclose(path[-1], joint_target)
     # Should succeed, no collisions.
-    ee_target_position = np.add(ee_home_position, (0.0, 0.0, -0.05))
-    ee_target = Pose(ee_target_position, ee_orn)
+    ee_pose = robot.get_end_effector_pose()
+    ee_target_position = np.add(ee_pose.position, (0.0, 0.0, -0.05))
+    ee_target = Pose(ee_target_position, ee_pose.orientation)
     joint_target = robot.inverse_kinematics(ee_target, validate=True)
     path = run_motion_planning(
         robot,
@@ -60,8 +58,9 @@ def test_run_motion_planning(physics_client_id):
     p.resetBasePositionAndOrientation(
         table_id, table_pose, table_orientation, physicsClientId=physics_client_id
     )
-    ee_target_position = np.add(ee_home_position, (0.0, 0.0, -0.6))
-    ee_target = Pose(ee_target_position, ee_orn)
+    ee_pose = robot.get_end_effector_pose()
+    ee_target_position = np.add(ee_pose.position, (0.0, 0.0, -0.6))
+    ee_target = Pose(ee_target_position, ee_pose.orientation)
     joint_target = robot.inverse_kinematics(ee_target, validate=True)
     path = run_motion_planning(
         robot,
@@ -97,7 +96,7 @@ def test_run_motion_planning(physics_client_id):
         block_id, block_pose, block_orientation, physicsClientId=physics_client_id
     )
     ee_target_position = (1.35, 0.4, 0.6)
-    ee_target = Pose(ee_target_position, ee_orn)
+    ee_target = Pose(ee_target_position, ee_pose.orientation)
     joint_target = robot.inverse_kinematics(ee_target, validate=True)
     path = run_motion_planning(
         robot,

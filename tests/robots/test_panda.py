@@ -4,7 +4,6 @@ from unittest.mock import patch
 
 import numpy as np
 import pytest
-from pybullet_utils.transformations import quaternion_from_euler
 
 from pybullet_helpers.geometry import Pose
 from pybullet_helpers.joint import get_joint_infos, get_joints
@@ -15,8 +14,7 @@ from pybullet_helpers.robots.panda import PandaPyBulletRobot
 def _panda_fixture(physics_client_id) -> PandaPyBulletRobot:
     """Get a PandaPyBulletRobot instance."""
     # Use reset control, so we can see effects of actions without stepping.
-    home_pose = Pose((0.5, 0.0, 0.5), quaternion_from_euler(np.pi, 0, np.pi / 2))
-    panda = PandaPyBulletRobot(home_pose, physics_client_id, control_mode="reset")
+    panda = PandaPyBulletRobot(physics_client_id, control_mode="reset")
     assert panda.get_name() == "panda"
     assert panda.physics_client_id == physics_client_id
     # Panda must have IKFast
@@ -28,7 +26,7 @@ def _panda_fixture(physics_client_id) -> PandaPyBulletRobot:
 def test_panda_pybullet_robot_initial_configuration(panda):
     """Check initial configuration matches expected position."""
     # Check get_state
-    pose = panda.get_ee_pose()
+    pose = panda.get_end_effector_pose()
     assert np.allclose(pose.position, (0.5, 0.0, 0.5), atol=1e-3)
     finger_state = panda.get_finger_state()
     assert np.isclose(finger_state, panda.open_fingers)

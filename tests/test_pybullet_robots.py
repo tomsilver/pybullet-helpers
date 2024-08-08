@@ -170,11 +170,11 @@ def test_pybullet_inverse_kinematics(scene_attributes):
 
 def test_fetch_pybullet_robot(physics_client_id):
     """Tests for FetchPyBulletRobot()."""
-    ee_home_position = (1.35, 0.75, 0.75)
-    ee_orn = p.getQuaternionFromEuler([0.0, np.pi / 2, -np.pi])
-    ee_home_pose = Pose(ee_home_position, ee_orn)
     base_pose = Pose((0.75, 0.7441, 0.0))
-    robot = FetchPyBulletRobot(ee_home_pose, physics_client_id, base_pose)
+    robot = FetchPyBulletRobot(
+        physics_client_id,
+        base_pose=base_pose,
+    )
     assert robot.get_name() == "fetch"
     assert robot.arm_joint_names == [
         "shoulder_pan_joint",
@@ -193,8 +193,8 @@ def test_fetch_pybullet_robot(physics_client_id):
     assert robot.left_finger_joint_idx == 7
     assert robot.right_finger_joint_idx == 8
 
-    ee_delta = (-0.01, 0.0, 0.01)
-    ee_target_position = np.add(ee_home_position, ee_delta)
+    ee_target_position = (1.34, 0.75, 0.76)
+    ee_orn = p.getQuaternionFromEuler([0.0, np.pi / 2, -np.pi])
     ee_target = Pose(ee_target_position, ee_orn)
     joint_target = robot.inverse_kinematics(ee_target, validate=False)
     f_value = 0.03

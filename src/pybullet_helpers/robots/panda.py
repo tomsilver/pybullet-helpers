@@ -4,9 +4,9 @@ from pathlib import Path
 from typing import Optional
 
 from pybullet_helpers.ikfast import IKFastInfo
+from pybullet_helpers.joint import JointPositions
 from pybullet_helpers.robots.single_arm import SingleArmPyBulletRobot
 from pybullet_helpers.utils import get_assets_path
-from pybullet_helpers.joint import JointPositions
 
 
 class PandaPyBulletRobot(SingleArmPyBulletRobot):
@@ -21,8 +21,19 @@ class PandaPyBulletRobot(SingleArmPyBulletRobot):
         dir_path = get_assets_path() / "urdf"
         return dir_path / "franka_description" / "robots" / "panda_arm_hand.urdf"
 
+    @property
     def home_joint_positions(self) -> JointPositions:
-        import ipdb; ipdb.set_trace()
+        return [
+            -1.6760817784086874,
+            -0.8633617886115512,
+            1.0820023618960484,
+            -1.7862427129376002,
+            0.7563762599673787,
+            1.3595324116603988,
+            1.7604148617061273,
+            0.04,
+            0.04,
+        ]
 
     @property
     def end_effector_name(self) -> str:

@@ -57,7 +57,7 @@ class SingleArmPyBulletRobot(abc.ABC):
         )
 
         # Robot initially at home pose.
-        self.go_home()
+        self.set_joints(self.home_joint_positions)
 
     @classmethod
     @abc.abstractmethod
@@ -177,7 +177,7 @@ class SingleArmPyBulletRobot(abc.ABC):
             if joint_info.linkName == link_name:
                 return joint_info.jointIndex
         raise ValueError(f"Could not find link {link_name}")
-    
+
     @property
     @abc.abstractmethod
     def left_finger_joint_name(self) -> str:
