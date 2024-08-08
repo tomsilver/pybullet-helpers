@@ -54,7 +54,7 @@ class SingleArmPyBulletRobot(abc.ABC):
 
         # Load the robot and set base position and orientation.
         self.robot_id = p.loadURDF(
-            self.urdf_path(),
+            str(self.urdf_path()),
             basePosition=self._base_pose.position,
             baseOrientation=self._base_pose.orientation,
             useFixedBase=True,
@@ -276,6 +276,27 @@ class SingleArmPyBulletRobot(abc.ABC):
                 targetVelocity=0,
                 physicsClientId=self.physics_client_id,
             )
+
+    def get_ee_pose(self) -> Pose:
+        """Get the robot end-effector pose based on the current PyBullet
+        state."""
+        ee_link_state = get_link_state(
+            self.robot_id,
+            self.end_effector_id,
+            physics_client_id=self.physics_client_id,
+        )
+        return Pose(
+            ee_link_state.worldLinkFramePosition,
+            ee_link_state.worldLinkFrameOrientation,
+        )
+
+    def get_finger_state(self) -> float:
+        """Get the state of the gripper fingers."""
+        return p.getJointState(
+            self.robot_id,
+            self.left_finger_id,
+            physicsClientId=self.physics_client_id,
+        )[0]
 
     def set_motors(self, joint_positions: JointPositions) -> None:
         """Update the motors to move toward the given joint positions."""

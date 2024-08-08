@@ -49,15 +49,13 @@ def test_install_ikfast_module_raises_error(exit_code):
 def test_install_ikfast_if_required_installs_ikfast_module(ikfast_info):
     """Test install_ikfast_if_required installs IKFast if there are no existing
     module files."""
-    expected_ikfast_dir = os.path.join(
-        get_third_party_path(), "ikfast", ikfast_info.module_dir
+    expected_ikfast_dir = get_third_party_path() / "ikfast" / ikfast_info.module_dir
+
+    expected_module_path = (
+        expected_ikfast_dir / "ikfast_cool_arm.cpython-39-x86_64-linux-gnu.so"
     )
-    expected_module_path = os.path.join(
-        expected_ikfast_dir, "ikfast_cool_arm.cpython-39-x86_64-linux-gnu.so"
-    )
-    expected_glob_pattern = os.path.join(
-        expected_ikfast_dir, f"{ikfast_info.module_name}*.so"
-    )
+
+    expected_glob_pattern = expected_ikfast_dir / f"{ikfast_info.module_name}*.so"
 
     with (
         patch(f"{_MODULE_PATH}.install_ikfast_module") as mock_install_ikfast_module,

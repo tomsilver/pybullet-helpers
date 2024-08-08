@@ -28,12 +28,10 @@ def _panda_fixture(physics_client_id) -> PandaPyBulletRobot:
 def test_panda_pybullet_robot_initial_configuration(panda):
     """Check initial configuration matches expected position."""
     # Check get_state
-    state = panda.get_state()
-    assert len(state) == 8
-    xyz = state[:3]
-    finger_pos = state[-1]
-    assert np.allclose(xyz, (0.5, 0.0, 0.5), atol=1e-3)
-    assert np.isclose(finger_pos, panda.open_fingers)
+    pose = panda.get_ee_pose()
+    assert np.allclose(pose.position, (0.5, 0.0, 0.5), atol=1e-3)
+    finger_state = panda.get_finger_state()
+    assert np.isclose(finger_state, panda.open_fingers)
 
 
 def test_panda_pybullet_robot_links(panda):
