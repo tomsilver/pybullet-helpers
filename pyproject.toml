@@ -35,6 +35,7 @@ pybullet_helpers = ["py.typed"]
 [tool.black]
 line-length = 88
 target-version = ["py310"]
+extend-exclude = "third_party/*"
 
 [tool.isort]
 py_version = 310
