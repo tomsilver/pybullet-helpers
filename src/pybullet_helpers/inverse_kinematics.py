@@ -255,10 +255,10 @@ def _validate_joints_state(
     This method should NOT be used during simulation mode as it resets
     the joint states.
     """
-    # Store current joint positions so we can reset
+    # Store current joint positions so we can reset.
     initial_joint_states = robot.get_joint_positions()
 
-    # Set joint states, forward kinematics to determine EE position
+    # Set joint states, forward kinematics to determine EE position.
     robot.set_joints(joint_positions)
     ee_pos = get_link_state(
         robot.robot_id,
@@ -268,7 +268,7 @@ def _validate_joints_state(
     target_pos = target_pose.position
     pos_is_close = np.allclose(ee_pos, target_pos, atol=validation_atol)
 
-    # Reset joint positions before returning/raising error
+    # Reset joint positions before returning/raising error.
     robot.set_joints(initial_joint_states)
 
     if not pos_is_close:
