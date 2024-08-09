@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Collection, Iterator, Optional, Sequence
+from typing import Callable, Collection, Iterator, Optional, Sequence
 
 import numpy as np
 import pybullet as p
@@ -51,6 +51,13 @@ def run_motion_planning(
     joint_space.seed(seed)
     num_interp = hyperparameters.birrt_extend_num_interp
 
+    _set_state = _create_set_state_fn(
+        robot, physics_client_id, held_object, base_link_to_held_obj
+    )
+    _collision_fn = _create_collision_fn(
+        robot, _set_state, collision_bodies, physics_client_id, held_object
+    )
+
     def _sample_fn(pt: JointPositions) -> JointPositions:
         new_pt: JointPositions = list(joint_space.sample())
         # Don't change the fingers.
@@ -58,6 +65,73 @@ def run_motion_planning(
             new_pt[robot.left_finger_joint_idx] = pt[robot.left_finger_joint_idx]
             new_pt[robot.right_finger_joint_idx] = pt[robot.right_finger_joint_idx]
         return new_pt
+
+    def _extend_fn(
+        pt1: JointPositions, pt2: JointPositions
+    ) -> Iterator[JointPositions]:
+        pt1_arr = np.array(pt1)
+        pt2_arr = np.array(pt2)
+        num = int(np.ceil(max(abs(pt1_arr - pt2_arr)))) * num_interp
+        if num == 0:
+            yield pt2
+        for i in range(1, num + 1):
+            yield list(pt1_arr * (1 - i / num) + pt2_arr * i / num)
+
+    def _distance_fn(from_pt: JointPositions, to_pt: JointPositions) -> float:
+        # NOTE: only using positions to calculate distance. Should use
+        # orientations as well in the near future.
+        from_ee = robot.forward_kinematics(from_pt).position
+        to_ee = robot.forward_kinematics(to_pt).position
+        return sum(np.subtract(from_ee, to_ee) ** 2)
+
+    birrt = BiRRT(
+        _sample_fn,
+        _extend_fn,
+        _collision_fn,
+        _distance_fn,
+        rng,
+        num_attempts=hyperparameters.birrt_num_attempts,
+        num_iters=hyperparameters.birrt_num_iters,
+        smooth_amt=hyperparameters.birrt_smooth_amt,
+    )
+
+    return birrt.query(initial_positions, target_positions)
+
+
+def filter_collision_free_joint_generator(
+    generator: Iterator[JointPositions],
+    robot: SingleArmPyBulletRobot,
+    collision_bodies: Collection[int],
+    physics_client_id: int,
+    held_object: int | None = None,
+    base_link_to_held_obj: NDArray | None = None,
+) -> Iterator[JointPositions]:
+    """Given a generator of joint positions, yield only those that pass
+    collision checks.
+
+    The typical use case is that we want to explore the null space of a
+    target end effector position to find joint positions that have no
+    collisions before then calling motion planning.
+    """
+
+    _set_state = _create_set_state_fn(
+        robot, physics_client_id, held_object, base_link_to_held_obj
+    )
+    _collision_fn = _create_collision_fn(
+        robot, _set_state, collision_bodies, physics_client_id, held_object
+    )
+
+    for candidate in generator:
+        if not _collision_fn(candidate):
+            yield candidate
+
+
+def _create_set_state_fn(
+    robot: SingleArmPyBulletRobot,
+    physics_client_id: int,
+    held_object: int | None = None,
+    base_link_to_held_obj: NDArray | None = None,
+) -> Callable[[JointPositions], None]:
 
     def _set_state(pt: JointPositions) -> None:
         robot.set_joints(pt)
@@ -81,16 +155,16 @@ def run_motion_planning(
                 physicsClientId=physics_client_id,
             )
 
-    def _extend_fn(
-        pt1: JointPositions, pt2: JointPositions
-    ) -> Iterator[JointPositions]:
-        pt1_arr = np.array(pt1)
-        pt2_arr = np.array(pt2)
-        num = int(np.ceil(max(abs(pt1_arr - pt2_arr)))) * num_interp
-        if num == 0:
-            yield pt2
-        for i in range(1, num + 1):
-            yield list(pt1_arr * (1 - i / num) + pt2_arr * i / num)
+    return _set_state
+
+
+def _create_collision_fn(
+    robot: SingleArmPyBulletRobot,
+    _set_state: Callable[[JointPositions], None],
+    collision_bodies: Collection[int],
+    physics_client_id: int,
+    held_object: int | None = None,
+) -> Callable[[JointPositions], bool]:
 
     def _collision_fn(pt: JointPositions) -> bool:
         _set_state(pt)
@@ -106,22 +180,4 @@ def run_motion_planning(
                 return True
         return False
 
-    def _distance_fn(from_pt: JointPositions, to_pt: JointPositions) -> float:
-        # NOTE: only using positions to calculate distance. Should use
-        # orientations as well in the near future.
-        from_ee = robot.forward_kinematics(from_pt).position
-        to_ee = robot.forward_kinematics(to_pt).position
-        return sum(np.subtract(from_ee, to_ee) ** 2)
-
-    birrt = BiRRT(
-        _sample_fn,
-        _extend_fn,
-        _collision_fn,
-        _distance_fn,
-        rng,
-        num_attempts=hyperparameters.birrt_num_attempts,
-        num_iters=hyperparameters.birrt_num_iters,
-        smooth_amt=hyperparameters.birrt_smooth_amt,
-    )
-
-    return birrt.query(initial_positions, target_positions)
+    return _collision_fn
