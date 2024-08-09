@@ -4,6 +4,7 @@ from typing import NamedTuple, Sequence
 
 import numpy as np
 import pybullet as p
+from tomsutils.utils import get_signed_angle_distance, wrap_angle
 
 from pybullet_helpers.geometry import Pose3D, Quaternion
 
@@ -179,3 +180,26 @@ def get_joint_positions(
         joint_state.jointPosition
         for joint_state in get_joint_states(body, joints, physics_client_id)
     ]
+
+
+def get_jointwise_difference(
+    joint_infos: list[JointInfo],
+    q2: JointPositions,
+    q1: JointPositions,
+) -> JointPositions:
+    """Determine the difference between two joint positions.
+
+    Returns a function that takes two joint positions and returns the
+    difference between them.
+    """
+
+    if not len(q2) == len(q1) == len(joint_infos):
+        raise ValueError("q2, q1, and joint infos must be the same length")
+    diff: JointPositions = []
+    for v1, v2, joint_info in zip(q1, q2, joint_infos):
+        if joint_info.is_circular:
+            joint_diff = get_signed_angle_distance(wrap_angle(v2), wrap_angle(v1))
+        else:
+            joint_diff = v2 - v1
+        diff.append(joint_diff)
+    return diff
