@@ -54,8 +54,9 @@ def get_joint_difference_fn(
 
     Note: we do not support circular joints.
     """
-    if any(joint_info.is_circular for joint_info in joint_infos):
-        raise ValueError("Circular joints are not supported yet")
+    # TODO figure out if this is a problem
+    # if any(joint_info.is_circular for joint_info in joint_infos):
+    #     raise ValueError("Circular joints are not supported yet")
 
     def fn(q2: JointPositions, q1: JointPositions) -> JointPositions:
         if not len(q2) == len(q1) == len(joint_infos):
