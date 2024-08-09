@@ -5,7 +5,10 @@ import pybullet as p
 import pytest
 
 from pybullet_helpers.geometry import Pose
-from pybullet_helpers.inverse_kinematics import pybullet_inverse_kinematics
+from pybullet_helpers.inverse_kinematics import (
+    inverse_kinematics,
+    pybullet_inverse_kinematics,
+)
 from pybullet_helpers.joint import get_kinematic_chain
 from pybullet_helpers.link import BASE_LINK, get_link_pose, get_link_state
 from pybullet_helpers.robots.fetch import FetchPyBulletRobot
@@ -200,7 +203,7 @@ def test_fetch_pybullet_robot(physics_client_id):
     ee_target_position = (1.34, 0.75, 0.76)
     ee_orn = p.getQuaternionFromEuler([0.0, np.pi / 2, -np.pi])
     ee_target = Pose(ee_target_position, ee_orn)
-    joint_target = robot.inverse_kinematics(ee_target, validate=False)
+    joint_target = inverse_kinematics(robot, ee_target, validate=False)
     f_value = 0.03
     joint_target[robot.left_finger_joint_idx] = f_value
     joint_target[robot.right_finger_joint_idx] = f_value
@@ -259,7 +262,7 @@ def test_kinova_gen3_no_gripper_pybullet_robot(physics_client_id):
     ee_target_position = np.add(ee_pose.position, (0.05, -0.1, 0.05))
     ee_orn = ee_pose.orientation
     ee_target = Pose(ee_target_position, ee_orn)
-    joint_target = robot.inverse_kinematics(ee_target, validate=False)
+    joint_target = inverse_kinematics(robot, ee_target, validate=False)
     action_arr = np.array(joint_target, dtype=np.float32)
 
     # Not a valid control mode.
@@ -312,7 +315,7 @@ def test_kinova_gen3_robotiq_gripper_pybullet_robot(physics_client_id):
     ee_target_position = np.add(ee_pose.position, (0.05, -0.1, 0.05))
     ee_orn = ee_pose.orientation
     ee_target = Pose(ee_target_position, ee_orn)
-    joint_target = robot.inverse_kinematics(ee_target, validate=False)
+    joint_target = inverse_kinematics(robot, ee_target, validate=False)
     f_value = 0.03
     joint_target[robot.left_finger_joint_idx] = f_value
     joint_target[robot.right_finger_joint_idx] = f_value

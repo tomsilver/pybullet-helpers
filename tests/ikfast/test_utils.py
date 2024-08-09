@@ -1,5 +1,6 @@
 """Test for IKFast utilities module."""
 
+from functools import partial
 from unittest.mock import Mock
 
 import numpy as np
@@ -10,7 +11,7 @@ from pybullet_helpers.ikfast.utils import (
     IKFastHyperparameters,
     get_base_from_ee,
     get_ikfast_joints,
-    get_joint_difference_fn,
+    get_jointwise_difference,
     get_ordered_ancestors,
     ikfast_closest_inverse_kinematics,
     ikfast_inverse_kinematics,
@@ -25,12 +26,13 @@ def _robot_with_no_ikfast_info_fixture():
     return robot
 
 
-def test_get_joint_difference_fn():
-    """Test for get_joint_difference_fn."""
-    difference_fn = get_joint_difference_fn(7 * [Mock(is_circular=False)])
+def test_get_jointwise_difference():
+    """Test for get_jointwise_difference."""
+    joint_infos = 7 * [Mock(is_circular=False)]
     joint_vals1 = np.random.rand(7)
     joint_vals2 = np.random.rand(7)
     expected_difference = joint_vals1 - joint_vals2
+    difference_fn = partial(get_jointwise_difference, joint_infos)
     assert np.allclose(
         difference_fn(list(joint_vals1), list(joint_vals2)), expected_difference
     )

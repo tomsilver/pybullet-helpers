@@ -4,6 +4,7 @@ import numpy as np
 import pybullet as p
 
 from pybullet_helpers.geometry import Pose
+from pybullet_helpers.inverse_kinematics import inverse_kinematics
 from pybullet_helpers.motion_planning import (
     MotionPlanningHyperparameters,
     run_motion_planning,
@@ -37,7 +38,7 @@ def test_run_motion_planning(physics_client_id):
     ee_pose = robot.get_end_effector_pose()
     ee_target_position = np.add(ee_pose.position, (0.0, 0.0, -0.05))
     ee_target = Pose(ee_target_position, ee_pose.orientation)
-    joint_target = robot.inverse_kinematics(ee_target, validate=True)
+    joint_target = inverse_kinematics(robot, ee_target, validate=True)
     path = run_motion_planning(
         robot,
         joint_initial,
@@ -61,7 +62,7 @@ def test_run_motion_planning(physics_client_id):
     ee_pose = robot.get_end_effector_pose()
     ee_target_position = np.add(ee_pose.position, (0.0, 0.0, -0.6))
     ee_target = Pose(ee_target_position, ee_pose.orientation)
-    joint_target = robot.inverse_kinematics(ee_target, validate=True)
+    joint_target = inverse_kinematics(robot, ee_target, validate=True)
     path = run_motion_planning(
         robot,
         joint_initial,
@@ -94,7 +95,7 @@ def test_run_motion_planning(physics_client_id):
     )
     ee_target_position = (1.35, 0.4, 0.6)
     ee_target = Pose(ee_target_position, ee_pose.orientation)
-    joint_target = robot.inverse_kinematics(ee_target, validate=True)
+    joint_target = inverse_kinematics(robot, ee_target, validate=True)
     path = run_motion_planning(
         robot,
         joint_initial,

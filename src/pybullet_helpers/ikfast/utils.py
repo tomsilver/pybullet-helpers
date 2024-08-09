@@ -13,11 +13,11 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass
+from functools import partial
 from itertools import islice
-from typing import TYPE_CHECKING, Callable, Iterator
+from typing import TYPE_CHECKING, Iterator
 
 import numpy as np
-from tomsutils.utils import get_signed_angle_distance, wrap_angle
 
 from pybullet_helpers.geometry import Pose, matrix_from_quat, multiply_poses
 from pybullet_helpers.ikfast.load import import_ikfast
@@ -27,6 +27,7 @@ from pybullet_helpers.joint import (
     get_joint_lower_limits,
     get_joint_positions,
     get_joint_upper_limits,
+    get_jointwise_difference,
 )
 from pybullet_helpers.link import get_link_pose, get_relative_link_pose
 
@@ -45,30 +46,6 @@ class IKFastHyperparameters:
     max_distance: float = np.inf
     max_candidates: int = 100
     norm: float = np.inf
-
-
-def get_joint_difference_fn(
-    joint_infos: list[JointInfo],
-) -> Callable[[JointPositions, JointPositions], JointPositions]:
-    """Determine the difference between two joint positions. Returns a function
-    that takes two joint positions and returns the difference between them.
-
-    Note: we do not support circular joints.
-    """
-
-    def fn(q2: JointPositions, q1: JointPositions) -> JointPositions:
-        if not len(q2) == len(q1) == len(joint_infos):
-            raise ValueError("q2, q1, and joint infos must be the same length")
-        diff: JointPositions = []
-        for v1, v2, joint_info in zip(q1, q2, joint_infos):
-            if joint_info.is_circular:
-                joint_diff = get_signed_angle_distance(wrap_angle(v2), wrap_angle(v1))
-            else:
-                joint_diff = v2 - v1
-            diff.append(joint_diff)
-        return diff
-
-    return fn
 
 
 def violates_joint_limits(
@@ -161,14 +138,14 @@ def get_ikfast_joints(
     """
     ikfast_info = robot.ikfast_info()
     if ikfast_info is None:
-        # Keep mypy happy
+        # Keep mypy happy.
         raise ValueError(f"Robot {robot.get_name()} has no IKFast info")
 
     ee_link = robot.link_from_name(ikfast_info.ee_link)
-    # Get the ancestors of the end effector link (excluding base link)
+    # Get the ancestors of the end effector link (excluding base link).
     ee_ancestors = get_ordered_ancestors(robot, ee_link)
 
-    # Prune out the fixed joints
+    # Prune out the fixed joints.
     ik_joints = [
         joint_info
         for joint_info in robot.joint_infos
@@ -178,7 +155,7 @@ def get_ikfast_joints(
         robot.joint_info_from_name(joint) for joint in ikfast_info.free_joints
     ]
     # Note: IKFast supports 6 joints, the rest are free joints which we
-    # must sample over
+    # must sample over.
     assert len(ik_joints) == 6 + len(free_joints)
 
     return ik_joints, free_joints
@@ -276,7 +253,7 @@ def ikfast_inverse_kinematics(
     if max_attempts < np.inf:  # pragma: no cover
         generator = islice(generator, max_attempts)
 
-    joint_difference_fn = get_joint_difference_fn(ik_joint_infos)
+    joint_difference_fn = partial(get_jointwise_difference, ik_joint_infos)
     current_joint_positions = get_joint_positions(
         robot.robot_id, ik_joints, robot.physics_client_id
     )
@@ -362,7 +339,7 @@ def ikfast_closest_inverse_kinematics(
     if hyperparameters.max_candidates < np.inf:  # pragma: no cover
         generator = islice(generator, hyperparameters.max_candidates)
 
-    joint_difference_fn = get_joint_difference_fn(ik_joint_infos)
+    joint_difference_fn = partial(get_jointwise_difference, ik_joint_infos)
 
     norm = hyperparameters.norm
 
