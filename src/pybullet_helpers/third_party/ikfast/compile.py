@@ -1,6 +1,7 @@
 import fnmatch
 import importlib
 import os
+import platform
 import shutil
 from distutils.core import setup
 from distutils.dir_util import copy_tree
@@ -19,16 +20,16 @@ from distutils.extension import Extension
 # https://github.com/yijiangh/choreo/blob/bc777069b8eb7283c74af26e5461532aec3d9e8a/framefab_robot/abb/framefab_irb6600/framefab_irb6600_support/doc/ikfast_tutorial.rst
 
 
-# TODO: ubuntu only?
-# TODO: try extra_link_args instead
-# https://github.com/cyberbotics/pyikfast/issues/5
-extra_objects = [
-    '/usr/lib/x86_64-linux-gnu/lapack/liblapack.a',
-    '/usr/lib/x86_64-linux-gnu/libgfortran.so.5.0.0',
-    '/usr/lib/x86_64-linux-gnu/blas/libblas.a',
-]
-
 def compile_ikfast(module_name, cpp_filename, remove_build=False):
+    if platform.system() == "Linux":
+        # https://github.com/cyberbotics/pyikfast/issues/5
+        extra_objects = [
+            '/usr/lib/x86_64-linux-gnu/lapack/liblapack.a',
+            '/usr/lib/x86_64-linux-gnu/libgfortran.so.5.0.0',
+            '/usr/lib/x86_64-linux-gnu/blas/libblas.a',
+        ]
+    else:
+        extra_objects = []
     ikfast_module = Extension(module_name, sources=[cpp_filename], extra_objects=extra_objects)
     setup(name=module_name,
           version='1.0',
