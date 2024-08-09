@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 
 from pybullet_helpers.geometry import Pose
+from pybullet_helpers.inverse_kinematics import inverse_kinematics
 from pybullet_helpers.joint import get_joint_infos, get_joints
 from pybullet_helpers.robots.panda import PandaPyBulletRobot
 
@@ -84,7 +85,7 @@ def test_panda_pybullet_robot_inverse_kinematics_no_solutions(panda):
     # Impossible target pose with no solutions
     pose = Pose((999.0, 99.0, 999.0), (0.7071, 0.7071, 0.0, 0.0))
     with pytest.raises(ValueError):
-        panda.inverse_kinematics(end_effector_pose=pose, validate=True)
+        inverse_kinematics(panda, end_effector_pose=pose, validate=True)
 
 
 def test_panda_pybullet_robot_inverse_kinematics_incorrect_solution(panda):
@@ -97,23 +98,23 @@ def test_panda_pybullet_robot_inverse_kinematics_incorrect_solution(panda):
     # Note: the ikfast_closest_inverse_kinematics import happens
     # in the single_arm.py module, not the panda.py module.
     with patch(
-        "pybullet_helpers.robots.single_arm.ikfast_closest_inverse_kinematics"
+        "pybullet_helpers.inverse_kinematics.ikfast_closest_inverse_kinematics"
     ) as ikfast_mock:
         # Patch return value of IKFast to be an incorrect solution
         ikfast_mock.return_value = [[1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]]
 
         # If validate=False, error shouldn't be raised
-        panda.inverse_kinematics(end_effector_pose=pose, validate=False)
+        inverse_kinematics(panda, end_effector_pose=pose, validate=False)
 
         # If validate=True, error should be raised as solution doesn't match
         # desired end effector pose
         with pytest.raises(ValueError):
-            panda.inverse_kinematics(end_effector_pose=pose, validate=True)
+            inverse_kinematics(panda, end_effector_pose=pose, validate=True)
 
 
 def test_panda_pybullet_robot_inverse_kinematics(panda):
     """Test IKFast normal functionality on PandaPyBulletRobot."""
     pose = Pose((0.25, 0.25, 0.25), (0.7071, 0.7071, 0.0, 0.0))
-    joint_positions = panda.inverse_kinematics(end_effector_pose=pose, validate=True)
+    joint_positions = inverse_kinematics(panda, end_effector_pose=pose, validate=True)
     recovered_pose = panda.forward_kinematics(joint_positions)
     assert np.allclose(recovered_pose.position, pose.position)

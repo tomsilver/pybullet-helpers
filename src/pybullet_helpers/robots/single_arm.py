@@ -12,11 +12,6 @@ from gymnasium.spaces import Box
 
 from pybullet_helpers.geometry import Pose
 from pybullet_helpers.ikfast import IKFastInfo
-from pybullet_helpers.ikfast.utils import ikfast_closest_inverse_kinematics
-from pybullet_helpers.inverse_kinematics import (
-    InverseKinematicsError,
-    pybullet_inverse_kinematics,
-)
 from pybullet_helpers.joint import (
     JointInfo,
     JointPositions,
@@ -290,35 +285,6 @@ class SingleArmPyBulletRobot(abc.ABC):
         orientation = ee_link_state.worldLinkFrameOrientation
         return Pose(position, orientation)
 
-    def _validate_joints_state(
-        self, joint_positions: JointPositions, target_pose: Pose, validation_atol: float
-    ) -> None:
-        """Validate that the given joint positions matches the target pose.
-
-        This method should NOT be used during simulation mode as it
-        resets the joint states.
-        """
-        # Store current joint positions so we can reset
-        initial_joint_states = self.get_joint_positions()
-
-        # Set joint states, forward kinematics to determine EE position
-        self.set_joints(joint_positions)
-        ee_pos = get_link_state(
-            self.robot_id,
-            self.end_effector_id,
-            physics_client_id=self.physics_client_id,
-        ).worldLinkFramePosition
-        target_pos = target_pose.position
-        pos_is_close = np.allclose(ee_pos, target_pos, atol=validation_atol)
-
-        # Reset joint positions before returning/raising error
-        self.set_joints(initial_joint_states)
-
-        if not pos_is_close:
-            raise ValueError(
-                f"Joint states do not match target pose {target_pos} " f"from {ee_pos}"
-            )
-
     @classmethod
     def ikfast_info(cls) -> Optional[IKFastInfo]:
         """IKFastInfo for this robot.
@@ -326,77 +292,6 @@ class SingleArmPyBulletRobot(abc.ABC):
         If this is specified, then IK will use IKFast.
         """
         return None
-
-    def _ikfast_inverse_kinematics(self, end_effector_pose: Pose) -> JointPositions:
-        """IK using IKFast.
-
-        Returns the joint positions.
-        """
-        ik_solutions = ikfast_closest_inverse_kinematics(
-            self,
-            world_from_target=end_effector_pose,
-        )
-        if not ik_solutions:
-            raise InverseKinematicsError(
-                f"No IK solution found for target pose {end_effector_pose} "
-                "using IKFast"
-            )
-
-        # Use first solution as it is closest to current joint state.
-        joint_positions = ik_solutions[0]
-        return list(joint_positions)
-
-    def inverse_kinematics(
-        self,
-        end_effector_pose: Pose,
-        validate: bool,
-        set_joints: bool = True,
-        validation_atol: float = 1e-3,
-    ) -> JointPositions:
-        """Compute joint positions from a target end effector position, based
-        on the robot's current joint positions. Uses IKFast if the robot has
-        IKFast info specified.
-
-        The robot's joint state is updated to the IK result. For convenience,
-        the new joint positions are also returned.
-
-        If set_joints is True, set the joints after running IK. This is
-        recommended when using IKFast because IK is meant to be run
-        sequentially from nearby states, since it is very sensitive to
-        initialization.
-
-        If validate is True, we guarantee that the returned joint positions
-        would result in end_effector_pose if run through
-        forward_kinematics.
-
-        WARNING: if validate is True, physics may be overridden, and so it
-        should not be used within simulation.
-        """
-        if self.ikfast_info():
-            joint_positions = self._ikfast_inverse_kinematics(end_effector_pose)
-            if validate:
-                try:
-                    self._validate_joints_state(
-                        joint_positions, end_effector_pose, validation_atol
-                    )
-                except ValueError as e:
-                    raise InverseKinematicsError(e)
-
-        else:
-            joint_positions = pybullet_inverse_kinematics(
-                self.robot_id,
-                self.end_effector_id,
-                end_effector_pose.position,
-                end_effector_pose.orientation,
-                self.arm_joints,
-                physics_client_id=self.physics_client_id,
-                validate=validate,
-            )
-
-        if set_joints:
-            self.set_joints(joint_positions)
-
-        return joint_positions
 
 
 class SingleArmTwoFingerGripperPyBulletRobot(SingleArmPyBulletRobot):
@@ -468,16 +363,3 @@ class SingleArmTwoFingerGripperPyBulletRobot(SingleArmPyBulletRobot):
             self.left_finger_id,
             physicsClientId=self.physics_client_id,
         )[0]
-
-    def _ikfast_inverse_kinematics(self, end_effector_pose: Pose) -> JointPositions:
-        """IKFast doesn't handle fingers, so we add them afterwards."""
-        joint_state = super()._ikfast_inverse_kinematics(end_effector_pose)
-
-        # Add fingers to state.
-        first_finger_idx, second_finger_idx = sorted(
-            [self.left_finger_joint_idx, self.right_finger_joint_idx]
-        )
-        joint_state.insert(first_finger_idx, self.open_fingers)
-        joint_state.insert(second_finger_idx, self.open_fingers)
-
-        return joint_state
