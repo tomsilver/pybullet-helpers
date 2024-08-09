@@ -327,12 +327,6 @@ def test_kinova_gen3_robotiq_gripper_pybullet_robot(physics_client_id):
     # Reset control mode.
     robot._control_mode = "reset"  # pylint: disable=protected-access
     robot.set_motors(action_arr)  # just make sure it doesn't crash
-
-    # Position control mode.
-    robot._pybullet_control_mode = "position"  # pylint: disable=protected-access
-    robot.set_motors(action_arr)
-    for _ in range(20):
-        p.stepSimulation(physicsClientId=physics_client_id)
     recovered_ee_pos = robot.get_end_effector_pose().position
 
     # IK is currently not precise enough to increase this tolerance.

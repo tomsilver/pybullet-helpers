@@ -223,6 +223,11 @@ def free_joints_generator(
     else:
         # Note: Caelan used convex combination to sample, but uniform
         # sampling is sufficient for our use case.
+
+        # TODO fix this!!
+        lower_limits = np.array([-10.])
+        upper_limits = np.array([10.])
+
         while True:
             yield np.random.uniform(lower_limits, upper_limits)
 
