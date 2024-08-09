@@ -29,7 +29,7 @@ This process needs to be automated further, but here is some guidance:
 1. Install Docker on an Ubuntu machine. (You will only need Ubuntu to compile once; IKFast should work cross-platform.)
 2. Follow the instructions on [pyikfast](https://github.com/cyberbotics/pyikfast).
 3. Save the `cpp` file that is generated. You won't need the other files.
-4. Make a new directory in this repository inside `third_party/ikfast`. Copy in the cpp file and rename it to match the existing examples (e.g., `ikfast_panda_arm.cpp`.)
+4. Make a new directory in this repository inside `third_party/ikfast`. Copy in the `cpp` file and rename it to match the existing examples (e.g., `ikfast_panda_arm.cpp`.)
 5. Modify the `cpp` file in two ways: (1) Add `#include "Python.h"` at the top; (2) add python bindings at the bottom (copy and change the robot name from an existing example like `ikfast_panda_arm.cpp`).
 6. Copy in the other files from an example directory like `third_party/ikfast/panda_arm`. Modify `robot_name` in `setup.py`.
 7. Add `IKInfo` inside your new robot class in `robots/`.
