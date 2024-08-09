@@ -1,6 +1,7 @@
 import fnmatch
 import importlib
 import os
+import platform
 import shutil
 from distutils.core import setup
 from distutils.dir_util import copy_tree
@@ -20,7 +21,16 @@ from distutils.extension import Extension
 
 
 def compile_ikfast(module_name, cpp_filename, remove_build=False):
-    ikfast_module = Extension(module_name, sources=[cpp_filename])
+    if platform.system() == "Linux":
+        # https://github.com/cyberbotics/pyikfast/issues/5
+        extra_objects = [
+            '/usr/lib/x86_64-linux-gnu/lapack/liblapack.a',
+            '/usr/lib/x86_64-linux-gnu/libgfortran.so.5.0.0',
+            '/usr/lib/x86_64-linux-gnu/blas/libblas.a',
+        ]
+    else:
+        extra_objects = []
+    ikfast_module = Extension(module_name, sources=[cpp_filename], extra_objects=extra_objects)
     setup(name=module_name,
           version='1.0',
           description="ikfast module {}".format(module_name),

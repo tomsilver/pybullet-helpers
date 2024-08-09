@@ -1,7 +1,9 @@
 """Kinova Gen3 robots."""
 
 from pathlib import Path
+from typing import Optional
 
+from pybullet_helpers.ikfast import IKFastInfo
 from pybullet_helpers.joint import JointPositions
 from pybullet_helpers.robots.single_arm import (
     SingleArmPyBulletRobot,
@@ -74,3 +76,13 @@ class KinovaGen3RobotiqGripperPyBulletRobot(SingleArmTwoFingerGripperPyBulletRob
     @property
     def closed_fingers(self) -> float:
         return -0.5
+
+    @classmethod
+    def ikfast_info(cls) -> Optional[IKFastInfo]:
+        return IKFastInfo(
+            module_dir="kortex",
+            module_name="ikfast_kortex",
+            base_link="base_link",
+            ee_link="end_effector_link",
+            free_joints=["joint_7"],
+        )

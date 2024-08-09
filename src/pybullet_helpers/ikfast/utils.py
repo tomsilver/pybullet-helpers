@@ -17,6 +17,7 @@ from itertools import islice
 from typing import TYPE_CHECKING, Callable, Iterator
 
 import numpy as np
+from tomsutils.utils import get_signed_angle_distance, wrap_angle
 
 from pybullet_helpers.geometry import Pose, matrix_from_quat, multiply_poses
 from pybullet_helpers.ikfast.load import import_ikfast
@@ -54,13 +55,17 @@ def get_joint_difference_fn(
 
     Note: we do not support circular joints.
     """
-    if any(joint_info.is_circular for joint_info in joint_infos):
-        raise ValueError("Circular joints are not supported yet")
 
     def fn(q2: JointPositions, q1: JointPositions) -> JointPositions:
         if not len(q2) == len(q1) == len(joint_infos):
             raise ValueError("q2, q1, and joint infos must be the same length")
-        diff = list((value2 - value1) for value2, value1 in zip(q2, q1))
+        diff: JointPositions = []
+        for v1, v2, joint_info in zip(q1, q2, joint_infos):
+            if joint_info.is_circular:
+                joint_diff = get_signed_angle_distance(wrap_angle(v2), wrap_angle(v1))
+            else:
+                joint_diff = v2 - v1
+            diff.append(joint_diff)
         return diff
 
     return fn
@@ -200,7 +205,7 @@ def free_joints_generator(
         robot.robot_id, free_joints, robot.physics_client_id
     )
 
-    # Determine lower and upper limits
+    # Determine lower and upper limits.
     lower_limits = np.maximum(
         get_joint_lower_limits(robot.robot_id, free_joints, robot.physics_client_id),
         np.array(current_positions) - max_distance,
@@ -211,8 +216,16 @@ def free_joints_generator(
     )
     assert np.less_equal(lower_limits, upper_limits).all()
 
+    # Convert circular joints (which have infinite limits) into a range that
+    # we can uniformly sample from.
+    for i, joint_info in enumerate(free_joint_infos):
+        if joint_info.is_circular:
+            assert np.isinf(lower_limits[i]) and np.isinf(upper_limits[i])
+            lower_limits[i] = -np.pi
+            upper_limits[i] = np.pi
+
     # First return the current free joint positions as it may
-    # already satisfy the constraints
+    # already satisfy the constraints.
     yield current_positions
 
     if np.equal(lower_limits, upper_limits).all():  # pragma: no cover
