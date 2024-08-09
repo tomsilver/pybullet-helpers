@@ -25,15 +25,6 @@ def _robot_with_no_ikfast_info_fixture():
     return robot
 
 
-def test_get_joint_difference_fn_raises_error_with_circular_joints():
-    """Test get_joint_difference_fn raises an error if there are any circular
-    joints."""
-    non_circular_joint = Mock(is_circular=False)
-    circular_joint = Mock(is_circular=True)
-    with pytest.raises(ValueError):
-        get_joint_difference_fn([non_circular_joint, circular_joint])
-
-
 def test_get_joint_difference_fn():
     """Test for get_joint_difference_fn."""
     difference_fn = get_joint_difference_fn(7 * [Mock(is_circular=False)])

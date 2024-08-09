@@ -76,7 +76,7 @@ class KinovaGen3RobotiqGripperPyBulletRobot(SingleArmTwoFingerGripperPyBulletRob
     @property
     def closed_fingers(self) -> float:
         return -0.5
-    
+
     @classmethod
     def ikfast_info(cls) -> Optional[IKFastInfo]:
         return IKFastInfo(
@@ -86,4 +86,3 @@ class KinovaGen3RobotiqGripperPyBulletRobot(SingleArmTwoFingerGripperPyBulletRob
             ee_link="end_effector_link",
             free_joints=["joint_7"],
         )
-
