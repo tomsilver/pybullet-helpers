@@ -1,13 +1,18 @@
 """Tests for PyBullet motion planning."""
 
+from functools import partial
+
 import numpy as np
 import pybullet as p
 
 from pybullet_helpers.geometry import Pose
 from pybullet_helpers.inverse_kinematics import inverse_kinematics
+from pybullet_helpers.joint import get_joint_infos
 from pybullet_helpers.motion_planning import (
     MotionPlanningHyperparameters,
+    get_joint_positions_distance,
     run_motion_planning,
+    select_shortest_motion_plan,
 )
 from pybullet_helpers.robots.fetch import FetchPyBulletRobot
 from pybullet_helpers.utils import create_pybullet_block, get_assets_path
@@ -129,3 +134,31 @@ def test_run_motion_planning(physics_client_id):
     )
     assert path is None
     p.removeBody(block_id, physicsClientId=physics_client_id)
+
+
+def test_select_shortest_motion_plan(physics_client_id):
+    """Tests for select_shortest_motion_plan()."""
+
+    robot = FetchPyBulletRobot(physics_client_id)
+    joint_initial = robot.get_joint_positions()
+    joint_space = robot.action_space
+    joint_space.seed(123)
+    joint_perturbed = joint_space.sample()
+
+    longer_plan = [joint_initial, joint_perturbed]
+    shorter_plan = [joint_initial, joint_initial]
+
+    joint_infos = get_joint_infos(
+        robot.robot_id, robot.arm_joints, robot.physics_client_id
+    )
+    weights = [1.0] * len(joint_infos)
+    dist_fn = partial(
+        get_joint_positions_distance,
+        robot,
+        joint_infos,
+        metric="weighted_joints",
+        weights=weights,
+    )
+
+    ret_plan = select_shortest_motion_plan([shorter_plan, longer_plan], dist_fn)
+    assert ret_plan is shorter_plan
