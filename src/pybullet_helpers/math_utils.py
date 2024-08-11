@@ -1,7 +1,7 @@
 """Math utilities."""
 
 import numpy as np
-import pybullet as p
+from pybullet_utils.transformations import quaternion_from_matrix
 
 from pybullet_helpers.geometry import Pose
 
@@ -11,6 +11,9 @@ def get_poses_facing_axis(
 ) -> list[Pose]:
     """Generate poses that are rotated around a given axis at a given radius,
     facing towards the axis.
+
+    "Facing" means that the z dim of the pose is pointing toward the
+    axis. The x dim is pointing right and the y dim is pointing down.
 
     A typical use case is generating multiple candidate grasps of an
     object.
@@ -40,7 +43,9 @@ def get_poses_facing_axis(
         y_axis = np.cross(z_axis, x_axis)
 
         rotation_matrix = np.vstack((x_axis, y_axis, z_axis)).T
-        orientation = p.matrixToQuaternion(rotation_matrix)
+        M = np.identity(4)
+        M[:3, :3] = rotation_matrix
+        orientation = quaternion_from_matrix(M)
 
         poses.append(Pose(position=tuple(position), orientation=orientation))
 
