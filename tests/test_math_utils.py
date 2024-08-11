@@ -33,6 +33,19 @@ def test_get_poses_facing_line():
     for p, e in zip(poses, expected, strict=True):
         assert p.allclose(e)
 
+    axis = (1.0, 0.0, 0.0)
+    point_on_line = (0.0, 0.0, 0.0)
+    radius = 1.0
+    poses = get_poses_facing_line(axis, point_on_line, radius, num_points=4)
+    expected = [
+        Pose(position=(0.0, -1.0, 0.0), orientation=(0.5, -0.5, -0.5, -0.5)),
+        Pose(position=(0.0, 0.0, -1.0), orientation=(0.0, 0.0, 0.707107, 0.707107)),
+        Pose(position=(0.0, 1.0, 0.0), orientation=(0.5, -0.5, 0.5, 0.5)),
+        Pose(position=(0.0, 0.0, 1.0), orientation=(0.707107, -0.707107, 0.0, 0.0)),
+    ]
+    for p, e in zip(poses, expected, strict=True):
+        assert p.allclose(e)
+
     # Uncomment to debug.
     # import pybullet as p
     # import numpy as np
