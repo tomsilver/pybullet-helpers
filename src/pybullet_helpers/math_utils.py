@@ -6,14 +6,17 @@ from pybullet_utils.transformations import quaternion_from_matrix
 from pybullet_helpers.geometry import Pose
 
 
-def get_poses_facing_axis(
-    axis: tuple[float, float, float], radius: float, num_points: int
+def get_poses_facing_line(
+    axis: tuple[float, float, float],
+    point_on_line: tuple[float, float, float],
+    radius: float,
+    num_points: int,
 ) -> list[Pose]:
-    """Generate poses that are rotated around a given axis at a given radius,
-    facing towards the axis.
+    """Generate poses that are rotated around a given line at a given radius,
+    facing towards the line.
 
     "Facing" means that the z dim of the pose is pointing toward the
-    axis. The x dim is pointing right and the y dim is pointing down.
+    line. The x dim is pointing right and the y dim is pointing down.
 
     A typical use case is generating multiple candidate grasps of an
     object.
@@ -31,14 +34,14 @@ def get_poses_facing_axis(
     poses = []
     for i in range(num_points):
         angle = 2 * np.pi * i / num_points
-        position = np.cos(angle) * ortho_vector + np.sin(angle) * np.cross(
+        position_offset = np.cos(angle) * ortho_vector + np.sin(angle) * np.cross(
             axis, ortho_vector
         )
-        position *= radius
+        position = point_on_line + radius * position_offset
 
-        # Compute the orientation (rotation) quaternion.
-        # Negative position vector points towards the axis.
-        z_axis = -position / np.linalg.norm(position)
+        # Compute the orientation (rotation) quaternion
+        z_axis = point_on_line - position  # vector from position to point_on_line
+        z_axis /= np.linalg.norm(z_axis)
         x_axis = np.cross(z_axis, axis)
         y_axis = np.cross(z_axis, x_axis)
 
@@ -47,6 +50,6 @@ def get_poses_facing_axis(
         M[:3, :3] = rotation_matrix
         orientation = quaternion_from_matrix(M)
 
-        poses.append(Pose(position=tuple(position), orientation=orientation))
+        poses.append(Pose(position=tuple(position), orientation=tuple(orientation)))
 
     return poses
