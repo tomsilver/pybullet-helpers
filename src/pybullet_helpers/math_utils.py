@@ -1,9 +1,8 @@
 """Math utilities."""
 
 import numpy as np
-from pybullet_utils.transformations import quaternion_from_matrix
 
-from pybullet_helpers.geometry import Pose
+from pybullet_helpers.geometry import Pose, quat_from_matrix
 
 
 def get_poses_facing_line(
@@ -46,10 +45,8 @@ def get_poses_facing_line(
         y_axis = np.cross(z_axis, x_axis)
 
         rotation_matrix = np.vstack((x_axis, y_axis, z_axis)).T
-        M = np.identity(4)
-        M[:3, :3] = rotation_matrix
-        orientation = quaternion_from_matrix(M)
+        orientation = quat_from_matrix(rotation_matrix)
 
-        poses.append(Pose(position=tuple(position), orientation=tuple(orientation)))
+        poses.append(Pose(position=tuple(position), orientation=orientation))
 
     return poses

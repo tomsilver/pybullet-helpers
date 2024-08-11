@@ -7,7 +7,11 @@ from typing import NamedTuple
 import numpy as np
 import numpy.typing as npt
 import pybullet as p
-from pybullet_utils.transformations import euler_from_quaternion, quaternion_from_euler
+from pybullet_utils.transformations import (
+    euler_from_quaternion,
+    quaternion_from_euler,
+    quaternion_from_matrix,
+)
 
 Pose3D = tuple[float, float, float]
 Quaternion = tuple[float, float, float, float]
@@ -71,6 +75,13 @@ def multiply_poses(*poses: Pose) -> Pose:
 def matrix_from_quat(quat: Quaternion) -> npt.NDArray[np.float64]:
     """Get 3x3 rotation matrix from quaternion (xyzw)."""
     return np.array(p.getMatrixFromQuaternion(quat)).reshape(3, 3)
+
+
+def quat_from_matrix(matrix: npt.NDArray[np.float64]) -> Quaternion:
+    """Get quaternion (xyzw) from 3x3 rotation matrix."""
+    M = np.identity(4)
+    M[:3, :3] = matrix
+    return tuple(quaternion_from_matrix(M))
 
 
 def get_pose(body: int, physics_client_id: int) -> Pose:
