@@ -1,14 +1,18 @@
 """Tests for inverse_kinematics.py."""
 
 import numpy as np
+import pybullet as p
 import pytest
 
 from pybullet_helpers.geometry import Pose, multiply_poses
 from pybullet_helpers.inverse_kinematics import (
     inverse_kinematics,
+    sample_collision_free_inverse_kinematics,
 )
 from pybullet_helpers.robots.fetch import FetchPyBulletRobot
+from pybullet_helpers.robots.kinova import KinovaGen3RobotiqGripperPyBulletRobot
 from pybullet_helpers.robots.panda import PandaPyBulletRobot
+from pybullet_helpers.utils import create_pybullet_block
 
 
 def test_pybullet_inverse_kinematics(physics_client_id):
@@ -79,3 +83,73 @@ def test_ikfast_inverse_kinematics(physics_client_id):
     with pytest.raises(Exception) as e:
         inverse_kinematics(robot, impossible_target, validate=True, set_joints=True)
     assert "No IK solution found" in str(e)
+
+
+def test_sample_collision_free_inverse_kinematics(physics_client_id):
+    """Tests for sample_collision_free_inverse_kinematics()."""
+
+    # Test trying to grasp an object when there is a collision body between
+    # the robot and the target. The robot should move its joints to avoid
+    # collision with the object.
+
+    robot_base_pose = Pose((0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0))
+    robot_home_joints = [
+        np.pi / 2,
+        -np.pi / 4,
+        -np.pi / 2,
+        0.0,
+        np.pi / 2,
+        -np.pi / 2,
+        np.pi / 2,
+        0.0,
+        0.0,
+    ]
+
+    collision_region_orientation = (0.0, 0.0, 0.0, 1.0)
+    collision_region_position = (-0.075, 0.55, 0.05)
+    collision_region_half_extents = (0.05, 0.05, 0.05)
+    collision_region_rgba = (1.0, 0.0, 0.0, 0.25)
+    collision_region_id = create_pybullet_block(
+        collision_region_rgba,
+        half_extents=collision_region_half_extents,
+        physics_client_id=physics_client_id,
+    )
+    p.resetBasePositionAndOrientation(
+        collision_region_id,
+        collision_region_position,
+        collision_region_orientation,
+        physicsClientId=physics_client_id,
+    )
+
+    grasp_target = Pose((0.0, 0.75, 0.06), (0, np.sqrt(2) / 2, np.sqrt(2) / 2, 0))
+
+    robot = KinovaGen3RobotiqGripperPyBulletRobot(
+        physics_client_id,
+        base_pose=robot_base_pose,
+        control_mode="reset",
+        home_joint_positions=robot_home_joints,
+    )
+
+    # First sample while ignoring possible collisions to get a baseline.
+    collision_ids = set()
+    max_candidates = 10
+    ignored_collision_samples = list(
+        sample_collision_free_inverse_kinematics(
+            robot, grasp_target, collision_ids, max_candidates=max_candidates
+        )
+    )
+
+    # Now sample while avoiding the collision region.
+    collision_ids = {collision_region_id}
+    with_collision_samples = list(
+        sample_collision_free_inverse_kinematics(
+            robot, grasp_target, collision_ids, max_candidates=max_candidates
+        )
+    )
+
+    assert (
+        0
+        <= len(with_collision_samples)
+        < len(ignored_collision_samples)
+        <= max_candidates
+    )
