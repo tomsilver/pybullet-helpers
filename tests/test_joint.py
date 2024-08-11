@@ -2,8 +2,7 @@
 
 import pybullet as p
 
-from pybullet_helpers.joint import JointInfo
-from pybullet_helpers.joint import get_kinematic_chain
+from pybullet_helpers.joint import JointInfo, get_kinematic_chain
 from pybullet_helpers.robots.fetch import FetchPyBulletRobot
 
 

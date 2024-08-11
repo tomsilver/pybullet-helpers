@@ -1,4 +1,4 @@
-"""Test cases for pybullet_robots."""
+"""Tests for Kinova robots."""
 
 import numpy as np
 import pybullet as p
@@ -7,70 +7,11 @@ import pytest
 from pybullet_helpers.geometry import Pose
 from pybullet_helpers.inverse_kinematics import (
     inverse_kinematics,
-    pybullet_inverse_kinematics,
 )
-from pybullet_helpers.joint import get_kinematic_chain
-from pybullet_helpers.link import BASE_LINK, get_link_pose, get_link_state
-from pybullet_helpers.robots.fetch import FetchPyBulletRobot
 from pybullet_helpers.robots.kinova import (
     KinovaGen3NoGripperPyBulletRobot,
     KinovaGen3RobotiqGripperPyBulletRobot,
 )
-from pybullet_helpers.utils import get_assets_path
-
-
-@pytest.fixture(scope="module", name="scene_attributes")
-def _setup_pybullet_test_scene():
-    """Creates a PyBullet scene with a fetch robot.
-
-    Initialized only once for efficiency.
-    """
-    scene = {}
-
-    physics_client_id = p.connect(p.DIRECT)
-    scene["physics_client_id"] = physics_client_id
-
-    p.resetSimulation(physicsClientId=physics_client_id)
-
-    urdf_path = (
-        get_assets_path() / "urdf" / "fetch_description" / "robots" / "fetch.urdf"
-    )
-    fetch_id = p.loadURDF(
-        str(urdf_path), useFixedBase=True, physicsClientId=physics_client_id
-    )
-    scene["fetch_id"] = fetch_id
-
-    base_pose = [0.75, 0.7441, 0.0]
-    base_orientation = [0.0, 0.0, 0.0, 1.0]
-    p.resetBasePositionAndOrientation(
-        fetch_id, base_pose, base_orientation, physicsClientId=physics_client_id
-    )
-    reconstructed_pose = get_link_pose(fetch_id, BASE_LINK, physics_client_id)
-    assert reconstructed_pose.allclose(Pose(base_pose, base_orientation))
-
-    joint_names = [
-        p.getJointInfo(fetch_id, i, physicsClientId=physics_client_id)[1].decode(
-            "utf-8"
-        )
-        for i in range(p.getNumJoints(fetch_id, physicsClientId=physics_client_id))
-    ]
-    ee_id = joint_names.index("gripper_axis")
-    scene["ee_id"] = ee_id
-    scene["ee_orientation"] = [1.0, 0.0, -1.0, 0.0]
-
-    scene["robot_home"] = [1.35, 0.75, 0.75]
-
-    arm_joints = get_kinematic_chain(
-        fetch_id, ee_id, physics_client_id=physics_client_id
-    )
-    scene["initial_joints_states"] = p.getJointStates(
-        fetch_id, arm_joints, physicsClientId=physics_client_id
-    )
-
-    yield scene
-
-    # Disconnect from physics server so it does not linger
-    p.disconnect(physics_client_id)
 
 
 def test_kinova_gen3_no_gripper_pybullet_robot(physics_client_id):

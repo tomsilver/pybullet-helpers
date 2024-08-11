@@ -22,7 +22,9 @@ def test_pybullet_inverse_kinematics(physics_client_id):
     target_pose = Pose(target_position, target_orientation)
     inverse_kinematics(robot, target_pose, validate=False, set_joints=True)
     recovered_end_effector_pose = robot.get_end_effector_pose()
-    assert not np.allclose(recovered_end_effector_pose.position, target_position, atol=1e-3)
+    assert not np.allclose(
+        recovered_end_effector_pose.position, target_position, atol=1e-3
+    )
     # With validate = True, IK does work.
     robot.go_home()
     inverse_kinematics(robot, target_pose, validate=True, set_joints=True)
@@ -38,5 +40,5 @@ def test_pybullet_inverse_kinematics(physics_client_id):
     target_pose = Pose(target_position, target_orientation)
     robot.go_home()
     with pytest.raises(Exception) as e:
-        inverse_kinematics(robot, target_pose, validate=True, set_joints=True)        
+        inverse_kinematics(robot, target_pose, validate=True, set_joints=True)
     assert "Inverse kinematics failed to converge." in str(e)
