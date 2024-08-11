@@ -2,8 +2,7 @@
 
 import pybullet as p
 
-from pybullet_helpers.camera import create_gui_connection
-from pybullet_helpers.gui import run_interactive_joint_gui
+from pybullet_helpers.gui import create_gui_connection, run_interactive_joint_gui
 from pybullet_helpers.robots import create_pybullet_robot
 
 
