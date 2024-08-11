@@ -11,7 +11,12 @@ import pybullet as p
 from numpy.typing import NDArray
 from tomsutils.motion_planning import BiRRT
 
-from pybullet_helpers.joint import JointInfo, JointPositions, get_joint_infos
+from pybullet_helpers.joint import (
+    JointInfo,
+    JointPositions,
+    get_joint_infos,
+    get_jointwise_difference,
+)
 from pybullet_helpers.link import get_link_state
 from pybullet_helpers.robots.single_arm import (
     SingleArmPyBulletRobot,
@@ -212,11 +217,15 @@ def get_joint_positions_distance(
     q1: JointPositions,
     q2: JointPositions,
     metric: str = "end_effector",
+    **kwargs,
 ):
     """Get the distance between two joint positions."""
 
     if metric == "end_effector":
-        return _get_end_effector_joint_positions_distance(robot, q1, q2)
+        return _get_end_effector_joint_positions_distance(robot, q1, q2, **kwargs)
+
+    if metric == "weighted_joints":
+        return _get_weighted_joint_positions_distance(joint_infos, q1, q2, **kwargs)
 
     raise NotImplementedError(f"Unrecognized metric: {metric}")
 
@@ -225,9 +234,21 @@ def _get_end_effector_joint_positions_distance(
     robot: SingleArmPyBulletRobot,
     q1: JointPositions,
     q2: JointPositions,
-):
+) -> float:
     # NOTE: only using positions to calculate distance. Should use
     # orientations as well in the near future.
     from_ee = robot.forward_kinematics(q1).position
     to_ee = robot.forward_kinematics(q2).position
     return sum(np.subtract(from_ee, to_ee) ** 2)
+
+
+def _get_weighted_joint_positions_distance(
+    joint_infos: list[JointInfo],
+    q1: JointPositions,
+    q2: JointPositions,
+    weights: list[float],
+) -> float:
+    assert len(joint_infos) == len(weights) == len(q1) == len(q2)
+    diff = get_jointwise_difference(joint_infos, q2, q1)
+    dist = np.abs(diff)
+    return np.sum(weights * dist)
