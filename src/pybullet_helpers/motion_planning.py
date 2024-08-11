@@ -3,14 +3,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable, Collection, Iterator, Optional, Sequence
+from functools import partial
+from typing import Callable, Collection, Iterable, Iterator, Optional, Sequence
 
 import numpy as np
 import pybullet as p
 from numpy.typing import NDArray
 from tomsutils.motion_planning import BiRRT
 
-from pybullet_helpers.joint import JointPositions
+from pybullet_helpers.joint import JointInfo, JointPositions, get_joint_infos
 from pybullet_helpers.link import get_link_state
 from pybullet_helpers.robots.single_arm import (
     SingleArmPyBulletRobot,
@@ -49,13 +50,20 @@ def run_motion_planning(
     rng = np.random.default_rng(seed)
     joint_space = robot.action_space
     joint_space.seed(seed)
+    joint_infos = get_joint_infos(robot.robot_id, robot.arm_joints, physics_client_id)
     num_interp = hyperparameters.birrt_extend_num_interp
 
-    _set_state = _create_set_state_fn(
-        robot, physics_client_id, held_object, base_link_to_held_obj
+    _collision_fn = partial(
+        check_collisions_with_held_object,
+        robot,
+        collision_bodies,
+        physics_client_id,
+        held_object,
+        base_link_to_held_obj,
     )
-    _collision_fn = _create_collision_fn(
-        robot, _set_state, collision_bodies, physics_client_id, held_object
+
+    _distance_fn = partial(
+        get_joint_positions_distance, robot, joint_infos, metric="end_effector"
     )
 
     def _sample_fn(pt: JointPositions) -> JointPositions:
@@ -76,13 +84,6 @@ def run_motion_planning(
             yield pt2
         for i in range(1, num + 1):
             yield list(pt1_arr * (1 - i / num) + pt2_arr * i / num)
-
-    def _distance_fn(from_pt: JointPositions, to_pt: JointPositions) -> float:
-        # NOTE: only using positions to calculate distance. Should use
-        # orientations as well in the near future.
-        from_ee = robot.forward_kinematics(from_pt).position
-        to_ee = robot.forward_kinematics(to_pt).position
-        return sum(np.subtract(from_ee, to_ee) ** 2)
 
     birrt = BiRRT(
         _sample_fn,
@@ -114,11 +115,13 @@ def filter_collision_free_joint_generator(
     collisions before then calling motion planning.
     """
 
-    _set_state = _create_set_state_fn(
-        robot, physics_client_id, held_object, base_link_to_held_obj
-    )
-    _collision_fn = _create_collision_fn(
-        robot, _set_state, collision_bodies, physics_client_id, held_object
+    _collision_fn = partial(
+        check_collisions_with_held_object,
+        robot,
+        collision_bodies,
+        physics_client_id,
+        held_object,
+        base_link_to_held_obj,
     )
 
     for candidate in generator:
@@ -126,58 +129,105 @@ def filter_collision_free_joint_generator(
             yield candidate
 
 
-def _create_set_state_fn(
+def select_shortest_motion_plan(
+    motion_plans: Iterable[list[JointPositions]],
+    joint_distance_fn: Callable[[JointPositions, JointPositions], float],
+) -> list[JointPositions]:
+    """Return the motion plan that has the least cumulative distance."""
+
+    shortest_motion_plan: list[JointPositions] | None = None
+    shortest_length = np.inf
+
+    for motion_plan in motion_plans:
+        mp_dist = 0.0
+        for t in range(len(motion_plan) - 1):
+            q1, q2 = motion_plan[t], motion_plan[t + 1]
+            dist = joint_distance_fn(q2, q1)
+            mp_dist += dist
+        if mp_dist < shortest_length:
+            shortest_motion_plan = motion_plan
+            shortest_length = mp_dist
+
+    assert shortest_motion_plan is not None, "motion_plans was empty"
+    return shortest_motion_plan
+
+
+def set_robot_joints_with_held_object(
     robot: SingleArmPyBulletRobot,
     physics_client_id: int,
-    held_object: int | None = None,
-    base_link_to_held_obj: NDArray | None = None,
-) -> Callable[[JointPositions], None]:
+    held_object: int | None,
+    base_link_to_held_obj: NDArray | None,
+    joint_state: JointPositions,
+) -> None:
+    """Set a robot's joints and apply a transform to a held object."""
 
-    def _set_state(pt: JointPositions) -> None:
-        robot.set_joints(pt)
-        if held_object is not None:
-            assert base_link_to_held_obj is not None
-            world_to_base_link = get_link_state(
-                robot.robot_id,
-                robot.end_effector_id,
-                physics_client_id=physics_client_id,
-            ).com_pose
-            world_to_held_obj = p.multiplyTransforms(
-                world_to_base_link[0],
-                world_to_base_link[1],
-                base_link_to_held_obj[0],
-                base_link_to_held_obj[1],
-            )
-            p.resetBasePositionAndOrientation(
-                held_object,
-                world_to_held_obj[0],
-                world_to_held_obj[1],
-                physicsClientId=physics_client_id,
-            )
-
-    return _set_state
+    robot.set_joints(joint_state)
+    if held_object is not None:
+        assert base_link_to_held_obj is not None
+        world_to_base_link = get_link_state(
+            robot.robot_id,
+            robot.end_effector_id,
+            physics_client_id=physics_client_id,
+        ).com_pose
+        world_to_held_obj = p.multiplyTransforms(
+            world_to_base_link[0],
+            world_to_base_link[1],
+            base_link_to_held_obj[0],
+            base_link_to_held_obj[1],
+        )
+        p.resetBasePositionAndOrientation(
+            held_object,
+            world_to_held_obj[0],
+            world_to_held_obj[1],
+            physicsClientId=physics_client_id,
+        )
 
 
-def _create_collision_fn(
+def check_collisions_with_held_object(
     robot: SingleArmPyBulletRobot,
-    _set_state: Callable[[JointPositions], None],
     collision_bodies: Collection[int],
     physics_client_id: int,
-    held_object: int | None = None,
-) -> Callable[[JointPositions], bool]:
+    held_object: int | None,
+    base_link_to_held_obj: NDArray | None,
+    joint_state: JointPositions,
+) -> bool:
+    """Check if robot or a held object are in collision with certain bodies."""
+    set_robot_joints_with_held_object(
+        robot, physics_client_id, held_object, base_link_to_held_obj, joint_state
+    )
+    p.performCollisionDetection(physicsClientId=physics_client_id)
+    for body in collision_bodies:
+        if p.getContactPoints(robot.robot_id, body, physicsClientId=physics_client_id):
+            return True
+        if held_object is not None and p.getContactPoints(
+            held_object, body, physicsClientId=physics_client_id
+        ):
+            return True
+    return False
 
-    def _collision_fn(pt: JointPositions) -> bool:
-        _set_state(pt)
-        p.performCollisionDetection(physicsClientId=physics_client_id)
-        for body in collision_bodies:
-            if p.getContactPoints(
-                robot.robot_id, body, physicsClientId=physics_client_id
-            ):
-                return True
-            if held_object is not None and p.getContactPoints(
-                held_object, body, physicsClientId=physics_client_id
-            ):
-                return True
-        return False
 
-    return _collision_fn
+def get_joint_positions_distance(
+    robot: SingleArmPyBulletRobot,
+    joint_infos: list[JointInfo],
+    q1: JointPositions,
+    q2: JointPositions,
+    metric: str = "end_effector",
+):
+    """Get the distance between two joint positions."""
+
+    if metric == "end_effector":
+        return _get_end_effector_joint_positions_distance(robot, q1, q2)
+
+    raise NotImplementedError(f"Unrecognized metric: {metric}")
+
+
+def _get_end_effector_joint_positions_distance(
+    robot: SingleArmPyBulletRobot,
+    q1: JointPositions,
+    q2: JointPositions,
+):
+    # NOTE: only using positions to calculate distance. Should use
+    # orientations as well in the near future.
+    from_ee = robot.forward_kinematics(q1).position
+    to_ee = robot.forward_kinematics(q2).position
+    return sum(np.subtract(from_ee, to_ee) ** 2)
