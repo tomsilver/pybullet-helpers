@@ -3,6 +3,8 @@
 import pybullet as p
 
 from pybullet_helpers.joint import JointInfo
+from pybullet_helpers.joint import get_kinematic_chain
+from pybullet_helpers.robots.fetch import FetchPyBulletRobot
 
 
 def test_joint_info():
@@ -59,3 +61,15 @@ def test_joint_info():
     assert circular_joint_info.is_movable
     assert not circular_joint_info.violates_limit(9999.0)
     assert not circular_joint_info.violates_limit(0.0)
+
+
+def test_get_kinematic_chain(physics_client_id):
+    """Tests for get_kinematic_chain()."""
+    robot = FetchPyBulletRobot(physics_client_id)
+    arm_joints = get_kinematic_chain(
+        robot.robot_id,
+        robot.end_effector_id,
+        physics_client_id=physics_client_id,
+    )
+    # Fetch arm has 7 DOF.
+    assert len(arm_joints) == 7
