@@ -70,12 +70,12 @@ class KinovaGen3RobotiqGripperPyBulletRobot(SingleArmTwoFingerGripperPyBulletRob
         return "right_inner_finger_joint"
 
     @property
-    def open_fingers(self) -> float:
-        return 0.5
+    def open_fingers_joint_value(self) -> float:
+        return -0.75
 
     @property
-    def closed_fingers(self) -> float:
-        return -0.5
+    def closed_fingers_joint_value(self) -> float:
+        return 0.75
 
     @classmethod
     def ikfast_info(cls) -> Optional[IKFastInfo]:
