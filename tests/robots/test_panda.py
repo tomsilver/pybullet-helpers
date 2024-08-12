@@ -30,7 +30,7 @@ def test_panda_pybullet_robot_initial_configuration(panda):
     pose = panda.get_end_effector_pose()
     assert np.allclose(pose.position, (0.5, 0.0, 0.5), atol=1e-3)
     finger_state = panda.get_finger_state()
-    assert np.isclose(finger_state, panda.open_fingers)
+    assert np.isclose(finger_state, panda.open_fingers_joint_value)
 
 
 def test_panda_pybullet_robot_links(panda):

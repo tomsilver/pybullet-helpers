@@ -283,6 +283,7 @@ def _add_fingers_to_joint_positions(
     first_finger_idx, second_finger_idx = sorted(
         [robot.left_finger_joint_idx, robot.right_finger_joint_idx]
     )
-    joint_positions.insert(first_finger_idx, robot.open_fingers)
-    joint_positions.insert(second_finger_idx, robot.open_fingers)
+    current_fingers = robot.get_finger_state()
+    joint_positions.insert(first_finger_idx, current_fingers)
+    joint_positions.insert(second_finger_idx, current_fingers)
     return joint_positions

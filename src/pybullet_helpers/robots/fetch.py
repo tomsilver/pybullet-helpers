@@ -50,9 +50,9 @@ class FetchPyBulletRobot(SingleArmTwoFingerGripperPyBulletRobot):
         return "r_gripper_finger_joint"
 
     @property
-    def open_fingers(self) -> float:
+    def open_fingers_joint_value(self) -> float:
         return 0.04
 
     @property
-    def closed_fingers(self) -> float:
+    def closed_fingers_joint_value(self) -> float:
         return 0.01

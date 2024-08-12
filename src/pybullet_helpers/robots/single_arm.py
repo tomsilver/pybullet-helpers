@@ -346,15 +346,29 @@ class SingleArmTwoFingerGripperPyBulletRobot(SingleArmPyBulletRobot):
 
     @property
     @abc.abstractmethod
-    def open_fingers(self) -> float:
+    def open_fingers_joint_value(self) -> float:
         """The value at which the finger joints should be open."""
         raise NotImplementedError("Override me!")
 
     @property
     @abc.abstractmethod
-    def closed_fingers(self) -> float:
+    def closed_fingers_joint_value(self) -> float:
         """The value at which the finger joints should be closed."""
         raise NotImplementedError("Override me!")
+
+    def open_fingers(self) -> None:
+        """Execute opening the fingers."""
+        self._change_fingers(self.open_fingers_joint_value)
+
+    def close_fingers(self) -> None:
+        """Execute closing the fingers."""
+        self._change_fingers(self.closed_fingers_joint_value)
+
+    def _change_fingers(self, new_value: float) -> None:
+        current_joints = self.get_joint_positions()
+        current_joints[self.left_finger_joint_idx] = new_value
+        current_joints[self.right_finger_joint_idx] = new_value
+        self.set_motors(current_joints)
 
     def get_finger_state(self) -> float:
         """Get the state of the gripper fingers."""
