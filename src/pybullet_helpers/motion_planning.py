@@ -44,10 +44,18 @@ def run_motion_planning(
     held_object: int | None = None,
     base_link_to_held_obj: NDArray | None = None,
     hyperparameters: MotionPlanningHyperparameters | None = None,
+    additional_state_constraint_fn: Callable[[JointPositions], bool] | None = None,
 ) -> Optional[Sequence[JointPositions]]:
     """Run BiRRT to find a collision-free sequence of joint positions.
 
     Note that this function changes the state of the robot.
+
+    If additional_state_constraint_fn is provided, the collision
+    checking is augmented so that additional_state_constraint_fn() =
+    False behaves as if a collision check failed. For example, if you
+    want to make sure that a held object is not rotated beyond some
+    threshold, you could use additional_state_constraint_fn to enforce
+    that.
     """
     if hyperparameters is None:
         hyperparameters = MotionPlanningHyperparameters()
@@ -58,7 +66,7 @@ def run_motion_planning(
     joint_infos = get_joint_infos(robot.robot_id, robot.arm_joints, physics_client_id)
     num_interp = hyperparameters.birrt_extend_num_interp
 
-    _collision_fn = partial(
+    _collision_fn: Callable[[JointPositions], bool] = partial(
         check_collisions_with_held_object,
         robot,
         collision_bodies,
@@ -66,6 +74,10 @@ def run_motion_planning(
         held_object,
         base_link_to_held_obj,
     )
+    if additional_state_constraint_fn is not None:
+        _collision_fn = lambda x: _collision_fn(
+            x
+        ) or not additional_state_constraint_fn(x)
 
     _distance_fn = partial(
         get_joint_positions_distance, robot, joint_infos, metric="end_effector"
