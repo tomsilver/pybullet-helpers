@@ -57,6 +57,17 @@ class SingleArmPyBulletRobot(abc.ABC):
             physicsClientId=self.physics_client_id,
         )
 
+        # Make sure the home joint positions are within limits.
+        assert all(
+            l <= v <= h
+            for l, v, h in zip(
+                self.joint_lower_limits,
+                self.home_joint_positions,
+                self.joint_upper_limits,
+                strict=True,
+            )
+        ), "Home joint positions are out of the limit range"
+
         # Robot initially at home pose.
         self.set_joints(self.home_joint_positions)
 
