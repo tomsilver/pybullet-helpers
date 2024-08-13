@@ -55,7 +55,9 @@ def run_motion_planning(
     False behaves as if a collision check failed. For example, if you
     want to make sure that a held object is not rotated beyond some
     threshold, you could use additional_state_constraint_fn to enforce
-    that.
+    that. The additional state constraint function can assume that the
+    robot is already in the given joint positions because it will be
+    called right after collision checking, which sets the robot state.
     """
     if hyperparameters is None:
         hyperparameters = MotionPlanningHyperparameters()
@@ -75,7 +77,8 @@ def run_motion_planning(
         base_link_to_held_obj,
     )
     if additional_state_constraint_fn is not None:
-        _collision_fn = lambda x: _collision_fn(
+        _initial_collision_fn = _collision_fn
+        _collision_fn = lambda x: _initial_collision_fn(
             x
         ) or not additional_state_constraint_fn(x)
 

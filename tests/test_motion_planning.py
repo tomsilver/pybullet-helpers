@@ -15,6 +15,7 @@ from pybullet_helpers.motion_planning import (
     select_shortest_motion_plan,
 )
 from pybullet_helpers.robots.fetch import FetchPyBulletRobot
+from pybullet_helpers.robots.kinova import KinovaGen3RobotiqGripperPyBulletRobot
 from pybullet_helpers.utils import create_pybullet_block, get_assets_path
 
 USE_GUI = False
@@ -134,6 +135,84 @@ def test_run_motion_planning(physics_client_id):
     )
     assert path is None
     p.removeBody(block_id, physicsClientId=physics_client_id)
+
+
+def test_motion_planning_additional_constraint(physics_client_id):
+    """Tests for run_motion_planning with an additional state constraint."""
+    initial_joints = [2.5, -1.5, -2.1, 1.9, 2.9, 1.5, -2.6, 0.0, 0.0]
+    target_joints = list(initial_joints)
+    target_joints[0] = -0.5
+    robot = KinovaGen3RobotiqGripperPyBulletRobot(physics_client_id)
+    robot.set_joints(target_joints)
+    ee_target = robot.get_end_effector_pose()
+    robot.set_joints(initial_joints)
+    ee_initial = robot.get_end_effector_pose()
+    seed = 123
+    initial_roll = p.getEulerFromQuaternion(ee_initial.orientation)[0]
+    target_roll = p.getEulerFromQuaternion(ee_target.orientation)[0]
+    assert np.isclose(initial_roll, target_roll)
+    roll_tolerance = 0.5
+
+    # Add blocks to prevent direct movement.
+    block1_pose = (0.0, 0.5, 0.1)
+    block1_orientation = (0.0, 0.0, 0.0, 1.0)
+    block1_id = create_pybullet_block(
+        color=(1.0, 0.0, 0.0, 1.0),
+        half_extents=(0.1, 0.1, 0.1),
+        physics_client_id=physics_client_id,
+    )
+    p.resetBasePositionAndOrientation(
+        block1_id, block1_pose, block1_orientation, physicsClientId=physics_client_id
+    )
+    block2_pose = (0.0, -0.5, 0.1)
+    block2_orientation = (0.0, 0.0, 0.0, 1.0)
+    block2_id = create_pybullet_block(
+        color=(1.0, 0.0, 0.0, 1.0),
+        half_extents=(0.1, 0.1, 0.1),
+        physics_client_id=physics_client_id,
+    )
+    p.resetBasePositionAndOrientation(
+        block2_id, block2_pose, block2_orientation, physicsClientId=physics_client_id
+    )
+    collision_ids = {block1_id, block2_id}
+
+    def _check_hand_orientation(joint_positions):
+        robot.set_joints(joint_positions)
+        ee_pose = robot.get_end_effector_pose()
+        # Prevent rotating the hand by too much.
+        roll = p.getEulerFromQuaternion(ee_pose.orientation)[0]
+        print(roll, initial_roll)
+        return abs(roll - initial_roll) < roll_tolerance
+
+    # Running motion planning WITHOUT the constraint creates a path that
+    # violates it.
+    robot.set_joints(initial_joints)
+    path = run_motion_planning(
+        robot,
+        initial_joints,
+        target_joints,
+        collision_bodies=collision_ids,
+        seed=seed,
+        physics_client_id=physics_client_id,
+    )
+    assert any(not _check_hand_orientation(s) for s in path)
+
+    # Running motion planning WITH the constraint creates a path that works.
+    robot.set_joints(initial_joints)
+    hyperparameters = MotionPlanningHyperparameters(
+        birrt_num_iters=1000, birrt_num_attempts=50
+    )
+    path = run_motion_planning(
+        robot,
+        initial_joints,
+        target_joints,
+        collision_bodies=collision_ids,
+        seed=seed,
+        physics_client_id=physics_client_id,
+        hyperparameters=hyperparameters,
+        additional_state_constraint_fn=_check_hand_orientation,
+    )
+    assert all(_check_hand_orientation(s) for s in path)
 
 
 def test_select_shortest_motion_plan(physics_client_id):
