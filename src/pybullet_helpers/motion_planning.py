@@ -2,22 +2,26 @@
 
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass
 from functools import partial
-from typing import Callable, Collection, Iterable, Iterator, Optional, Sequence
+from typing import Callable, Collection, Iterable, Iterator, Optional
 
 import numpy as np
-import pybullet as p
 from numpy.typing import NDArray
 from tomsutils.motion_planning import BiRRT
 
+from pybullet_helpers.geometry import Pose, multiply_poses
+from pybullet_helpers.inverse_kinematics import (
+    check_collisions_with_held_object,
+    sample_collision_free_inverse_kinematics,
+)
 from pybullet_helpers.joint import (
     JointInfo,
     JointPositions,
     get_joint_infos,
     get_jointwise_difference,
 )
-from pybullet_helpers.link import get_link_state
 from pybullet_helpers.robots.single_arm import (
     SingleArmPyBulletRobot,
     SingleArmTwoFingerGripperPyBulletRobot,
@@ -46,7 +50,7 @@ def run_motion_planning(
     hyperparameters: MotionPlanningHyperparameters | None = None,
     additional_state_constraint_fn: Callable[[JointPositions], bool] | None = None,
     sampling_fn: Callable[[JointPositions], JointPositions] | None = None,
-) -> Optional[Sequence[JointPositions]]:
+) -> Optional[list[JointPositions]]:
     """Run BiRRT to find a collision-free sequence of joint positions.
 
     Note that this function changes the state of the robot.
@@ -125,34 +129,17 @@ def run_motion_planning(
     return birrt.query(initial_positions, target_positions)
 
 
-def filter_collision_free_joint_generator(
-    generator: Iterator[JointPositions],
-    robot: SingleArmPyBulletRobot,
-    collision_bodies: Collection[int],
-    physics_client_id: int,
-    held_object: int | None = None,
-    base_link_to_held_obj: NDArray | None = None,
-) -> Iterator[JointPositions]:
-    """Given a generator of joint positions, yield only those that pass
-    collision checks.
-
-    The typical use case is that we want to explore the null space of a
-    target end effector position to find joint positions that have no
-    collisions before then calling motion planning.
-    """
-
-    _collision_fn = partial(
-        check_collisions_with_held_object,
-        robot,
-        collision_bodies,
-        physics_client_id,
-        held_object,
-        base_link_to_held_obj,
-    )
-
-    for candidate in generator:
-        if not _collision_fn(candidate):
-            yield candidate
+def get_motion_plan_distance(
+    motion_plan: list[JointPositions],
+    joint_distance_fn: Callable[[JointPositions, JointPositions], float],
+) -> float:
+    """Get the total distance for a motion plan under a given metric."""
+    mp_dist = 0.0
+    for t in range(len(motion_plan) - 1):
+        q1, q2 = motion_plan[t], motion_plan[t + 1]
+        dist = joint_distance_fn(q2, q1)
+        mp_dist += dist
+    return mp_dist
 
 
 def select_shortest_motion_plan(
@@ -165,11 +152,7 @@ def select_shortest_motion_plan(
     shortest_length = np.inf
 
     for motion_plan in motion_plans:
-        mp_dist = 0.0
-        for t in range(len(motion_plan) - 1):
-            q1, q2 = motion_plan[t], motion_plan[t + 1]
-            dist = joint_distance_fn(q2, q1)
-            mp_dist += dist
+        mp_dist = get_motion_plan_distance(motion_plan, joint_distance_fn)
         if mp_dist < shortest_length:
             shortest_motion_plan = motion_plan
             shortest_length = mp_dist
@@ -178,58 +161,86 @@ def select_shortest_motion_plan(
     return shortest_motion_plan
 
 
-def set_robot_joints_with_held_object(
+def run_smooth_motion_planning_to_pose(
+    target_pose: Pose | Callable[[], Pose],
     robot: SingleArmPyBulletRobot,
-    physics_client_id: int,
-    held_object: int | None,
-    base_link_to_held_obj: NDArray | None,
-    joint_state: JointPositions,
-) -> None:
-    """Set a robot's joints and apply a transform to a held object."""
+    collision_ids: set[int],
+    plan_frame_from_end_effector_frame: Pose,
+    seed: int,
+    held_object: int | None = None,
+    base_link_to_held_obj: NDArray | None = None,
+    max_time: float = 5.0,
+    joint_geometric_scalar: float = 0.9,
+) -> Optional[list[JointPositions]]:
+    """A naive smooth motion planner that reruns motion planning multiple times
+    and then picks the "smoothest" result according to a geometric weighting of
+    the joints (so the lowest joint should move the least)."""
 
-    robot.set_joints(joint_state)
-    if held_object is not None:
-        assert base_link_to_held_obj is not None
-        world_to_base_link = get_link_state(
-            robot.robot_id,
-            robot.end_effector_id,
-            physics_client_id=physics_client_id,
-        ).com_pose
-        world_to_held_obj = p.multiplyTransforms(
-            world_to_base_link[0],
-            world_to_base_link[1],
-            base_link_to_held_obj[0],
-            base_link_to_held_obj[1],
+    # Target poses can be sampled or singletons.
+    if isinstance(target_pose, Pose):
+        target_pose_sampler: Callable[[], Pose] = lambda: target_pose  # type: ignore
+    else:
+        target_pose_sampler = target_pose
+
+    # Set up the geometrically weighted score function.
+    def _score_motion_plan(plan: list[JointPositions]) -> float:
+        weights = [1.0]
+        num_joints = len(robot.arm_joints)
+        for _ in range(num_joints - 1):
+            weights.append(weights[-1] * joint_geometric_scalar)
+        joint_infos = get_joint_infos(
+            robot.robot_id, robot.arm_joints, robot.physics_client_id
         )
-        p.resetBasePositionAndOrientation(
-            held_object,
-            world_to_held_obj[0],
-            world_to_held_obj[1],
-            physicsClientId=physics_client_id,
+        dist_fn = partial(
+            get_joint_positions_distance,
+            robot,
+            joint_infos,
+            metric="weighted_joints",
+            weights=weights,
         )
+        return get_motion_plan_distance(plan, dist_fn)
 
+    robot_initial_joints = robot.get_joint_positions()
 
-def check_collisions_with_held_object(
-    robot: SingleArmPyBulletRobot,
-    collision_bodies: Collection[int],
-    physics_client_id: int,
-    held_object: int | None,
-    base_link_to_held_obj: NDArray | None,
-    joint_state: JointPositions,
-) -> bool:
-    """Check if robot or a held object are in collision with certain bodies."""
-    set_robot_joints_with_held_object(
-        robot, physics_client_id, held_object, base_link_to_held_obj, joint_state
-    )
-    p.performCollisionDetection(physicsClientId=physics_client_id)
-    for body in collision_bodies:
-        if p.getContactPoints(robot.robot_id, body, physicsClientId=physics_client_id):
-            return True
-        if held_object is not None and p.getContactPoints(
-            held_object, body, physicsClientId=physics_client_id
+    start_time = time.perf_counter()
+    best_motion_plan: list[JointPositions] | None = None
+    best_motion_plan_score: float = np.inf  # lower is better
+
+    while time.perf_counter() - start_time < max_time:
+        # Sample a target pose.
+        target_pose = target_pose_sampler()
+        # Transform to end effector space.
+        end_effector_pose = multiply_poses(
+            target_pose, plan_frame_from_end_effector_frame
+        )
+        # Sample a collision-free joint target. If none exist, we'll just
+        # go back to sampling a different target pose.
+        for target_joint_positions in sample_collision_free_inverse_kinematics(
+            robot,
+            end_effector_pose,
+            collision_ids,
+            max_candidates=1,
         ):
-            return True
-    return False
+            # Try motion planning to the target.
+            robot.set_joints(robot_initial_joints)
+            motion_plan = run_motion_planning(
+                robot,
+                robot_initial_joints,
+                target_joint_positions,
+                collision_ids,
+                seed,
+                robot.physics_client_id,
+                held_object=held_object,
+                base_link_to_held_obj=base_link_to_held_obj,
+            )
+            # Score the motion plan.
+            if motion_plan is not None:
+                score = _score_motion_plan(motion_plan)
+                if score < best_motion_plan_score:
+                    best_motion_plan = motion_plan
+                    best_motion_plan_score = score
+
+    return best_motion_plan
 
 
 def get_joint_positions_distance(
