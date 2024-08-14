@@ -13,7 +13,7 @@ import numpy as np
 import pybullet as p
 from numpy.typing import NDArray
 
-from pybullet_helpers.geometry import Pose, Pose3D, Quaternion
+from pybullet_helpers.geometry import Pose, Pose3D, Quaternion, multiply_poses
 from pybullet_helpers.ikfast.utils import (
     ikfast_closest_inverse_kinematics,
     ikfast_inverse_kinematics,
@@ -325,6 +325,16 @@ def pybullet_inverse_kinematics(
         joint_vals.append(joint_val)
 
     return joint_vals
+
+
+def end_effector_transform_to_joints(
+    robot: SingleArmPyBulletRobot, transform: Pose
+) -> JointPositions:
+    """Given a transform for the robot's end effectors relative to the current
+    joint state, return a next joint state."""
+    current_end_effector_pose = robot.get_end_effector_pose()
+    next_end_effector_pose = multiply_poses(current_end_effector_pose, transform)
+    return inverse_kinematics(robot, next_end_effector_pose, set_joints=False)
 
 
 def _validate_joints_state(
