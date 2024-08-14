@@ -171,6 +171,7 @@ def run_smooth_motion_planning_to_pose(
     base_link_to_held_obj: NDArray | None = None,
     max_time: float = 5.0,
     joint_geometric_scalar: float = 0.9,
+    sampling_fn: Callable[[JointPositions], JointPositions] | None = None,
 ) -> Optional[list[JointPositions]]:
     """A naive smooth motion planner that reruns motion planning multiple times
     and then picks the "smoothest" result according to a geometric weighting of
@@ -232,6 +233,7 @@ def run_smooth_motion_planning_to_pose(
                 robot.physics_client_id,
                 held_object=held_object,
                 base_link_to_held_obj=base_link_to_held_obj,
+                sampling_fn=sampling_fn,
             )
             # Score the motion plan.
             if motion_plan is not None:
