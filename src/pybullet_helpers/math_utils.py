@@ -37,7 +37,7 @@ def get_poses_facing_line(
         ortho_vector = np.array([1, 0, 0])
     else:
         ortho_vector = np.cross(axis, [0, 0, 1])
-    assert np.isclose(np.linalg.norm(ortho_vector), 1.0)
+        ortho_vector = ortho_vector / np.linalg.norm(ortho_vector)
 
     # Compute points on the circle.
     poses = []
