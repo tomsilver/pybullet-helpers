@@ -11,7 +11,6 @@ import pybullet as p
 from numpy.typing import NDArray
 from tomsutils.motion_planning import BiRRT
 
-from pybullet_helpers.geometry import Pose
 from pybullet_helpers.joint import (
     JointInfo,
     JointPositions,
@@ -101,8 +100,6 @@ def run_motion_planning(
     if sampling_fn is None:
         sampling_fn = _joint_space_sample_fn
 
-    from pybullet_helpers.inverse_kinematics import inverse_kinematics, InverseKinematicsError
-
     def _extend_fn(
         pt1: JointPositions, pt2: JointPositions
     ) -> Iterator[JointPositions]:
@@ -111,18 +108,8 @@ def run_motion_planning(
         num = int(np.ceil(max(abs(pt1_arr - pt2_arr)))) * num_interp
         if num == 0:
             yield pt2
-        # for i in range(1, num + 1):
-        #     yield list(pt1_arr * (1 - i / num) + pt2_arr * i / num)
-        ee1_pose = robot.forward_kinematics(pt1)
-        ee2_pose = robot.forward_kinematics(pt2)
         for i in range(1, num + 1):
-            position = list(np.array(ee1_pose.position) * (1 - i / num) + np.array(ee2_pose.position) * i / num)
-            quat = list(np.array(ee1_pose.orientation) * (1 - i / num) + np.array(ee2_pose.orientation) * i / num)
-            pose = Pose(position, quat)
-            try:
-                yield inverse_kinematics(robot, pose)
-            except InverseKinematicsError:
-                break
+            yield list(pt1_arr * (1 - i / num) + pt2_arr * i / num)
 
     birrt = BiRRT(
         sampling_fn,
