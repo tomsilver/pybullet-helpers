@@ -337,6 +337,38 @@ def end_effector_transform_to_joints(
     return inverse_kinematics(robot, next_end_effector_pose, set_joints=False)
 
 
+def sample_joints_from_task_space_bounds(
+    rng: np.random.Generator,
+    robot: SingleArmPyBulletRobot,
+    min_x: float,
+    max_x: float,
+    min_y: float,
+    max_y: float,
+    min_z: float,
+    max_z: float,
+    min_roll: float,
+    max_roll: float,
+    min_pitch: float,
+    max_pitch: float,
+    min_yaw: float,
+    max_yaw: float,
+) -> JointPositions:
+    """Sample from end effector space bounds and return joints."""
+    while True:
+        x = rng.uniform(min_x, max_x)
+        y = rng.uniform(min_y, max_y)
+        z = rng.uniform(min_z, max_z)
+        roll = rng.uniform(min_roll, max_roll)
+        pitch = rng.uniform(min_pitch, max_pitch)
+        yaw = rng.uniform(min_yaw, max_yaw)
+        quat = tuple(p.getQuaternionFromEuler((roll, pitch, yaw)))
+        pose = Pose((x, y, z), quat)
+        try:
+            return inverse_kinematics(robot, pose)
+        except InverseKinematicsError:
+            continue
+
+
 def _validate_joints_state(
     robot: SingleArmPyBulletRobot,
     joint_positions: JointPositions,

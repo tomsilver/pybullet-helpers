@@ -7,8 +7,8 @@ import pybullet as p
 
 from pybullet_helpers.geometry import Pose
 from pybullet_helpers.inverse_kinematics import (
-    InverseKinematicsError,
     inverse_kinematics,
+    sample_joints_from_task_space_bounds,
 )
 from pybullet_helpers.joint import get_joint_infos
 from pybullet_helpers.motion_planning import (
@@ -256,19 +256,22 @@ def test_task_space_motion_planning(physics_client_id):
 
     def _sample_fn(current_joints):
         del current_joints  # not used
-        while True:
-            x = rng.uniform(-2.0, 2.0)
-            y = rng.uniform(-2.0, 2.0)
-            z = rng.uniform(-1.0, 1.0)
-            roll = initial_roll  # NOTE: constrained
-            pitch = rng.uniform(-np.pi, np.pi)
-            yaw = rng.uniform(-np.pi, np.pi)
-            quat = p.getQuaternionFromEuler((roll, pitch, yaw))
-            pose = Pose((x, y, z), quat)
-            try:
-                return inverse_kinematics(robot, pose)
-            except InverseKinematicsError:
-                continue
+        return sample_joints_from_task_space_bounds(
+            rng,
+            robot,
+            -2.0,
+            2.0,
+            -2.0,
+            2.0,
+            -1.0,
+            1.0,
+            initial_roll - 1e-6,
+            initial_roll + 1e-6,
+            -np.pi,
+            np.pi,
+            -np.pi,
+            np.pi,
+        )
 
     # Running motion planning WITH the constraint creates a path that works.
     robot.set_joints(initial_joints)
