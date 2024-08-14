@@ -184,7 +184,6 @@ def test_motion_planning_additional_constraint(physics_client_id):
         ee_pose = robot.get_end_effector_pose()
         # Prevent rotating the hand by too much.
         roll = p.getEulerFromQuaternion(ee_pose.orientation)[0]
-        print(roll, initial_roll)
         return abs(roll - initial_roll) < roll_tolerance
 
     # Running motion planning WITHOUT the constraint creates a path that
