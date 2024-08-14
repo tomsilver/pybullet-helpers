@@ -7,7 +7,7 @@ given robot.
 from dataclasses import dataclass
 from functools import partial
 from itertools import islice
-from typing import Iterator, Sequence
+from typing import Collection, Iterator, Sequence
 
 import numpy as np
 import pybullet as p
@@ -20,7 +20,6 @@ from pybullet_helpers.ikfast.utils import (
 )
 from pybullet_helpers.joint import JointPositions, get_joint_infos, get_joints
 from pybullet_helpers.link import get_link_pose, get_link_state
-from pybullet_helpers.motion_planning import filter_collision_free_joint_generator
 from pybullet_helpers.robots.single_arm import (
     SingleArmPyBulletRobot,
     SingleArmTwoFingerGripperPyBulletRobot,
@@ -107,6 +106,90 @@ def inverse_kinematics(
         robot.set_joints(joint_positions)
 
     return joint_positions
+
+
+def set_robot_joints_with_held_object(
+    robot: SingleArmPyBulletRobot,
+    physics_client_id: int,
+    held_object: int | None,
+    base_link_to_held_obj: NDArray | None,
+    joint_state: JointPositions,
+) -> None:
+    """Set a robot's joints and apply a transform to a held object."""
+
+    robot.set_joints(joint_state)
+    if held_object is not None:
+        assert base_link_to_held_obj is not None
+        world_to_base_link = get_link_state(
+            robot.robot_id,
+            robot.end_effector_id,
+            physics_client_id=physics_client_id,
+        ).com_pose
+        world_to_held_obj = p.multiplyTransforms(
+            world_to_base_link[0],
+            world_to_base_link[1],
+            base_link_to_held_obj[0],
+            base_link_to_held_obj[1],
+        )
+        p.resetBasePositionAndOrientation(
+            held_object,
+            world_to_held_obj[0],
+            world_to_held_obj[1],
+            physicsClientId=physics_client_id,
+        )
+
+
+def check_collisions_with_held_object(
+    robot: SingleArmPyBulletRobot,
+    collision_bodies: Collection[int],
+    physics_client_id: int,
+    held_object: int | None,
+    base_link_to_held_obj: NDArray | None,
+    joint_state: JointPositions,
+) -> bool:
+    """Check if robot or a held object are in collision with certain bodies."""
+    set_robot_joints_with_held_object(
+        robot, physics_client_id, held_object, base_link_to_held_obj, joint_state
+    )
+    p.performCollisionDetection(physicsClientId=physics_client_id)
+    for body in collision_bodies:
+        if p.getContactPoints(robot.robot_id, body, physicsClientId=physics_client_id):
+            return True
+        if held_object is not None and p.getContactPoints(
+            held_object, body, physicsClientId=physics_client_id
+        ):
+            return True
+    return False
+
+
+def filter_collision_free_joint_generator(
+    generator: Iterator[JointPositions],
+    robot: SingleArmPyBulletRobot,
+    collision_bodies: Collection[int],
+    physics_client_id: int,
+    held_object: int | None = None,
+    base_link_to_held_obj: NDArray | None = None,
+) -> Iterator[JointPositions]:
+    """Given a generator of joint positions, yield only those that pass
+    collision checks.
+
+    The typical use case is that we want to explore the null space of a
+    target end effector position to find joint positions that have no
+    collisions before then calling motion planning.
+    """
+
+    _collision_fn = partial(
+        check_collisions_with_held_object,
+        robot,
+        collision_bodies,
+        physics_client_id,
+        held_object,
+        base_link_to_held_obj,
+    )
+
+    for candidate in generator:
+        if not _collision_fn(candidate):
+            yield candidate
 
 
 def sample_collision_free_inverse_kinematics(
