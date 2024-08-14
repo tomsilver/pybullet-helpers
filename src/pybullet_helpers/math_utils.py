@@ -2,7 +2,13 @@
 
 import numpy as np
 
-from pybullet_helpers.geometry import Pose, quat_from_matrix
+from pybullet_helpers.geometry import (
+    Pose,
+    Pose3D,
+    Quaternion,
+    matrix_from_quat,
+    quat_from_matrix,
+)
 
 
 def get_poses_facing_line(
@@ -54,3 +60,27 @@ def get_poses_facing_line(
         poses.append(Pose(position=tuple(position), orientation=orientation))
 
     return poses
+
+
+def rotate_about_point(point: Pose3D, rotation: Quaternion, current_pose: Pose) -> Pose:
+    """Rotate a current pose by a given rotation around a point."""
+
+    # First rotate the current position.
+    current_position = current_pose.position
+
+    # Translate the current_position.
+    translated_position = np.subtract(current_position, point)
+
+    # Apply the rotation.
+    rotation_matrix = matrix_from_quat(rotation)
+    rotated_position = rotation_matrix @ translated_position
+
+    # Translate back to original position.
+    new_position = tuple(rotated_position + point)
+
+    # Now rotate the current orientation.
+    current_orientation_matrix = matrix_from_quat(current_pose.orientation)
+    new_orientation_matrix = rotation_matrix @ current_orientation_matrix
+    new_orientation = quat_from_matrix(new_orientation_matrix)
+
+    return Pose(new_position, new_orientation)
