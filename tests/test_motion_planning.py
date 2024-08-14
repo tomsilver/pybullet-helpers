@@ -6,7 +6,10 @@ import numpy as np
 import pybullet as p
 
 from pybullet_helpers.geometry import Pose
-from pybullet_helpers.inverse_kinematics import inverse_kinematics
+from pybullet_helpers.inverse_kinematics import (
+    InverseKinematicsError,
+    inverse_kinematics,
+)
 from pybullet_helpers.joint import get_joint_infos
 from pybullet_helpers.motion_planning import (
     MotionPlanningHyperparameters,
@@ -181,7 +184,6 @@ def test_motion_planning_additional_constraint(physics_client_id):
         ee_pose = robot.get_end_effector_pose()
         # Prevent rotating the hand by too much.
         roll = p.getEulerFromQuaternion(ee_pose.orientation)[0]
-        print(roll, initial_roll)
         return abs(roll - initial_roll) < roll_tolerance
 
     # Running motion planning WITHOUT the constraint creates a path that
@@ -199,9 +201,6 @@ def test_motion_planning_additional_constraint(physics_client_id):
 
     # Running motion planning WITH the constraint creates a path that works.
     robot.set_joints(initial_joints)
-    hyperparameters = MotionPlanningHyperparameters(
-        birrt_num_iters=1000, birrt_num_attempts=50
-    )
     path = run_motion_planning(
         robot,
         initial_joints,
@@ -209,10 +208,80 @@ def test_motion_planning_additional_constraint(physics_client_id):
         collision_bodies=collision_ids,
         seed=seed,
         physics_client_id=physics_client_id,
-        hyperparameters=hyperparameters,
         additional_state_constraint_fn=_check_hand_orientation,
     )
     assert all(_check_hand_orientation(s) for s in path)
+
+
+def test_task_space_motion_planning(physics_client_id):
+    """Tests for run_motion_planning with a custom sampling function."""
+    initial_joints = [2.5, -1.5, -2.1, 1.9, 2.9, 1.5, -2.6, 0.0, 0.0]
+    target_joints = list(initial_joints)
+    target_joints[0] = -0.5
+    robot = KinovaGen3RobotiqGripperPyBulletRobot(physics_client_id)
+    robot.set_joints(target_joints)
+    ee_target = robot.get_end_effector_pose()
+    robot.set_joints(initial_joints)
+    ee_initial = robot.get_end_effector_pose()
+    seed = 123
+    initial_roll = p.getEulerFromQuaternion(ee_initial.orientation)[0]
+    target_roll = p.getEulerFromQuaternion(ee_target.orientation)[0]
+    assert np.isclose(initial_roll, target_roll)
+
+    # Add blocks to prevent direct movement.
+    block1_pose = (0.0, 0.5, 0.1)
+    block1_orientation = (0.0, 0.0, 0.0, 1.0)
+    block1_id = create_pybullet_block(
+        color=(1.0, 0.0, 0.0, 1.0),
+        half_extents=(0.1, 0.1, 0.1),
+        physics_client_id=physics_client_id,
+    )
+    p.resetBasePositionAndOrientation(
+        block1_id, block1_pose, block1_orientation, physicsClientId=physics_client_id
+    )
+    block2_pose = (0.0, -0.5, 0.1)
+    block2_orientation = (0.0, 0.0, 0.0, 1.0)
+    block2_id = create_pybullet_block(
+        color=(1.0, 0.0, 0.0, 1.0),
+        half_extents=(0.1, 0.1, 0.1),
+        physics_client_id=physics_client_id,
+    )
+    p.resetBasePositionAndOrientation(
+        block2_id, block2_pose, block2_orientation, physicsClientId=physics_client_id
+    )
+    collision_ids = {block1_id, block2_id}
+
+    # Create task space sampler that constrains roll.
+    rng = np.random.default_rng(123)
+
+    def _sample_fn(current_joints):
+        del current_joints  # not used
+        while True:
+            x = rng.uniform(-2.0, 2.0)
+            y = rng.uniform(-2.0, 2.0)
+            z = rng.uniform(-1.0, 1.0)
+            roll = initial_roll  # NOTE: constrained
+            pitch = rng.uniform(-np.pi, np.pi)
+            yaw = rng.uniform(-np.pi, np.pi)
+            quat = p.getQuaternionFromEuler((roll, pitch, yaw))
+            pose = Pose((x, y, z), quat)
+            try:
+                return inverse_kinematics(robot, pose)
+            except InverseKinematicsError:
+                continue
+
+    # Running motion planning WITH the constraint creates a path that works.
+    robot.set_joints(initial_joints)
+    path = run_motion_planning(
+        robot,
+        initial_joints,
+        target_joints,
+        collision_bodies=collision_ids,
+        seed=seed,
+        physics_client_id=physics_client_id,
+        sampling_fn=_sample_fn,
+    )
+    assert path is not None
 
 
 def test_select_shortest_motion_plan(physics_client_id):

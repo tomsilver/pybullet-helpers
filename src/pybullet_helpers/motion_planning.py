@@ -45,6 +45,7 @@ def run_motion_planning(
     base_link_to_held_obj: NDArray | None = None,
     hyperparameters: MotionPlanningHyperparameters | None = None,
     additional_state_constraint_fn: Callable[[JointPositions], bool] | None = None,
+    sampling_fn: Callable[[JointPositions], JointPositions] | None = None,
 ) -> Optional[Sequence[JointPositions]]:
     """Run BiRRT to find a collision-free sequence of joint positions.
 
@@ -58,6 +59,8 @@ def run_motion_planning(
     that. The additional state constraint function can assume that the
     robot is already in the given joint positions because it will be
     called right after collision checking, which sets the robot state.
+
+    If sampling_fn is not provided, defaults to uniform joint space.
     """
     if hyperparameters is None:
         hyperparameters = MotionPlanningHyperparameters()
@@ -86,13 +89,16 @@ def run_motion_planning(
         get_joint_positions_distance, robot, joint_infos, metric="end_effector"
     )
 
-    def _sample_fn(pt: JointPositions) -> JointPositions:
+    def _joint_space_sample_fn(pt: JointPositions) -> JointPositions:
         new_pt: JointPositions = list(joint_space.sample())
         # Don't change the fingers.
         if isinstance(robot, SingleArmTwoFingerGripperPyBulletRobot):
             new_pt[robot.left_finger_joint_idx] = pt[robot.left_finger_joint_idx]
             new_pt[robot.right_finger_joint_idx] = pt[robot.right_finger_joint_idx]
         return new_pt
+
+    if sampling_fn is None:
+        sampling_fn = _joint_space_sample_fn
 
     def _extend_fn(
         pt1: JointPositions, pt2: JointPositions
@@ -106,7 +112,7 @@ def run_motion_planning(
             yield list(pt1_arr * (1 - i / num) + pt2_arr * i / num)
 
     birrt = BiRRT(
-        _sample_fn,
+        sampling_fn,
         _extend_fn,
         _collision_fn,
         _distance_fn,
