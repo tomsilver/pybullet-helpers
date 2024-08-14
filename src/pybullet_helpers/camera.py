@@ -47,3 +47,62 @@ def capture_image(
     rgb_array = np.array(px).reshape((image_height, image_width, 4))
     rgb_array = rgb_array[:, :, :3]
     return rgb_array
+
+
+def capture_superimposed_image(
+    physics_client_id: int,
+    outer_camera_distance: float = 1.5,
+    outer_camera_yaw: float = 0,
+    outer_camera_pitch: float = -15,
+    outer_camera_target: Pose3D = (0, 0, 0.5),
+    outer_image_width: int = 900,
+    outer_image_height: int = 900,
+    inner_camera_distance: float = 1.0,
+    inner_camera_yaw: float = 0,
+    inner_camera_pitch: float = -15,
+    inner_camera_target: Pose3D = (0, 0, 0.5),
+    inner_image_width: int = 300,
+    inner_image_height: int = 300,
+    inner_row_offset: int = 5,
+    inner_col_offset: int = 5,
+    inner_border_size: int = 2,
+    inner_border_color: tuple[float, float, float] = (200.0, 200.0, 200.0),
+) -> Image:
+    """Get two images and superimpose them."""
+
+    outer_image = capture_image(
+        physics_client_id,
+        camera_target=outer_camera_target,
+        camera_yaw=outer_camera_yaw,
+        camera_distance=outer_camera_distance,
+        camera_pitch=outer_camera_pitch,
+        image_width=outer_image_width,
+        image_height=outer_image_height,
+    )
+
+    inner_image = capture_image(
+        physics_client_id,
+        camera_target=inner_camera_target,
+        camera_yaw=inner_camera_yaw,
+        camera_distance=inner_camera_distance,
+        camera_pitch=inner_camera_pitch,
+        image_width=inner_image_width,
+        image_height=inner_image_height,
+    )
+
+    combined_image = outer_image.copy()
+
+    r_start = inner_row_offset
+    c_start = inner_col_offset
+    r_end = inner_image_height + 2 * inner_border_size + inner_row_offset
+    c_end = inner_image_width + 2 * inner_border_size + inner_col_offset
+    for i, v in enumerate(inner_border_color):
+        combined_image[r_start:r_end, c_start:c_end, i] = v
+
+    r_start = inner_row_offset + inner_border_size
+    c_start = inner_col_offset + inner_border_size
+    r_end = inner_image_height + inner_row_offset + inner_border_size
+    c_end = inner_image_width + inner_col_offset + inner_border_size
+    combined_image[r_start:r_end, c_start:c_end] = inner_image
+
+    return combined_image.astype(np.uint8)
