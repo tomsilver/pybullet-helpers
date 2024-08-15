@@ -282,15 +282,18 @@ def smoothly_follow_end_effector_path(
             collision_ids,
             held_object,
             base_link_to_held_obj,
+            max_time=1000,  # TODO
             max_candidates=max_smoothing_iters_per_step,
         ):
             dist = joint_distance_fn(current_joints, neighbor)
+            print(neighbor)
+            print(dist)
+            print()
             if dist < closest_dist:
                 closest_dist = dist
                 closest_neighbor = neighbor
         if closest_neighbor is None:
             raise InverseKinematicsError
-        print(closest_dist)
         joint_position_path.append(closest_neighbor)
 
     return joint_position_path

@@ -15,7 +15,7 @@ def _connect_to_pybullet():
     # Uncomment for debugging.
     from pybullet_helpers.gui import create_gui_connection
 
-    physics_client_id = create_gui_connection(camera_yaw=180)
+    physics_client_id = create_gui_connection(camera_yaw=90)
     # physics_client_id = p.connect(p.DIRECT)
     yield physics_client_id
     p.disconnect(physics_client_id)
