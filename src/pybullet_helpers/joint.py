@@ -1,6 +1,6 @@
 """PyBullet helper class for joint utilities."""
 
-from typing import NamedTuple, Sequence
+from typing import Iterator, NamedTuple, Sequence
 
 import numpy as np
 import pybullet as p
@@ -203,3 +203,22 @@ def get_jointwise_difference(
             joint_diff = v2 - v1
         diff.append(joint_diff)
     return diff
+
+
+def interpolate_joints(
+    joint_infos: list[JointInfo],
+    q1: JointPositions,
+    q2: JointPositions,
+    num_interp_per_unit: int = 10,
+    include_start: bool = True,
+) -> Iterator[JointPositions]:
+    """Interpolate between two joint positions in joint space."""
+    # Determine the number of interpolation steps.
+    dists_arr = np.array(get_jointwise_difference(joint_infos, q2, q1))
+    num = int(np.ceil(max(abs(dists_arr)))) * num_interp_per_unit
+    joint_arr = np.array(q1)
+    for i in range(num + 1):
+        if i == 0 and not include_start:
+            continue
+        joint_arr_i = joint_arr + (i / num) * dists_arr
+        yield list(joint_arr_i)

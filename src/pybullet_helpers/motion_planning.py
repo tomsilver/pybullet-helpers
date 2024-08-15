@@ -22,6 +22,7 @@ from pybullet_helpers.joint import (
     JointPositions,
     get_joint_infos,
     get_jointwise_difference,
+    interpolate_joints,
 )
 from pybullet_helpers.robots.single_arm import (
     SingleArmPyBulletRobot,
@@ -108,13 +109,9 @@ def run_motion_planning(
     def _extend_fn(
         pt1: JointPositions, pt2: JointPositions
     ) -> Iterator[JointPositions]:
-        pt1_arr = np.array(pt1)
-        pt2_arr = np.array(pt2)
-        num = int(np.ceil(max(abs(pt1_arr - pt2_arr)))) * num_interp
-        if num == 0:
-            yield pt2
-        for i in range(1, num + 1):
-            yield list(pt1_arr * (1 - i / num) + pt2_arr * i / num)
+        yield from interpolate_joints(
+            joint_infos, pt1, pt2, num_interp_per_unit=num_interp, include_start=False
+        )
 
     birrt = BiRRT(
         sampling_fn,
