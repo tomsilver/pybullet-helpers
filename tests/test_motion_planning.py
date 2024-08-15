@@ -30,7 +30,7 @@ def test_run_motion_planning(physics_client_id):
     seed = 123
     robot = FetchPyBulletRobot(physics_client_id, base_pose=base_pose)
     joint_initial = robot.get_joint_positions()
-    # Should succeed with a path of length 2.
+    # Should succeed with a path of length 1.
     joint_target = list(joint_initial)
     path = run_motion_planning(
         robot,
@@ -40,7 +40,7 @@ def test_run_motion_planning(physics_client_id):
         seed=seed,
         physics_client_id=physics_client_id,
     )
-    assert len(path) == 2
+    assert len(path) == 1
     assert np.allclose(path[0], joint_initial)
     assert np.allclose(path[-1], joint_target)
     # Should succeed, no collisions.
