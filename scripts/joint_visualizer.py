@@ -11,13 +11,10 @@ def _main(robot_name: str) -> None:
     p.configureDebugVisualizer(
         p.COV_ENABLE_GUI, True, physicsClientId=physics_client_id
     )
-    # TODO remove
-    initial_joints = [2.5, -1.5, -2.1, 1.9, 2.9, 1.5, -2.6, 0.0, 0.0]
     robot = create_pybullet_robot(
         robot_name,
         physics_client_id,
         control_mode="reset",
-        home_joint_positions=initial_joints,
     )
     run_interactive_joint_gui(robot)
 

@@ -251,25 +251,19 @@ def smoothly_follow_end_effector_path(
     joint_distance_fn: Callable[[JointPositions, JointPositions], float],
     held_object: int | None = None,
     base_link_to_held_obj: NDArray | None = None,
-    final_joints: JointPositions | None = None,
     max_smoothing_iters_per_step: int = 100,
+    include_start: bool = True,
 ) -> list[JointPositions]:
     """Find a smooth (short) joint trajectory that follows the given end
     effector path while avoiding collisions."""
 
     joint_position_path: list[JointPositions] = []
+    if include_start:
+        joint_position_path.append(initial_joints)
+    current_joints = initial_joints
 
-    for i, end_effector_pose in enumerate(end_effector_path):
-        # Special case: known initial joints.
-        if i == 0:
-            joint_position_path.append(initial_joints)
-            continue
-        # Special case: known final joints.
-        if i == len(end_effector_path) - 1 and final_joints is not None:
-            joint_position_path.append(final_joints)
-            break
+    for end_effector_pose in end_effector_path:
         # Get the closest neighbor in joint space.
-        current_joints = joint_position_path[-1]
         robot.set_joints(current_joints)  # for warm starting IK
         closest_neighbor: JointPositions | None = None
         closest_dist = np.inf
@@ -279,19 +273,16 @@ def smoothly_follow_end_effector_path(
             collision_ids,
             held_object,
             base_link_to_held_obj,
-            max_time=1000,  # TODO
             max_candidates=max_smoothing_iters_per_step,
         ):
             dist = joint_distance_fn(current_joints, neighbor)
-            print(neighbor)
-            print(dist)
-            print()
             if dist < closest_dist:
                 closest_dist = dist
                 closest_neighbor = neighbor
         if closest_neighbor is None:
             raise InverseKinematicsError
         joint_position_path.append(closest_neighbor)
+        current_joints = closest_neighbor
 
     return joint_position_path
 

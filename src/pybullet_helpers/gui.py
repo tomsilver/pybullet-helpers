@@ -107,7 +107,6 @@ def run_interactive_joint_gui(robot: SingleArmPyBulletRobot) -> None:
                         frame_id, physicsClientId=robot.physics_client_id
                     )
                 ee_pose = robot.get_end_effector_pose()
-                print(ee_pose)
                 frame_ids = visualize_pose(
                     ee_pose,
                     physics_client_id=robot.physics_client_id,

@@ -10,7 +10,7 @@ from pybullet_helpers.inverse_kinematics import (
     inverse_kinematics,
     sample_joints_from_task_space_bounds,
 )
-from pybullet_helpers.joint import get_joint_infos, get_jointwise_difference
+from pybullet_helpers.joint import get_joint_infos
 from pybullet_helpers.motion_planning import (
     MotionPlanningHyperparameters,
     get_joint_positions_distance,
@@ -316,140 +316,127 @@ def test_select_shortest_motion_plan(physics_client_id):
 
 def test_smoothly_follow_end_effector_path(physics_client_id):
     """Tests for smoothly_follow_end_effector_path()."""
-    # target_joints = list(initial_joints)
-    # target_joints[0] = -0.5
     robot = KinovaGen3RobotiqGripperPyBulletRobot(physics_client_id)
-
     initial_joints = robot.get_joint_positions()
-    ee_pose = robot.get_end_effector_pose()
-    target_pose = Pose((ee_pose.position[0], ee_pose.position[1] - 0.25, ee_pose.position[2]),
-                       ee_pose.orientation)
-    
-    waypoints = [
-        ee_pose,
-        target_pose
-    ]
 
     # Constructed using the joint visualizer.
-    # waypoints = [
-    #     Pose(
-    #         position=(0.5741068720817566, 0.06966808438301086, 0.181205615401268),
-    #         orientation=(
-    #             -0.539107084274292,
-    #             0.4131602644920349,
-    #             -0.45173147320747375,
-    #             0.5784468650817871,
-    #         ),
-    #     ),
-    #     Pose(
-    #         position=(0.5822595357894897, 0.07682612538337708, 0.26875561475753784),
-    #         orientation=(
-    #             -0.47179025411605835,
-    #             0.399135559797287,
-    #             -0.4618518352508545,
-    #             0.6362371444702148,
-    #         ),
-    #     ),
-    #     Pose(
-    #         position=(0.4648642838001251, 0.35892781615257263, 0.2687576711177826),
-    #         orientation=(
-    #             -0.5593748092651367,
-    #             0.26266589760780334,
-    #             -0.2804473042488098,
-    #             0.7344765067100525,
-    #         ),
-    #     ),
-    #     Pose(
-    #         position=(0.4627046287059784, 0.3524962365627289, 0.36749306321144104),
-    #         orientation=(
-    #             -0.47692224383354187,
-    #             0.26456379890441895,
-    #             -0.27181705832481384,
-    #             0.7928850650787354,
-    #         ),
-    #     ),
-    #     Pose(
-    #         position=(0.22300678491592407, 0.5372304320335388, 0.3674944043159485),
-    #         orientation=(
-    #             -0.5293239951133728,
-    #             0.1313922107219696,
-    #             -0.05620665103197098,
-    #             0.8362972140312195,
-    #         ),
-    #     ),
-    #     Pose(
-    #         position=(0.04950527101755142, 0.5752283930778503, 0.38660216331481934),
-    #         orientation=(
-    #             -0.6207988262176514,
-    #             0.0051186466589570045,
-    #             0.012963184155523777,
-    #             0.7838460206985474,
-    #         ),
-    #     ),
-    #     Pose(
-    #         position=(-0.18992702662944794, 0.5452213287353516, 0.3866019546985626),
-    #         orientation=(
-    #             -0.608161985874176,
-    #             -0.12472657114267349,
-    #             0.17647969722747803,
-    #             0.7638306021690369,
-    #         ),
-    #     ),
-    #     Pose(
-    #         position=(-0.34986400604248047, 0.4592755436897278, 0.3866013288497925),
-    #         orientation=(
-    #             -0.6007586121559143,
-    #             -0.1565486639738083,
-    #             0.36909976601600647,
-    #             0.6916263699531555,
-    #         ),
-    #     ),
-    #     Pose(
-    #         position=(-0.5148458480834961, 0.2753393352031708, 0.3379387855529785),
-    #         orientation=(
-    #             -0.5763673186302185,
-    #             -0.31119245290756226,
-    #             0.47536608576774597,
-    #             0.5873559713363647,
-    #         ),
-    #     ),
-    # ]
+    waypoints = [
+        Pose(
+            position=(0.5741068720817566, 0.06966808438301086, 0.181205615401268),
+            orientation=(
+                -0.539107084274292,
+                0.4131602644920349,
+                -0.45173147320747375,
+                0.5784468650817871,
+            ),
+        ),
+        Pose(
+            position=(0.5822595357894897, 0.07682612538337708, 0.26875561475753784),
+            orientation=(
+                -0.47179025411605835,
+                0.399135559797287,
+                -0.4618518352508545,
+                0.6362371444702148,
+            ),
+        ),
+        Pose(
+            position=(0.4648642838001251, 0.35892781615257263, 0.2687576711177826),
+            orientation=(
+                -0.5593748092651367,
+                0.26266589760780334,
+                -0.2804473042488098,
+                0.7344765067100525,
+            ),
+        ),
+        Pose(
+            position=(0.4627046287059784, 0.3524962365627289, 0.36749306321144104),
+            orientation=(
+                -0.47692224383354187,
+                0.26456379890441895,
+                -0.27181705832481384,
+                0.7928850650787354,
+            ),
+        ),
+        Pose(
+            position=(0.22300678491592407, 0.5372304320335388, 0.3674944043159485),
+            orientation=(
+                -0.5293239951133728,
+                0.1313922107219696,
+                -0.05620665103197098,
+                0.8362972140312195,
+            ),
+        ),
+        Pose(
+            position=(0.04950527101755142, 0.5752283930778503, 0.38660216331481934),
+            orientation=(
+                -0.6207988262176514,
+                0.0051186466589570045,
+                0.012963184155523777,
+                0.7838460206985474,
+            ),
+        ),
+        Pose(
+            position=(-0.18992702662944794, 0.5452213287353516, 0.3866019546985626),
+            orientation=(
+                -0.608161985874176,
+                -0.12472657114267349,
+                0.17647969722747803,
+                0.7638306021690369,
+            ),
+        ),
+        Pose(
+            position=(-0.34986400604248047, 0.4592755436897278, 0.3866013288497925),
+            orientation=(
+                -0.6007586121559143,
+                -0.1565486639738083,
+                0.36909976601600647,
+                0.6916263699531555,
+            ),
+        ),
+        Pose(
+            position=(-0.5148458480834961, 0.2753393352031708, 0.3379387855529785),
+            orientation=(
+                -0.5763673186302185,
+                -0.31119245290756226,
+                0.47536608576774597,
+                0.5873559713363647,
+            ),
+        ),
+    ]
 
     # Add blocks to prevent direct movement.
-    # block1_pose = (0.0, 0.5, 0.1)
-    # block1_orientation = (0.0, 0.0, 0.0, 1.0)
-    # block1_id = create_pybullet_block(
-    #     color=(1.0, 0.0, 0.0, 1.0),
-    #     half_extents=(0.1, 0.1, 0.1),
-    #     physics_client_id=physics_client_id,
-    # )
-    # p.resetBasePositionAndOrientation(
-    #     block1_id, block1_pose, block1_orientation, physicsClientId=physics_client_id
-    # )
-    # block2_pose = (0.0, -0.5, 0.1)
-    # block2_orientation = (0.0, 0.0, 0.0, 1.0)
-    # block2_id = create_pybullet_block(
-    #     color=(1.0, 0.0, 0.0, 1.0),
-    #     half_extents=(0.1, 0.1, 0.1),
-    #     physics_client_id=physics_client_id,
-    # )
-    # p.resetBasePositionAndOrientation(
-    #     block2_id, block2_pose, block2_orientation, physicsClientId=physics_client_id
-    # )
-    # collision_ids = {block1_id, block2_id}
-
-    collision_ids = set()
+    block1_pose = (0.0, 0.5, 0.1)
+    block1_orientation = (0.0, 0.0, 0.0, 1.0)
+    block1_id = create_pybullet_block(
+        color=(1.0, 0.0, 0.0, 1.0),
+        half_extents=(0.1, 0.1, 0.1),
+        physics_client_id=physics_client_id,
+    )
+    p.resetBasePositionAndOrientation(
+        block1_id, block1_pose, block1_orientation, physicsClientId=physics_client_id
+    )
+    block2_pose = (0.0, -0.5, 0.1)
+    block2_orientation = (0.0, 0.0, 0.0, 1.0)
+    block2_id = create_pybullet_block(
+        color=(1.0, 0.0, 0.0, 1.0),
+        half_extents=(0.1, 0.1, 0.1),
+        physics_client_id=physics_client_id,
+    )
+    p.resetBasePositionAndOrientation(
+        block2_id, block2_pose, block2_orientation, physicsClientId=physics_client_id
+    )
+    collision_ids = {block1_id, block2_id}
 
     joint_geometric_scalar = 0.9
+    weights = [1.0]
+    num_joints = len(robot.arm_joints)
+    for _ in range(num_joints - 1):
+        weights.append(weights[-1] * joint_geometric_scalar)
+    joint_infos = get_joint_infos(
+        robot.robot_id, robot.arm_joints, robot.physics_client_id
+    )
 
     def joint_distance_fn(pt1, pt2):
-        weights = [1.0]
-        num_joints = len(robot.arm_joints)
-        for _ in range(num_joints - 1):
-            weights.append(weights[-1] * joint_geometric_scalar)
-        joint_infos = get_joint_infos(
-            robot.robot_id, robot.arm_joints, robot.physics_client_id
-        )
         return get_joint_positions_distance(
             robot,
             joint_infos,
@@ -458,50 +445,32 @@ def test_smoothly_follow_end_effector_path(physics_client_id):
             metric="weighted_joints",
             weights=weights,
         )
-    
-    # TODO add target points
+
     joint_waypoints = smoothly_follow_end_effector_path(
         robot,
         waypoints,
         initial_joints,
         collision_ids,
         joint_distance_fn,
-        max_smoothing_iters_per_step=1000,
     )
+    assert len(joint_waypoints) == len(waypoints) + 1
+    assert np.allclose(joint_waypoints[0], initial_joints)
+    recovered_waypoints = [robot.forward_kinematics(w) for w in joint_waypoints[1:]]
+    for i in range(len(waypoints)):
+        w1 = waypoints[i]
+        w2 = recovered_waypoints[i]
+        assert w1.allclose(w2, atol=1e-4)
 
-    # TODO remove
-    from pybullet_helpers.gui import visualize_pose
-
-    visualize_pose(ee_pose, physics_client_id)
-
-    # TODO move this out...
-    joint_infos = get_joint_infos(
-        robot.robot_id, robot.arm_joints, robot.physics_client_id
-    )    
-
-    from tomsutils.utils import get_signed_angle_distance, wrap_angle
-    
-    def _interpolate(q1, q2, num=100):
-        per_joint = []
-        for v1, v2, joint_info in zip(q1, q2, joint_infos):
-            if joint_info.is_circular:
-                joint_diff = get_signed_angle_distance(wrap_angle(v2), wrap_angle(v1))
-                amt = joint_diff / (num - 1)
-                joint_interp = [v1]
-                for _ in range(num):
-                    joint_interp.append(wrap_angle(joint_interp[-1] + amt))
-            else:
-                joint_interp = list(np.linspace(v1, v2, num=num, endpoint=True))
-            per_joint.append(joint_interp)
-        return zip(*per_joint)
-
-
-    for i in range(len(joint_waypoints) - 1):
-        pt1 = joint_waypoints[i]
-        pt2 = joint_waypoints[i + 1]
-        ee2 = waypoints[i + 1]
-        visualize_pose(ee2, physics_client_id)
-        import time; time.sleep(0.5)
-        for s in _interpolate(pt1, pt2):
-            robot.set_joints(s)
-            import time; time.sleep(0.01)
+    # Uncomment to visualize.
+    # from pybullet_helpers.gui import visualize_pose
+    # from pybullet_helpers.joint import interpolate_joints
+    # robot.set_joints(initial_joints)
+    # for i in range(len(joint_waypoints) - 1):
+    #     pt1 = joint_waypoints[i]
+    #     pt2 = joint_waypoints[i + 1]
+    #     ee2 = waypoints[i + 1]
+    #     visualize_pose(ee2, physics_client_id)
+    #     import time; time.sleep(0.5)
+    #     for s in interpolate_joints(joint_infos, pt1, pt2, num_interp_per_unit=100):
+    #         robot.set_joints(s)
+    #         import time; time.sleep(0.01)
