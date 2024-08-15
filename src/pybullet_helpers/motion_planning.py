@@ -251,7 +251,8 @@ def smoothly_follow_end_effector_path(
     joint_distance_fn: Callable[[JointPositions, JointPositions], float],
     held_object: int | None = None,
     base_link_to_held_obj: NDArray | None = None,
-    max_smoothing_iters_per_step: int = 100,
+    max_time: float = 5.0,
+    max_smoothing_iters_per_step: int = 1000000,
     include_start: bool = True,
 ) -> list[JointPositions]:
     """Find a smooth (short) joint trajectory that follows the given end
@@ -262,6 +263,7 @@ def smoothly_follow_end_effector_path(
         joint_position_path.append(initial_joints)
     current_joints = initial_joints
 
+    max_time_per_step = max_time / len(end_effector_path)
     for end_effector_pose in end_effector_path:
         # Get the closest neighbor in joint space.
         robot.set_joints(current_joints)  # for warm starting IK
@@ -273,6 +275,7 @@ def smoothly_follow_end_effector_path(
             collision_ids,
             held_object,
             base_link_to_held_obj,
+            max_time=max_time_per_step,
             max_candidates=max_smoothing_iters_per_step,
         ):
             dist = joint_distance_fn(current_joints, neighbor)

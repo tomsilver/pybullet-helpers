@@ -452,6 +452,7 @@ def test_smoothly_follow_end_effector_path(physics_client_id):
         initial_joints,
         collision_ids,
         joint_distance_fn,
+        max_time=0.5,
     )
     assert len(joint_waypoints) == len(waypoints) + 1
     assert np.allclose(joint_waypoints[0], initial_joints)
