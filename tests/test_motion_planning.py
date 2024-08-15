@@ -259,12 +259,12 @@ def test_task_space_motion_planning(physics_client_id):
         return sample_joints_from_task_space_bounds(
             rng,
             robot,
-            -2.0,
-            2.0,
-            -2.0,
-            2.0,
-            -1.0,
-            1.0,
+            -0.75,
+            0.75,
+            -0.75,
+            0.75,
+            -0.75,
+            0.75,
             initial_roll - 1e-6,
             initial_roll + 1e-6,
             -np.pi,
@@ -272,6 +272,24 @@ def test_task_space_motion_planning(physics_client_id):
             -np.pi,
             np.pi,
         )
+    
+    from pybullet_helpers.gui import visualize_pose
+    
+    def _extend_fn(pt1, pt2):
+        ee1 = robot.forward_kinematics(pt1)
+        ee2 = robot.forward_kinematics(pt2)
+        assert np.isclose(p.getEulerFromQuaternion(ee1.orientation)[0], initial_roll)
+        assert np.isclose(p.getEulerFromQuaternion(ee2.orientation)[0], initial_roll)
+        # TODO
+        num = 10
+        robot.set_joints(pt1)
+        for i in range(1, num + 1):
+            position = tuple(np.array(ee1.position) * (1 - i / num) + np.array(ee2.position) * i / num)
+            orientation = tuple(np.array(ee1.orientation) * (1 - i / num) + np.array(ee2.orientation) * i / num)
+            pose = Pose(position, orientation)
+            joints = inverse_kinematics(robot, pose)
+            yield joints
+
 
     # Running motion planning WITH the constraint creates a path that works.
     robot.set_joints(initial_joints)
@@ -283,8 +301,14 @@ def test_task_space_motion_planning(physics_client_id):
         seed=seed,
         physics_client_id=physics_client_id,
         sampling_fn=_sample_fn,
+        extend_fn=_extend_fn,
+        hyperparameters=MotionPlanningHyperparameters(birrt_num_attempts=5000),
     )
     assert path is not None
+
+    for s in path:
+        robot.set_joints(s)
+        import time; time.sleep(0.1)
 
 
 def test_select_shortest_motion_plan(physics_client_id):

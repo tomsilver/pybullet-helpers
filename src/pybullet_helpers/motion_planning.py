@@ -50,6 +50,7 @@ def run_motion_planning(
     hyperparameters: MotionPlanningHyperparameters | None = None,
     additional_state_constraint_fn: Callable[[JointPositions], bool] | None = None,
     sampling_fn: Callable[[JointPositions], JointPositions] | None = None,
+    extend_fn: Callable[[JointPositions, JointPositions], Iterator[JointPositions]] | None = None,
 ) -> Optional[list[JointPositions]]:
     """Run BiRRT to find a collision-free sequence of joint positions.
 
@@ -104,7 +105,7 @@ def run_motion_planning(
     if sampling_fn is None:
         sampling_fn = _joint_space_sample_fn
 
-    def _extend_fn(
+    def _default_extend_fn(
         pt1: JointPositions, pt2: JointPositions
     ) -> Iterator[JointPositions]:
         pt1_arr = np.array(pt1)
@@ -115,9 +116,12 @@ def run_motion_planning(
         for i in range(1, num + 1):
             yield list(pt1_arr * (1 - i / num) + pt2_arr * i / num)
 
+    if extend_fn is None:
+        extend_fn = _default_extend_fn
+
     birrt = BiRRT(
         sampling_fn,
-        _extend_fn,
+        extend_fn,
         _collision_fn,
         _distance_fn,
         rng,
