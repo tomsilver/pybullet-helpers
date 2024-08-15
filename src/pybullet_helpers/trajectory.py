@@ -5,7 +5,7 @@ from __future__ import annotations
 import abc
 from dataclasses import dataclass
 from functools import cached_property
-from typing import Callable, Generic, Sequence, TypeVar
+from typing import Callable, Generic, Iterator, Sequence, TypeVar
 
 import numpy as np
 
@@ -171,3 +171,21 @@ def concatenate_trajectories(
         else:
             inner_trajs.append(traj)
     return ConcatTrajectory(inner_trajs)
+
+
+def iter_traj_with_max_distance(
+    traj: Trajectory[TrajectoryPoint],
+    max_distance: float,
+    include_start: bool = True,
+    include_end: bool = True,
+) -> Iterator[TrajectoryPoint]:
+    """Iterate through the trajectory while guaranteeing that the distance in
+    each step is no more than the given max distance."""
+    num_steps = int(np.ceil(traj.distance / max_distance)) + 1
+    ts = np.linspace(0, traj.duration, num=num_steps, endpoint=True)
+    if not include_start:
+        ts = ts[1:]
+    if not include_end:
+        ts = ts[:-1]
+    for t in ts:
+        yield traj(t)
