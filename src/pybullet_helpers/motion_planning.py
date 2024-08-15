@@ -24,6 +24,7 @@ from pybullet_helpers.joint import (
     get_jointwise_difference,
     interpolate_joints,
 )
+from pybullet_helpers.math_utils import geometric_sequence
 from pybullet_helpers.robots.single_arm import (
     SingleArmPyBulletRobot,
     SingleArmTwoFingerGripperPyBulletRobot,
@@ -183,10 +184,7 @@ def run_smooth_motion_planning_to_pose(
 
     # Set up the geometrically weighted score function.
     def _score_motion_plan(plan: list[JointPositions]) -> float:
-        weights = [1.0]
-        num_joints = len(robot.arm_joints)
-        for _ in range(num_joints - 1):
-            weights.append(weights[-1] * joint_geometric_scalar)
+        weights = geometric_sequence(joint_geometric_scalar, len(robot.arm_joints))
         joint_infos = get_joint_infos(
             robot.robot_id, robot.arm_joints, robot.physics_client_id
         )

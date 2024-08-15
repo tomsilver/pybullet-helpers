@@ -11,6 +11,7 @@ from pybullet_helpers.inverse_kinematics import (
     sample_joints_from_task_space_bounds,
 )
 from pybullet_helpers.joint import get_joint_infos
+from pybullet_helpers.math_utils import geometric_sequence
 from pybullet_helpers.motion_planning import (
     MotionPlanningHyperparameters,
     get_joint_positions_distance,
@@ -427,11 +428,7 @@ def test_smoothly_follow_end_effector_path(physics_client_id):
     )
     collision_ids = {block1_id, block2_id}
 
-    joint_geometric_scalar = 0.9
-    weights = [1.0]
-    num_joints = len(robot.arm_joints)
-    for _ in range(num_joints - 1):
-        weights.append(weights[-1] * joint_geometric_scalar)
+    weights = geometric_sequence(0.9, len(robot.arm_joints))
     joint_infos = get_joint_infos(
         robot.robot_id, robot.arm_joints, robot.physics_client_id
     )

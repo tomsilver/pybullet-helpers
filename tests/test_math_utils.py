@@ -4,7 +4,11 @@ import numpy as np
 import pybullet as p
 
 from pybullet_helpers.geometry import Pose
-from pybullet_helpers.math_utils import get_poses_facing_line, rotate_about_point
+from pybullet_helpers.math_utils import (
+    geometric_sequence,
+    get_poses_facing_line,
+    rotate_about_point,
+)
 
 
 def test_get_poses_facing_line():
@@ -107,3 +111,9 @@ def test_rotate_about_point():
     # visualize_pose(rotated_pose, physics_client_id)
     # while True:
     #     p.stepSimulation(physicsClientId=physics_client_id)
+
+
+def test_geometric_sequence():
+    """Tests for geometric_sequence()."""
+    assert np.allclose(geometric_sequence(0.5, 4), [1.0, 0.5, 0.25, 0.125])
+    assert np.allclose(geometric_sequence(0.5, 3, start_value=0.5), [0.5, 0.25, 0.125])
