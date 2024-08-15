@@ -3,7 +3,12 @@
 import numpy as np
 import pybullet as p
 
-from pybullet_helpers.geometry import Pose, get_pose, matrix_from_quat
+from pybullet_helpers.geometry import (
+    Pose,
+    get_pose,
+    interpolate_poses,
+    matrix_from_quat,
+)
 
 
 def test_pose():
@@ -58,3 +63,17 @@ def test_get_pose(physics_client_id):
     )
     pose = get_pose(body, physics_client_id)
     assert pose.allclose(expected_pose)
+
+
+def test_interpolate_poses():
+    """Tests for interpolate_poses()."""
+    start = Pose((0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0))
+    end = Pose((0.0, 0.0, 1.0), (0.0, 0.0, 1.0, 0.0))
+    poses = list(interpolate_poses(start, end, num_interp=10, include_start=True))
+    assert len(poses) == 11
+    assert poses[0].allclose(start)
+    assert poses[-1].allclose(end)
+    poses = list(interpolate_poses(start, end, num_interp=10, include_start=False))
+    assert len(poses) == 10
+    assert not poses[0].allclose(start)
+    assert poses[-1].allclose(end)

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import NamedTuple
+from typing import Iterator, NamedTuple
 
 import numpy as np
 import numpy.typing as npt
@@ -12,6 +12,8 @@ from pybullet_utils.transformations import (
     quaternion_from_euler,
     quaternion_from_matrix,
 )
+from scipy.spatial.transform import Rotation as ScipyRotation
+from scipy.spatial.transform import Slerp
 
 Pose3D = tuple[float, float, float]
 Quaternion = tuple[float, float, float, float]
@@ -90,3 +92,52 @@ def get_pose(body: int, physics_client_id: int) -> Pose:
         body, physicsClientId=physics_client_id
     )
     return Pose(pybullet_pose[0], pybullet_pose[1])
+
+
+def interpolate_quats(
+    q1: Quaternion,
+    q2: Quaternion,
+    num_interp: int = 10,
+    include_start: bool = True,
+) -> Iterator[Quaternion]:
+    """Interpolate quaternions using slerp."""
+    slerp = Slerp([0, num_interp], ScipyRotation.from_quat([q1, q2]))
+    time_start = 0 if include_start else 1
+    times = list(range(time_start, num_interp + 1))
+    for t in times:
+        yield tuple(slerp(t).as_quat())
+
+
+def interpolate_pose3ds(
+    p1: Pose3D,
+    p2: Pose3D,
+    num_interp: int = 10,
+    include_start: bool = True,
+) -> Iterator[Pose3D]:
+    """Interpolate positions."""
+    time_start = 0 if include_start else 1
+    times = list(range(time_start, num_interp + 1))
+    positions = np.linspace(p1, p2, num=(num_interp + 1), endpoint=True)
+    for t in times:
+        yield tuple(positions[t])
+
+
+def interpolate_poses(
+    p1: Pose,
+    p2: Pose,
+    num_interp: int = 10,
+    include_start: bool = True,
+) -> Iterator[Pose]:
+    """Interpolate between two poses in pose space."""
+    # Determine the number of interpolation steps.
+    pose3d_gen = interpolate_pose3ds(
+        p1.position, p2.position, num_interp=num_interp, include_start=include_start
+    )
+    quat_gen = interpolate_quats(
+        p1.orientation,
+        p2.orientation,
+        num_interp=num_interp,
+        include_start=include_start,
+    )
+    for position, orientation in zip(pose3d_gen, quat_gen, strict=True):
+        yield Pose(position, orientation)

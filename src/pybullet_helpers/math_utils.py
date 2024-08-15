@@ -1,6 +1,7 @@
 """Math utilities."""
 
 import numpy as np
+from numpy.typing import ArrayLike
 
 from pybullet_helpers.geometry import (
     Pose,
@@ -84,3 +85,8 @@ def rotate_about_point(point: Pose3D, rotation: Quaternion, current_pose: Pose) 
     new_orientation = quat_from_matrix(new_orientation_matrix)
 
     return Pose(new_position, new_orientation)
+
+
+def geometric_sequence(base: float, length: int, start_value: float = 1.0) -> ArrayLike:
+    """E.g., if base = 0.5, then this outputs 1.0, 0.5, 0.25, 0.125, ..."""
+    return start_value * np.power(base, np.arange(length))

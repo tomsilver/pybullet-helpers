@@ -24,6 +24,7 @@ from pybullet_helpers.joint import (
     get_jointwise_difference,
     interpolate_joints,
 )
+from pybullet_helpers.math_utils import geometric_sequence
 from pybullet_helpers.robots.single_arm import (
     SingleArmPyBulletRobot,
     SingleArmTwoFingerGripperPyBulletRobot,
@@ -183,10 +184,7 @@ def run_smooth_motion_planning_to_pose(
 
     # Set up the geometrically weighted score function.
     def _score_motion_plan(plan: list[JointPositions]) -> float:
-        weights = [1.0]
-        num_joints = len(robot.arm_joints)
-        for _ in range(num_joints - 1):
-            weights.append(weights[-1] * joint_geometric_scalar)
+        weights = geometric_sequence(joint_geometric_scalar, len(robot.arm_joints))
         joint_infos = get_joint_infos(
             robot.robot_id, robot.arm_joints, robot.physics_client_id
         )
@@ -251,7 +249,8 @@ def smoothly_follow_end_effector_path(
     joint_distance_fn: Callable[[JointPositions, JointPositions], float],
     held_object: int | None = None,
     base_link_to_held_obj: NDArray | None = None,
-    max_smoothing_iters_per_step: int = 100,
+    max_time: float = 5.0,
+    max_smoothing_iters_per_step: int = 1000000,
     include_start: bool = True,
 ) -> list[JointPositions]:
     """Find a smooth (short) joint trajectory that follows the given end
@@ -262,6 +261,7 @@ def smoothly_follow_end_effector_path(
         joint_position_path.append(initial_joints)
     current_joints = initial_joints
 
+    max_time_per_step = max_time / len(end_effector_path)
     for end_effector_pose in end_effector_path:
         # Get the closest neighbor in joint space.
         robot.set_joints(current_joints)  # for warm starting IK
@@ -273,6 +273,7 @@ def smoothly_follow_end_effector_path(
             collision_ids,
             held_object,
             base_link_to_held_obj,
+            max_time=max_time_per_step,
             max_candidates=max_smoothing_iters_per_step,
         ):
             dist = joint_distance_fn(current_joints, neighbor)
