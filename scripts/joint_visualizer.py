@@ -11,7 +11,11 @@ def _main(robot_name: str) -> None:
     p.configureDebugVisualizer(
         p.COV_ENABLE_GUI, True, physicsClientId=physics_client_id
     )
-    robot = create_pybullet_robot(robot_name, physics_client_id, control_mode="reset")
+    robot = create_pybullet_robot(
+        robot_name,
+        physics_client_id,
+        control_mode="reset",
+    )
     run_interactive_joint_gui(robot)
 
 

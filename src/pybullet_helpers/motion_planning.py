@@ -13,6 +13,7 @@ from tomsutils.motion_planning import BiRRT
 
 from pybullet_helpers.geometry import Pose, multiply_poses
 from pybullet_helpers.inverse_kinematics import (
+    InverseKinematicsError,
     check_collisions_with_held_object,
     sample_collision_free_inverse_kinematics,
 )
@@ -240,6 +241,50 @@ def run_smooth_motion_planning_to_pose(
                     best_motion_plan_score = score
 
     return best_motion_plan
+
+
+def smoothly_follow_end_effector_path(
+    robot: SingleArmPyBulletRobot,
+    end_effector_path: list[Pose],
+    initial_joints: JointPositions,
+    collision_ids: set[int],
+    joint_distance_fn: Callable[[JointPositions, JointPositions], float],
+    held_object: int | None = None,
+    base_link_to_held_obj: NDArray | None = None,
+    max_smoothing_iters_per_step: int = 100,
+    include_start: bool = True,
+) -> list[JointPositions]:
+    """Find a smooth (short) joint trajectory that follows the given end
+    effector path while avoiding collisions."""
+
+    joint_position_path: list[JointPositions] = []
+    if include_start:
+        joint_position_path.append(initial_joints)
+    current_joints = initial_joints
+
+    for end_effector_pose in end_effector_path:
+        # Get the closest neighbor in joint space.
+        robot.set_joints(current_joints)  # for warm starting IK
+        closest_neighbor: JointPositions | None = None
+        closest_dist = np.inf
+        for neighbor in sample_collision_free_inverse_kinematics(
+            robot,
+            end_effector_pose,
+            collision_ids,
+            held_object,
+            base_link_to_held_obj,
+            max_candidates=max_smoothing_iters_per_step,
+        ):
+            dist = joint_distance_fn(current_joints, neighbor)
+            if dist < closest_dist:
+                closest_dist = dist
+                closest_neighbor = neighbor
+        if closest_neighbor is None:
+            raise InverseKinematicsError
+        joint_position_path.append(closest_neighbor)
+        current_joints = closest_neighbor
+
+    return joint_position_path
 
 
 def get_joint_positions_distance(
