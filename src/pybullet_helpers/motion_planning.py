@@ -290,6 +290,7 @@ def smoothly_follow_end_effector_path(
                 closest_neighbor = neighbor
         if closest_neighbor is None:
             raise InverseKinematicsError
+        print(closest_dist)
         joint_position_path.append(closest_neighbor)
 
     return joint_position_path
