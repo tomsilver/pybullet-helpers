@@ -3,7 +3,11 @@
 import numpy as np
 import pybullet as p
 
-from pybullet_helpers.joint import JointInfo, get_kinematic_chain, interpolate_joints
+from pybullet_helpers.joint import (
+    JointInfo,
+    get_kinematic_chain,
+    iter_between_joint_positions,
+)
 from pybullet_helpers.robots.fetch import FetchPyBulletRobot
 
 
@@ -132,7 +136,7 @@ def test_interpolate_joints():
     q2 = [1.0, np.pi + 2e-1]
 
     interp = list(
-        interpolate_joints(
+        iter_between_joint_positions(
             joint_infos, q1, q2, num_interp_per_unit=2, include_start=True
         )
     )
