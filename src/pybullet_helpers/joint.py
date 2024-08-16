@@ -1,6 +1,6 @@
 """PyBullet helper class for joint utilities."""
 
-from typing import Iterator, NamedTuple, Sequence
+from typing import Callable, Iterator, NamedTuple, Sequence
 
 import numpy as np
 import pybullet as p
@@ -205,6 +205,23 @@ def get_jointwise_difference(
     return diff
 
 
+def create_joint_interpolater(
+    joint_infos: list[JointInfo], q1: JointPositions, q2: JointPositions
+) -> Callable[[float], JointPositions]:
+    """Create a function that takes in a number between 0 and 1.
+
+    The function fn is such that fn(0) = q1, fn(1) = q2, and values in
+    between interpolate between q1 and q2.
+    """
+    dists_arr = np.array(get_jointwise_difference(joint_infos, q2, q1))
+    q1_arr = np.array(q1)
+
+    def _interpolate_fn(t: float) -> JointPositions:
+        return list(q1_arr + t * dists_arr)
+
+    return _interpolate_fn
+
+
 def interpolate_joints(
     joint_infos: list[JointInfo],
     q1: JointPositions,
@@ -214,11 +231,10 @@ def interpolate_joints(
 ) -> Iterator[JointPositions]:
     """Interpolate between two joint positions in joint space."""
     # Determine the number of interpolation steps.
-    dists_arr = np.array(get_jointwise_difference(joint_infos, q2, q1))
-    num = int(np.ceil(max(abs(dists_arr)))) * num_interp_per_unit
-    joint_arr = np.array(q1)
-    for i in range(num + 1):
-        if i == 0 and not include_start:
+    interpolator = create_joint_interpolater(joint_infos, q1, q2)
+    dists_arr = np.array(np.array(get_jointwise_difference(joint_infos, q2, q1)))
+    num = int(np.ceil(max(abs(dists_arr)))) * num_interp_per_unit + 1
+    for t in np.linspace(0, 1, num=num, endpoint=True):
+        if t == 0 and not include_start:
             continue
-        joint_arr_i = joint_arr + (i / num) * dists_arr
-        yield list(joint_arr_i)
+        yield interpolator(t)
