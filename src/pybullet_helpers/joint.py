@@ -165,12 +165,15 @@ def get_joint_states(
 ) -> list[JointState]:
     """Get the joint states for the given joints for a body."""
 
-    raw_joint_states = p.getJointStates(body, joints, physicsClientId=physics_client_id)
-
-    if raw_joint_states is None:
+    if len(joints) == 0:
         joint_states = []
     else:
-        joint_states = [JointState(*raw_joint_state) for raw_joint_state in raw_joint_states]
+        joint_states = [
+            JointState(*raw_joint_state)
+            for raw_joint_state in p.getJointStates(
+                body, joints, physicsClientId=physics_client_id
+            )
+        ]
 
     return joint_states
 
