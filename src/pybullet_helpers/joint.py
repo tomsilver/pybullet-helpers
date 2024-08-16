@@ -1,5 +1,6 @@
 """PyBullet helper class for joint utilities."""
 
+from functools import partial
 from typing import Iterator, NamedTuple, Sequence
 
 import numpy as np
@@ -209,16 +210,28 @@ def interpolate_joints(
     joint_infos: list[JointInfo],
     q1: JointPositions,
     q2: JointPositions,
+    t: float,
+) -> JointPositions:
+    """Interpolate between q1 and q2 given 0 <= t <= 1."""
+    assert 0 <= t <= 1.0
+    dists_arr = np.array(get_jointwise_difference(joint_infos, q2, q1))
+    q1_arr = np.array(q1)
+    return list(q1_arr + t * dists_arr)
+
+
+def iter_between_joint_positions(
+    joint_infos: list[JointInfo],
+    q1: JointPositions,
+    q2: JointPositions,
     num_interp_per_unit: int = 10,
     include_start: bool = True,
 ) -> Iterator[JointPositions]:
-    """Interpolate between two joint positions in joint space."""
+    """Iterate points between two given joint positions."""
     # Determine the number of interpolation steps.
-    dists_arr = np.array(get_jointwise_difference(joint_infos, q2, q1))
-    num = int(np.ceil(max(abs(dists_arr)))) * num_interp_per_unit
-    joint_arr = np.array(q1)
-    for i in range(num + 1):
-        if i == 0 and not include_start:
+    interpolator = partial(interpolate_joints, joint_infos, q1, q2)
+    dists_arr = np.array(np.array(get_jointwise_difference(joint_infos, q2, q1)))
+    num = int(np.ceil(max(abs(dists_arr)))) * num_interp_per_unit + 1
+    for t in np.linspace(0, 1, num=num, endpoint=True):
+        if t == 0 and not include_start:
             continue
-        joint_arr_i = joint_arr + (i / num) * dists_arr
-        yield list(joint_arr_i)
+        yield interpolator(t)

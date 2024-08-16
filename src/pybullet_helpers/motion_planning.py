@@ -22,7 +22,7 @@ from pybullet_helpers.joint import (
     JointPositions,
     get_joint_infos,
     get_jointwise_difference,
-    interpolate_joints,
+    iter_between_joint_positions,
 )
 from pybullet_helpers.math_utils import geometric_sequence
 from pybullet_helpers.robots.single_arm import (
@@ -110,7 +110,7 @@ def run_motion_planning(
     def _extend_fn(
         pt1: JointPositions, pt2: JointPositions
     ) -> Iterator[JointPositions]:
-        yield from interpolate_joints(
+        yield from iter_between_joint_positions(
             joint_infos, pt1, pt2, num_interp_per_unit=num_interp, include_start=False
         )
 
