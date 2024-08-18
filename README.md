@@ -35,3 +35,6 @@ This process needs to be automated further, but here is some guidance:
 7. Add `IKInfo` inside your new robot class in `robots/`.
 
 Contributions are welcome to improve this process, especially steps 3 onward.
+
+*Note for Robot URDFs:
+For consistency with Bullet IK, ensure that the inertial frame of the base link in your robot URDF is located at (0, 0, 0) in the world frame. 
