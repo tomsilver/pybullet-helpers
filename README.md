@@ -37,4 +37,14 @@ This process needs to be automated further, but here is some guidance:
 Contributions are welcome to improve this process, especially steps 3 onward.
 
 *Note for Robot URDFs:
-For consistency with Bullet IK, ensure that the inertial frame of the base link in your robot URDF is located at (0, 0, 0) in the world frame. 
+For consistency with Bullet IK, ensure that the inertial frame of the robot URDF's base link is not offset from the its link frame. If that's necessary, a possible workaround is to add a dummy base link to the URDF and connecting this to the real base link via a fixed joint.
+
+```
+<link name="dummy_base" />
+
+<joint name="dummy_joint" type="fixed">
+    <parent link="dummy_base"/>
+    <child link="panda_link0"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+</joint>
+```
