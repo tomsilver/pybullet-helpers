@@ -11,7 +11,6 @@ from typing import Collection, Iterator, Sequence
 
 import numpy as np
 import pybullet as p
-from numpy.typing import NDArray
 
 from pybullet_helpers.geometry import Pose, Pose3D, Quaternion, multiply_poses
 from pybullet_helpers.ikfast.utils import (
@@ -112,7 +111,7 @@ def set_robot_joints_with_held_object(
     robot: SingleArmPyBulletRobot,
     physics_client_id: int,
     held_object: int | None,
-    base_link_to_held_obj: NDArray | None,
+    base_link_to_held_obj: Pose | None,
     joint_state: JointPositions,
 ) -> None:
     """Set a robot's joints and apply a transform to a held object."""
@@ -128,8 +127,8 @@ def set_robot_joints_with_held_object(
         world_to_held_obj = p.multiplyTransforms(
             world_to_base_link[0],
             world_to_base_link[1],
-            base_link_to_held_obj[0],
-            base_link_to_held_obj[1],
+            base_link_to_held_obj.position,
+            base_link_to_held_obj.orientation,
         )
         p.resetBasePositionAndOrientation(
             held_object,
@@ -144,7 +143,7 @@ def check_collisions_with_held_object(
     collision_bodies: Collection[int],
     physics_client_id: int,
     held_object: int | None,
-    base_link_to_held_obj: NDArray | None,
+    base_link_to_held_obj: Pose | None,
     joint_state: JointPositions,
 ) -> bool:
     """Check if robot or a held object are in collision with certain bodies."""
@@ -168,7 +167,7 @@ def filter_collision_free_joint_generator(
     collision_bodies: Collection[int],
     physics_client_id: int,
     held_object: int | None = None,
-    base_link_to_held_obj: NDArray | None = None,
+    base_link_to_held_obj: Pose | None = None,
 ) -> Iterator[JointPositions]:
     """Given a generator of joint positions, yield only those that pass
     collision checks.
@@ -197,7 +196,7 @@ def sample_collision_free_inverse_kinematics(
     end_effector_pose: Pose,
     collision_bodies: set[int],
     held_object: int | None = None,
-    base_link_to_held_obj: NDArray | None = None,
+    base_link_to_held_obj: Pose | None = None,
     max_time: float = 0.05,
     max_attempts: int = 1000000000,
     max_distance: float = np.inf,

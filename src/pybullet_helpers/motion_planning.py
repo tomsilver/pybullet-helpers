@@ -8,7 +8,6 @@ from functools import partial
 from typing import Callable, Collection, Iterable, Iterator, Optional
 
 import numpy as np
-from numpy.typing import NDArray
 from tomsutils.motion_planning import BiRRT
 
 from pybullet_helpers.geometry import Pose, multiply_poses
@@ -49,7 +48,7 @@ def run_motion_planning(
     seed: int,
     physics_client_id: int,
     held_object: int | None = None,
-    base_link_to_held_obj: NDArray | None = None,
+    base_link_to_held_obj: Pose | None = None,
     hyperparameters: MotionPlanningHyperparameters | None = None,
     additional_state_constraint_fn: Callable[[JointPositions], bool] | None = None,
     sampling_fn: Callable[[JointPositions], JointPositions] | None = None,
@@ -167,7 +166,7 @@ def run_smooth_motion_planning_to_pose(
     plan_frame_from_end_effector_frame: Pose,
     seed: int,
     held_object: int | None = None,
-    base_link_to_held_obj: NDArray | None = None,
+    base_link_to_held_obj: Pose | None = None,
     max_time: float = 5.0,
     joint_geometric_scalar: float = 0.9,
     sampling_fn: Callable[[JointPositions], JointPositions] | None = None,
@@ -248,7 +247,7 @@ def smoothly_follow_end_effector_path(
     collision_ids: set[int],
     joint_distance_fn: Callable[[JointPositions, JointPositions], float],
     held_object: int | None = None,
-    base_link_to_held_obj: NDArray | None = None,
+    base_link_to_held_obj: Pose | None = None,
     max_time: float = 5.0,
     max_smoothing_iters_per_step: int = 1000000,
     include_start: bool = True,
