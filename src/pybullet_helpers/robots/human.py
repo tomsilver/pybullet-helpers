@@ -15,7 +15,7 @@ class HumanArm6DoF(SingleArmPyBulletRobot):
 
     @classmethod
     def get_name(cls) -> str:
-        return "human-arm-6d0f"
+        return "human-arm-6dof"
 
     @classmethod
     def urdf_path(cls) -> Path:
