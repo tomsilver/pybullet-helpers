@@ -86,7 +86,7 @@ class PandaPybulletRobotLimbRepo(SingleArmPyBulletRobot):
 
     @classmethod
     def get_name(cls) -> str:
-        return "Limb Repo Panda"
+        return "panda-limb-repo"
 
     @classmethod
     def urdf_path(cls) -> Path:
