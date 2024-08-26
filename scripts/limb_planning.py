@@ -1,5 +1,6 @@
 """Experimenting with motion planning for limb repositioning."""
 
+import time
 from typing import Iterator
 
 import imageio.v2 as iio
@@ -143,7 +144,9 @@ def _main():
         smooth_amt=hyperparameters.birrt_smooth_amt,
     )
 
+    start_time = time.perf_counter()
     plan = birrt.query(init_joints, target_joints)
+    print("Motion planning duration:", time.perf_counter() - start_time)
 
     imgs = []
     for s in plan:
