@@ -10,9 +10,9 @@ from pybullet_helpers.inverse_kinematics import (
     sample_collision_free_inverse_kinematics,
 )
 from pybullet_helpers.robots.fetch import FetchPyBulletRobot
+from pybullet_helpers.robots.human import HumanArm6DoF
 from pybullet_helpers.robots.kinova import KinovaGen3RobotiqGripperPyBulletRobot
 from pybullet_helpers.robots.panda import PandaPyBulletRobot, PandaPybulletRobotLimbRepo
-from pybullet_helpers.robots.human import HumanArm6DoF
 from pybullet_helpers.utils import create_pybullet_block
 
 

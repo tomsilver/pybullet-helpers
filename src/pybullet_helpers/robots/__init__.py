@@ -3,13 +3,13 @@
 from typing import Type
 
 from pybullet_helpers.robots.fetch import FetchPyBulletRobot
+from pybullet_helpers.robots.human import HumanArm6DoF
 from pybullet_helpers.robots.kinova import (
     KinovaGen3NoGripperPyBulletRobot,
     KinovaGen3RobotiqGripperPyBulletRobot,
 )
 from pybullet_helpers.robots.panda import PandaPyBulletRobot, PandaPybulletRobotLimbRepo
 from pybullet_helpers.robots.single_arm import SingleArmPyBulletRobot
-from pybullet_helpers.robots.human import HumanArm6DoF
 
 _BUILT_IN_ROBOT_CLASSES: list[Type[SingleArmPyBulletRobot]] = [
     FetchPyBulletRobot,

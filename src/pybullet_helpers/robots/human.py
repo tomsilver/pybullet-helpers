@@ -10,6 +10,7 @@ from pybullet_helpers.robots.single_arm import (
 )
 from pybullet_helpers.utils import get_assets_path
 
+
 class HumanArm6DoF(SingleArmPyBulletRobot):
     """Franka Emika Panda with the limb repo end effector block."""
 
@@ -24,7 +25,7 @@ class HumanArm6DoF(SingleArmPyBulletRobot):
 
     @property
     def default_home_joint_positions(self) -> JointPositions:
-        return [0.0, -0.1 , 0.1, -1.08786023,  -0.14448669, -0.26559232]
+        return [0.0, -0.1, 0.1, -1.08786023, -0.14448669, -0.26559232]
 
     @property
     def end_effector_name(self) -> str:
