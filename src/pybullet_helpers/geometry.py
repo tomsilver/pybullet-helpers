@@ -94,7 +94,7 @@ def get_pose(body: int, physics_client_id: int) -> Pose:
     return Pose(pybullet_pose[0], pybullet_pose[1])
 
 
-def interpolate_quats(
+def iter_between_quats(
     q1: Quaternion,
     q2: Quaternion,
     num_interp: int = 10,
@@ -108,7 +108,7 @@ def interpolate_quats(
         yield tuple(slerp(t).as_quat())
 
 
-def interpolate_pose3ds(
+def iter_between_pose3ds(
     p1: Pose3D,
     p2: Pose3D,
     num_interp: int = 10,
@@ -122,7 +122,7 @@ def interpolate_pose3ds(
         yield tuple(positions[t])
 
 
-def interpolate_poses(
+def iter_between_poses(
     p1: Pose,
     p2: Pose,
     num_interp: int = 10,
@@ -130,10 +130,10 @@ def interpolate_poses(
 ) -> Iterator[Pose]:
     """Interpolate between two poses in pose space."""
     # Determine the number of interpolation steps.
-    pose3d_gen = interpolate_pose3ds(
+    pose3d_gen = iter_between_pose3ds(
         p1.position, p2.position, num_interp=num_interp, include_start=include_start
     )
-    quat_gen = interpolate_quats(
+    quat_gen = iter_between_quats(
         p1.orientation,
         p2.orientation,
         num_interp=num_interp,
@@ -141,3 +141,28 @@ def interpolate_poses(
     )
     for position, orientation in zip(pose3d_gen, quat_gen, strict=True):
         yield Pose(position, orientation)
+
+
+def interpolate_quats(q1: Quaternion, q2: Quaternion, t: float) -> Quaternion:
+    """Interpolate between q1 and q2 given 0 <= t <= 1."""
+    assert 0 <= t <= 1
+    slerp = Slerp([0, 1], ScipyRotation.from_quat([q1, q2]))
+    return tuple(slerp(t).as_quat())
+
+
+def interpolate_pose3d(p1: Pose3D, p2: Pose3D, t: float) -> Pose3D:
+    """Interpolate between p1 and p2 given 0 <= t <= 1."""
+    dists_arr = np.subtract(p2, p1)
+    return tuple(np.add(p1, t * dists_arr))
+
+
+def interpolate_poses(
+    p1: Pose,
+    p2: Pose,
+    t: float,
+) -> Pose:
+    """Interpolate between p1 and p2 given 0 <= t <= 1."""
+    assert 0 <= t <= 1
+    position = interpolate_pose3d(p1.position, p2.position, t)
+    quat = interpolate_quats(p1.orientation, p2.orientation, t)
+    return Pose(position, quat)
