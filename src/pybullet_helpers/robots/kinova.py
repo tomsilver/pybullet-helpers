@@ -7,7 +7,7 @@ from pybullet_helpers.ikfast import IKFastInfo
 from pybullet_helpers.joint import JointPositions
 from pybullet_helpers.robots.single_arm import (
     SingleArmPyBulletRobot,
-    SingleArmTwoFingerGripperPyBulletRobot,
+    FingeredSingleArmPyBulletRobot,
 )
 from pybullet_helpers.utils import get_assets_path
 
@@ -37,8 +37,12 @@ class KinovaGen3NoGripperPyBulletRobot(SingleArmPyBulletRobot):
         return "EndEffector_Link"
 
 
-class KinovaGen3RobotiqGripperPyBulletRobot(SingleArmTwoFingerGripperPyBulletRobot):
-    """A Kinova Gen3 robot arm with a robotiq gripper."""
+class KinovaGen3RobotiqGripperPyBulletRobot(FingeredSingleArmPyBulletRobot[float]):
+    """A Kinova Gen3 robot arm with a robotiq gripper.
+    
+    The finger states are all determined by one value, but there are multiple
+    mimic joints.
+    """
 
     @classmethod
     def get_name(cls) -> str:
@@ -47,7 +51,7 @@ class KinovaGen3RobotiqGripperPyBulletRobot(SingleArmTwoFingerGripperPyBulletRob
     @classmethod
     def urdf_path(cls) -> Path:
         dir_path = get_assets_path() / "urdf"
-        return dir_path / "kortex_description" / "gen3_robotiq_2f_85.urdf"
+        return dir_path / "kortex_description" / "gen3_7dof.urdf"
 
     @property
     def default_home_joint_positions(self) -> JointPositions:

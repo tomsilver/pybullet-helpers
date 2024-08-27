@@ -21,7 +21,7 @@ from pybullet_helpers.joint import JointPositions, get_joint_infos, get_joints
 from pybullet_helpers.link import get_link_pose, get_link_state
 from pybullet_helpers.robots.single_arm import (
     SingleArmPyBulletRobot,
-    SingleArmTwoFingerGripperPyBulletRobot,
+    FingeredSingleArmPyBulletRobot,
 )
 
 
@@ -79,7 +79,7 @@ def inverse_kinematics(
         joint_positions = list(ik_solutions[0])
 
         # IKFast doesn't handle fingers, so we add them afterwards.
-        if isinstance(robot, SingleArmTwoFingerGripperPyBulletRobot):
+        if isinstance(robot, FingeredSingleArmPyBulletRobot):
             joint_positions = _add_fingers_to_joint_positions(robot, joint_positions)
 
         if validate:
@@ -222,7 +222,7 @@ def sample_collision_free_inverse_kinematics(
 
     generator = islice(generator, max_candidates)
 
-    if isinstance(robot, SingleArmTwoFingerGripperPyBulletRobot):
+    if isinstance(robot, FingeredSingleArmPyBulletRobot):
         add_fingers = partial(_add_fingers_to_joint_positions, robot)
         generator = map(add_fingers, generator)
 
@@ -402,7 +402,7 @@ def _validate_joints_state(
 
 
 def _add_fingers_to_joint_positions(
-    robot: SingleArmTwoFingerGripperPyBulletRobot, joint_positions: JointPositions
+    robot: FingeredSingleArmPyBulletRobot, joint_positions: JointPositions
 ) -> JointPositions:
     first_finger_idx, second_finger_idx = sorted(
         [robot.left_finger_joint_idx, robot.right_finger_joint_idx]
