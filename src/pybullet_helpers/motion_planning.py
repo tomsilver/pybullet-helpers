@@ -52,6 +52,7 @@ def run_motion_planning(
     hyperparameters: MotionPlanningHyperparameters | None = None,
     additional_state_constraint_fn: Callable[[JointPositions], bool] | None = None,
     sampling_fn: Callable[[JointPositions], JointPositions] | None = None,
+    direct_path_only: bool = False,
 ) -> Optional[list[JointPositions]]:
     """Run BiRRT to find a collision-free sequence of joint positions.
 
@@ -124,6 +125,9 @@ def run_motion_planning(
         smooth_amt=hyperparameters.birrt_smooth_amt,
     )
 
+    if direct_path_only:
+        return birrt.try_direct_path(initial_positions, target_positions)
+
     return birrt.query(initial_positions, target_positions)
 
 
@@ -163,7 +167,7 @@ def run_smooth_motion_planning_to_pose(
     target_pose: Pose | Callable[[], Pose],
     robot: SingleArmPyBulletRobot,
     collision_ids: set[int],
-    plan_frame_from_end_effector_frame: Pose,
+    end_effector_frame_to_plan_frame: Pose,
     seed: int,
     held_object: int | None = None,
     base_link_to_held_obj: Pose | None = None,
@@ -207,7 +211,7 @@ def run_smooth_motion_planning_to_pose(
         target_pose = target_pose_sampler()
         # Transform to end effector space.
         end_effector_pose = multiply_poses(
-            target_pose, plan_frame_from_end_effector_frame
+            target_pose, end_effector_frame_to_plan_frame
         )
         # Sample a collision-free joint target. If none exist, we'll just
         # go back to sampling a different target pose.
