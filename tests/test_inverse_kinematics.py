@@ -103,6 +103,10 @@ def test_sample_collision_free_inverse_kinematics(physics_client_id):
         np.pi / 2,
         0.0,
         0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
     ]
 
     collision_region_orientation = (0.0, 0.0, 0.0, 1.0)

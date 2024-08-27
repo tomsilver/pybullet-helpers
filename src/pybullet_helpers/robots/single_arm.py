@@ -4,7 +4,7 @@ functions."""
 import abc
 from functools import cached_property
 from pathlib import Path
-from typing import Optional
+from typing import Generic, Optional, TypeVar
 
 import numpy as np
 import pybullet as p
@@ -305,86 +305,91 @@ class SingleArmPyBulletRobot(abc.ABC):
         return None
 
 
-class SingleArmTwoFingerGripperPyBulletRobot(SingleArmPyBulletRobot):
-    """A single-arm fixed-base PyBullet robot with a two-finger gripper."""
+FingerState = TypeVar("FingerState")  # see docstring below
+
+
+class FingeredSingleArmPyBulletRobot(SingleArmPyBulletRobot, Generic[FingerState]):
+    """A single-arm fixed-base PyBullet robot with one or more fingers.
+
+    NOTE: the fingers are determined by a state of FingerState type, which is
+    usually a float or list of floats. For example, if all of the fingers mimic
+    each other, then a single value defines their state. The conversion between
+    finger states and finger joint positions is defined per robot.
+    """
+
+    @property
+    @abc.abstractmethod
+    def finger_joint_names(self) -> list[str]:
+        """The names of the finger joints."""
+        raise NotImplementedError("Override me!")
+
+    @property
+    @abc.abstractmethod
+    def open_fingers_state(self) -> FingerState:
+        """The values at which the finger joints should be open."""
+        raise NotImplementedError("Override me!")
+
+    @property
+    @abc.abstractmethod
+    def closed_fingers_state(self) -> FingerState:
+        """The value at which the finger joints should be closed."""
+        raise NotImplementedError("Override me!")
+
+    @abc.abstractmethod
+    def finger_state_to_joints(self, state: FingerState) -> list[float]:
+        """Convert a FingerState into joint values."""
+        raise NotImplementedError("Override me!")
+
+    @abc.abstractmethod
+    def joints_to_finger_state(self, joint_positions: list[float]) -> FingerState:
+        """Convert joint values into a FingerState."""
+        raise NotImplementedError("Override me!")
 
     @cached_property
     def arm_joints(self) -> list[int]:
         """Add the fingers to the arm joints."""
         joint_ids = super().arm_joints
-        joint_ids.extend([self.left_finger_id, self.right_finger_id])
+        joint_ids.extend(self.finger_ids)
         return joint_ids
 
-    @property
-    @abc.abstractmethod
-    def left_finger_joint_name(self) -> str:
-        """The name of the left finger joint."""
-        raise NotImplementedError("Override me!")
-
-    @property
-    @abc.abstractmethod
-    def right_finger_joint_name(self) -> str:
-        """The name of the right finger joint."""
-        raise NotImplementedError("Override me!")
+    @cached_property
+    def finger_ids(self) -> list[int]:
+        """The PyBullet joint IDs for the fingers."""
+        return [self.joint_from_name(n) for n in self.finger_joint_names]
 
     @cached_property
-    def left_finger_id(self) -> int:
-        """The PyBullet joint ID for the left finger."""
-        return self.joint_from_name(self.left_finger_joint_name)
-
-    @cached_property
-    def right_finger_id(self) -> int:
-        """The PyBullet joint ID for the right finger."""
-        return self.joint_from_name(self.right_finger_joint_name)
-
-    @cached_property
-    def left_finger_joint_idx(self) -> int:
-        """The index into the joints corresponding to the left finger.
+    def finger_joint_idxs(self) -> list[int]:
+        """The indices into the joints corresponding to the fingers.
 
         Note this is not the joint ID, but the index of the joint within
         the list of arm joints.
         """
-        return self.arm_joints.index(self.left_finger_id)
-
-    @cached_property
-    def right_finger_joint_idx(self) -> int:
-        """The index into the joints corresponding to the right finger.
-
-        Note this is not the joint ID, but the index of the joint within
-        the list of arm joints.
-        """
-        return self.arm_joints.index(self.right_finger_id)
-
-    @property
-    @abc.abstractmethod
-    def open_fingers_joint_value(self) -> float:
-        """The value at which the finger joints should be open."""
-        raise NotImplementedError("Override me!")
-
-    @property
-    @abc.abstractmethod
-    def closed_fingers_joint_value(self) -> float:
-        """The value at which the finger joints should be closed."""
-        raise NotImplementedError("Override me!")
+        return [self.arm_joints.index(i) for i in self.finger_ids]
 
     def open_fingers(self) -> None:
         """Execute opening the fingers."""
-        self._change_fingers(self.open_fingers_joint_value)
+        self.set_finger_state(self.open_fingers_state)
 
     def close_fingers(self) -> None:
         """Execute closing the fingers."""
-        self._change_fingers(self.closed_fingers_joint_value)
+        self.set_finger_state(self.closed_fingers_state)
 
-    def _change_fingers(self, new_value: float) -> None:
+    def set_finger_state(self, state: FingerState) -> None:
+        """Change the fingers to the given joint values."""
         current_joints = self.get_joint_positions()
-        current_joints[self.left_finger_joint_idx] = new_value
-        current_joints[self.right_finger_joint_idx] = new_value
+        new_values = self.finger_state_to_joints(state)
+        for v, idx in zip(new_values, self.finger_joint_idxs, strict=True):
+            current_joints[idx] = v
         self.set_motors(current_joints)
 
-    def get_finger_state(self) -> float:
-        """Get the state of the gripper fingers."""
-        return p.getJointState(
-            self.robot_id,
-            self.left_finger_id,
-            physicsClientId=self.physics_client_id,
-        )[0]
+    def get_finger_state(self) -> FingerState:
+        """Get the state of the fingers."""
+        joint_values = [
+            p.getJointState(
+                self.robot_id,
+                i,
+                physicsClientId=self.physics_client_id,
+            )[0]
+            for i in self.finger_ids
+        ]
+        return self.joints_to_finger_state(joint_values)

@@ -25,8 +25,8 @@ from pybullet_helpers.joint import (
 )
 from pybullet_helpers.math_utils import geometric_sequence
 from pybullet_helpers.robots.single_arm import (
+    FingeredSingleArmPyBulletRobot,
     SingleArmPyBulletRobot,
-    SingleArmTwoFingerGripperPyBulletRobot,
 )
 
 
@@ -98,9 +98,9 @@ def run_motion_planning(
     def _joint_space_sample_fn(pt: JointPositions) -> JointPositions:
         new_pt: JointPositions = list(joint_space.sample())
         # Don't change the fingers.
-        if isinstance(robot, SingleArmTwoFingerGripperPyBulletRobot):
-            new_pt[robot.left_finger_joint_idx] = pt[robot.left_finger_joint_idx]
-            new_pt[robot.right_finger_joint_idx] = pt[robot.right_finger_joint_idx]
+        if isinstance(robot, FingeredSingleArmPyBulletRobot):
+            for idx in robot.finger_joint_idxs:
+                new_pt[idx] = pt[idx]
         return new_pt
 
     if sampling_fn is None:

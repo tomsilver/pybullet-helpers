@@ -3,14 +3,19 @@
 from pathlib import Path
 from typing import Optional
 
+import numpy as np
+
 from pybullet_helpers.ikfast import IKFastInfo
 from pybullet_helpers.joint import JointPositions
-from pybullet_helpers.robots.single_arm import SingleArmTwoFingerGripperPyBulletRobot
+from pybullet_helpers.robots.single_arm import FingeredSingleArmPyBulletRobot
 from pybullet_helpers.utils import get_assets_path
 
 
-class PandaPyBulletRobot(SingleArmTwoFingerGripperPyBulletRobot):
-    """Franka Emika Panda which we assume is fixed on some base."""
+class PandaPyBulletRobot(FingeredSingleArmPyBulletRobot[float]):
+    """Franka Emika Panda which we assume is fixed on some base.
+
+    The fingers are symmetric, so the finger state is just a float.
+    """
 
     @classmethod
     def get_name(cls) -> str:
@@ -52,20 +57,24 @@ class PandaPyBulletRobot(SingleArmTwoFingerGripperPyBulletRobot):
         return "tool_link"
 
     @property
-    def left_finger_joint_name(self) -> str:
-        return "panda_finger_joint1"
+    def finger_joint_names(self) -> list[str]:
+        return ["panda_finger_joint1", "panda_finger_joint2"]
 
     @property
-    def right_finger_joint_name(self) -> str:
-        return "panda_finger_joint2"
-
-    @property
-    def open_fingers_joint_value(self) -> float:
+    def open_fingers_state(self) -> float:
         return 0.04
 
     @property
-    def closed_fingers_joint_value(self) -> float:
+    def closed_fingers_state(self) -> float:
         return 0.03
+
+    def finger_state_to_joints(self, state: float) -> list[float]:
+        return [state, state]
+
+    def joints_to_finger_state(self, joint_positions: list[float]) -> float:
+        assert len(joint_positions) == 2
+        assert np.isclose(joint_positions[0], joint_positions[1])
+        return joint_positions[0]
 
     @classmethod
     def ikfast_info(cls) -> Optional[IKFastInfo]:
