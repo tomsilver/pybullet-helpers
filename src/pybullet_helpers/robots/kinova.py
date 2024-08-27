@@ -55,11 +55,11 @@ class KinovaGen3RobotiqGripperPyBulletRobot(SingleArmTwoFingerGripperPyBulletRob
 
     @property
     def end_effector_name(self) -> str:
-        return "end_effector"
+        return "tool_frame_joint"
 
     @property
     def tool_link_name(self) -> str:
-        return "end_effector_link"
+        return "tool_frame"
 
     @property
     def left_finger_joint_name(self) -> str:
