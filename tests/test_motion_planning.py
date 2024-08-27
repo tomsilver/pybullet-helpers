@@ -142,7 +142,21 @@ def test_run_motion_planning(physics_client_id):
 
 def test_motion_planning_additional_constraint(physics_client_id):
     """Tests for run_motion_planning with an additional state constraint."""
-    initial_joints = [2.5, -1.5, -2.1, 1.9, 2.9, 1.5, -2.6, 0.0, 0.0]
+    initial_joints = [
+        2.5,
+        -1.5,
+        -2.1,
+        1.9,
+        2.9,
+        1.5,
+        -2.6,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+    ]
     target_joints = list(initial_joints)
     target_joints[0] = -0.5
     robot = KinovaGen3RobotiqGripperPyBulletRobot(physics_client_id)
@@ -215,7 +229,21 @@ def test_motion_planning_additional_constraint(physics_client_id):
 
 def test_task_space_motion_planning(physics_client_id):
     """Tests for run_motion_planning with a custom sampling function."""
-    initial_joints = [2.5, -1.5, -2.1, 1.9, 2.9, 1.5, -2.6, 0.0, 0.0]
+    initial_joints = [
+        2.5,
+        -1.5,
+        -2.1,
+        1.9,
+        2.9,
+        1.5,
+        -2.6,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+    ]
     target_joints = list(initial_joints)
     target_joints[0] = -0.5
     robot = KinovaGen3RobotiqGripperPyBulletRobot(physics_client_id)
