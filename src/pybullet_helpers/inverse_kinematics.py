@@ -152,13 +152,35 @@ def check_collisions_with_held_object(
     )
     p.performCollisionDetection(physicsClientId=physics_client_id)
     for body in collision_bodies:
-        if p.getContactPoints(robot.robot_id, body, physicsClientId=physics_client_id):
+        if check_body_collisions(robot.robot_id, body, physics_client_id):
             return True
-        if held_object is not None and p.getContactPoints(
-            held_object, body, physicsClientId=physics_client_id
+        if held_object is not None and check_body_collisions(
+            held_object, body, physics_client_id
         ):
             return True
     return False
+
+
+def check_body_collisions(
+    body1: int, body2: int, physics_client_id: int, distance_threshold: float = 1e-6
+):
+    """Check collisions between two bodies.
+
+    NOTE: we previously used p.getContactPoints here instead, but ran
+    into some very strange issues where the held object was clearly in
+    collision, but p.getContactPoints was always empty.
+    """
+    return (
+        len(
+            p.getClosestPoints(
+                bodyA=body1,
+                bodyB=body2,
+                distance=distance_threshold,
+                physicsClientId=physics_client_id,
+            )
+        )
+        > 0
+    )
 
 
 def filter_collision_free_joint_generator(
