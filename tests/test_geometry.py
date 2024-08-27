@@ -6,6 +6,7 @@ import pybullet as p
 from pybullet_helpers.geometry import (
     Pose,
     get_pose,
+    interpolate_poses,
     iter_between_poses,
     matrix_from_quat,
 )
@@ -65,8 +66,8 @@ def test_get_pose(physics_client_id):
     assert pose.allclose(expected_pose)
 
 
-def test_interpolate_poses():
-    """Tests for interpolate_poses()."""
+def test_iter_between_poses():
+    """Tests for iter_between_poses()."""
     start = Pose((0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0))
     end = Pose((0.0, 0.0, 1.0), (0.0, 0.0, 1.0, 0.0))
     poses = list(iter_between_poses(start, end, num_interp=10, include_start=True))
@@ -77,3 +78,18 @@ def test_interpolate_poses():
     assert len(poses) == 10
     assert not poses[0].allclose(start)
     assert poses[-1].allclose(end)
+
+
+def test_interpolate_poses():
+    """Tests for interpolate_poses()."""
+    start = Pose((0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0))
+    end = Pose((0.0, 0.0, 1.0), (0.0, 0.0, 1.0, 0.0))
+    pose0 = interpolate_poses(start, end, 0.0)
+    assert pose0.allclose(start)
+    pose1 = interpolate_poses(start, end, 1.0)
+    assert pose1.allclose(end)
+    pose_middle = interpolate_poses(start, end, 0.5)
+    expected = Pose(
+        position=(0.0, 0.0, 0.5), orientation=(0.0, 0.0, np.sqrt(2) / 2, np.sqrt(2) / 2)
+    )
+    assert pose_middle.allclose(expected)
