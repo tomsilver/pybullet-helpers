@@ -81,6 +81,10 @@ def test_kinova_gen3_robotiq_gripper_pybullet_robot(physics_client_id):
         "joint_5",
         "joint_6",
         "joint_7",
+        "finger_joint",
+        "right_outer_knuckle_joint",
+        "left_inner_knuckle_joint",
+        "right_inner_knuckle_joint",
         "left_inner_finger_joint",
         "right_inner_finger_joint",
     ]
@@ -102,7 +106,7 @@ def test_kinova_gen3_robotiq_gripper_pybullet_robot(physics_client_id):
             finger_state,
             finger_state,
             -finger_state,
-            finger_state,
+            -finger_state,
         ],
     )
     for idx, value in zip(robot.finger_joint_idxs, finger_values, strict=True):
