@@ -20,8 +20,8 @@ from pybullet_helpers.ikfast.utils import (
 from pybullet_helpers.joint import JointPositions, get_joint_infos, get_joints
 from pybullet_helpers.link import get_link_pose, get_link_state
 from pybullet_helpers.robots.single_arm import (
-    SingleArmPyBulletRobot,
     FingeredSingleArmPyBulletRobot,
+    SingleArmPyBulletRobot,
 )
 
 
@@ -404,10 +404,13 @@ def _validate_joints_state(
 def _add_fingers_to_joint_positions(
     robot: FingeredSingleArmPyBulletRobot, joint_positions: JointPositions
 ) -> JointPositions:
-    first_finger_idx, second_finger_idx = sorted(
-        [robot.left_finger_joint_idx, robot.right_finger_joint_idx]
-    )
-    current_fingers = robot.get_finger_state()
-    joint_positions.insert(first_finger_idx, current_fingers)
-    joint_positions.insert(second_finger_idx, current_fingers)
-    return joint_positions
+    joint_idx_to_value = dict(enumerate(joint_positions))
+    finger_idxs = robot.finger_joint_idxs
+    current_finger_state = robot.get_finger_state()
+    current_finger_joint_values = robot.finger_state_to_joints(current_finger_state)
+    for idx, value in zip(finger_idxs, current_finger_joint_values, strict=True):
+        joint_idx_to_value[idx] = value
+    final_joint_positions = [
+        joint_idx_to_value[i] for i in range(len(joint_idx_to_value))
+    ]
+    return final_joint_positions

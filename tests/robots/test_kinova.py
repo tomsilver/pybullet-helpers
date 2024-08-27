@@ -92,9 +92,21 @@ def test_kinova_gen3_robotiq_gripper_pybullet_robot(physics_client_id):
     ee_orn = ee_pose.orientation
     ee_target = Pose(ee_target_position, ee_orn)
     joint_target = inverse_kinematics(robot, ee_target, validate=False)
-    f_value = 0.03
-    joint_target[robot.left_finger_joint_idx] = f_value
-    joint_target[robot.right_finger_joint_idx] = f_value
+    finger_state = 0.03
+    finger_values = robot.finger_state_to_joints(finger_state)
+    assert np.allclose(
+        finger_values,
+        [
+            finger_state,
+            finger_state,
+            finger_state,
+            finger_state,
+            -finger_state,
+            finger_state,
+        ],
+    )
+    for idx, value in zip(robot.finger_joint_idxs, finger_values, strict=True):
+        joint_target[idx] = value
     action_arr = np.array(joint_target, dtype=np.float32)
 
     # Not a valid control mode.

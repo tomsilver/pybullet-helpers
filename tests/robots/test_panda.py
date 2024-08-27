@@ -27,18 +27,15 @@ def _panda_fixture(physics_client_id) -> PandaPyBulletRobot:
 def test_panda_pybullet_robot_initial_configuration(panda):
     """Check initial configuration matches expected position."""
     # Check get_state
+    assert isinstance(panda, PandaPyBulletRobot)
     pose = panda.get_end_effector_pose()
     assert np.allclose(pose.position, (0.5, 0.0, 0.5), atol=1e-3)
     finger_state = panda.get_finger_state()
-    assert np.isclose(finger_state, panda.open_fingers_joint_value)
+    assert np.isclose(finger_state, panda.open_fingers_state)
 
 
 def test_panda_pybullet_robot_links(panda):
     """Test link utilities on PandaPyBulletRobot."""
-    # Panda 7 DOF and the left and right fingers are appended last.
-    assert panda.left_finger_joint_idx == 7
-    assert panda.right_finger_joint_idx == 8
-
     # Tool link is last link in Panda URDF
     num_links = len(panda.joint_infos)
     assert panda.tool_link_id == num_links - 1

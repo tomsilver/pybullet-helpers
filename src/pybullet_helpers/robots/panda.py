@@ -3,17 +3,17 @@
 from pathlib import Path
 from typing import Optional
 
+import numpy as np
+
 from pybullet_helpers.ikfast import IKFastInfo
 from pybullet_helpers.joint import JointPositions
 from pybullet_helpers.robots.single_arm import FingeredSingleArmPyBulletRobot
 from pybullet_helpers.utils import get_assets_path
 
-import numpy as np
-
 
 class PandaPyBulletRobot(FingeredSingleArmPyBulletRobot[float]):
     """Franka Emika Panda which we assume is fixed on some base.
-    
+
     The fingers are symmetric, so the finger state is just a float.
     """
 
@@ -55,10 +55,10 @@ class PandaPyBulletRobot(FingeredSingleArmPyBulletRobot[float]):
     @property
     def tool_link_name(self) -> str:
         return "tool_link"
-    
+
     @property
     def finger_joint_names(self) -> list[str]:
-         return ["panda_finger_joint1", "panda_finger_joint2"]
+        return ["panda_finger_joint1", "panda_finger_joint2"]
 
     @property
     def open_fingers_state(self) -> float:
@@ -66,14 +66,15 @@ class PandaPyBulletRobot(FingeredSingleArmPyBulletRobot[float]):
 
     @property
     def closed_fingers_state(self) -> float:
-       return 0.03
+        return 0.03
 
-    def _finger_state_to_joints(self, state: float) -> list[float]:
+    def finger_state_to_joints(self, state: float) -> list[float]:
         return [state, state]
 
-    def _joints_to_finger_state(self, joint_positions: list[float]) -> float:
+    def joints_to_finger_state(self, joint_positions: list[float]) -> float:
         assert len(joint_positions) == 2
         assert np.isclose(joint_positions[0], joint_positions[1])
+        return joint_positions[0]
 
     @classmethod
     def ikfast_info(cls) -> Optional[IKFastInfo]:

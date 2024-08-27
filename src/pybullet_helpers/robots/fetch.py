@@ -2,15 +2,16 @@
 
 from pathlib import Path
 
+import numpy as np
+
 from pybullet_helpers.joint import JointPositions
 from pybullet_helpers.robots.single_arm import FingeredSingleArmPyBulletRobot
 from pybullet_helpers.utils import get_assets_path
-import numpy as np
 
 
 class FetchPyBulletRobot(FingeredSingleArmPyBulletRobot[float]):
     """A Fetch robot with a fixed base and only one arm in use.
-    
+
     The fingers are symmetric, so the finger state is just a float.
     """
 
@@ -44,10 +45,10 @@ class FetchPyBulletRobot(FingeredSingleArmPyBulletRobot[float]):
     @property
     def tool_link_name(self) -> str:
         return "gripper_link"
-    
+
     @property
     def finger_joint_names(self) -> list[str]:
-         return ["l_gripper_finger_joint", "r_gripper_finger_joint"]
+        return ["l_gripper_finger_joint", "r_gripper_finger_joint"]
 
     @property
     def open_fingers_state(self) -> float:
@@ -55,11 +56,12 @@ class FetchPyBulletRobot(FingeredSingleArmPyBulletRobot[float]):
 
     @property
     def closed_fingers_state(self) -> float:
-       return 0.01
+        return 0.01
 
-    def _finger_state_to_joints(self, state: float) -> list[float]:
+    def finger_state_to_joints(self, state: float) -> list[float]:
         return [state, state]
 
-    def _joints_to_finger_state(self, joint_positions: list[float]) -> float:
+    def joints_to_finger_state(self, joint_positions: list[float]) -> float:
         assert len(joint_positions) == 2
         assert np.isclose(joint_positions[0], joint_positions[1])
+        return joint_positions[0]
