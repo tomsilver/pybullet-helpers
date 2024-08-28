@@ -21,6 +21,7 @@ from pybullet_helpers.joint import JointPositions, get_joint_infos, get_joints
 from pybullet_helpers.link import get_link_pose, get_link_state
 from pybullet_helpers.robots.single_arm import (
     FingeredSingleArmPyBulletRobot,
+    FingerState,
     SingleArmPyBulletRobot,
 )
 
@@ -80,7 +81,7 @@ def inverse_kinematics(
 
         # IKFast doesn't handle fingers, so we add them afterwards.
         if isinstance(robot, FingeredSingleArmPyBulletRobot):
-            joint_positions = _add_fingers_to_joint_positions(robot, joint_positions)
+            joint_positions = add_fingers_to_joint_positions(robot, joint_positions)
 
         if validate:
             try:
@@ -245,7 +246,7 @@ def sample_collision_free_inverse_kinematics(
     generator = islice(generator, max_candidates)
 
     if isinstance(robot, FingeredSingleArmPyBulletRobot):
-        add_fingers = partial(_add_fingers_to_joint_positions, robot)
+        add_fingers = partial(add_fingers_to_joint_positions, robot)
         generator = map(add_fingers, generator)
 
     yield from filter_collision_free_joint_generator(
@@ -423,14 +424,21 @@ def _validate_joints_state(
         )
 
 
-def _add_fingers_to_joint_positions(
-    robot: FingeredSingleArmPyBulletRobot, joint_positions: JointPositions
+def add_fingers_to_joint_positions(
+    robot: FingeredSingleArmPyBulletRobot,
+    joint_positions: JointPositions,
+    finger_state: FingerState | None = None,
 ) -> JointPositions:
+    """Extend arm joint positions to include the fingers.
+
+    If finger_state is None, use the current robot finger state.
+    """
     joint_idx_to_value = dict(enumerate(joint_positions))
     finger_idxs = robot.finger_joint_idxs
-    current_finger_state = robot.get_finger_state()
-    current_finger_joint_values = robot.finger_state_to_joints(current_finger_state)
-    for idx, value in zip(finger_idxs, current_finger_joint_values, strict=True):
+    if finger_state is None:
+        finger_state = robot.get_finger_state()
+    finger_joint_values = robot.finger_state_to_joints(finger_state)
+    for idx, value in zip(finger_idxs, finger_joint_values, strict=True):
         joint_idx_to_value[idx] = value
     final_joint_positions = [
         joint_idx_to_value[i] for i in range(len(joint_idx_to_value))
