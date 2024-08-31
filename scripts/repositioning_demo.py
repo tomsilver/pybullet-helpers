@@ -2,7 +2,6 @@
 
 import abc
 import time
-from functools import partial
 from typing import Callable
 
 import numpy as np
