@@ -1,6 +1,8 @@
 """Experimental script for one two-link robot moving another."""
 
+import abc
 import time
+from functools import partial
 from typing import Callable
 
 import numpy as np
@@ -8,109 +10,177 @@ import pybullet as p
 from numpy.typing import NDArray
 from scipy.spatial.transform import Rotation
 
-from pybullet_helpers.geometry import Pose, matrix_from_quat
+from pybullet_helpers.geometry import Pose, matrix_from_quat, multiply_poses
 from pybullet_helpers.gui import create_gui_connection
 from pybullet_helpers.robots import create_pybullet_robot
 from pybullet_helpers.robots.single_arm import SingleArmPyBulletRobot
 
 
-def _calculate_jacobian(robot: SingleArmPyBulletRobot) -> NDArray:
-    joint_positions = robot.get_joint_positions()
-    jac_t, jac_r = p.calculateJacobian(
-        robot.robot_id,
-        robot.tool_link_id,
-        [0, 0, 0],
-        joint_positions,
-        [0.0] * len(joint_positions),
-        [0.0] * len(joint_positions),
-        physicsClientId=robot.physics_client_id,
-    )
-    return np.concatenate((np.array(jac_t), np.array(jac_r)), axis=0)
+class RepositioningDynamicsModel(abc.ABC):
+    """A model of forward dynamics."""
+
+    def __init__(
+        self,
+        active_arm: SingleArmPyBulletRobot,
+        passive_arm: SingleArmPyBulletRobot,
+        dt: float,
+    ) -> None:
+        self._active_arm = active_arm
+        self._passive_arm = passive_arm
+        self._dt = dt
+
+    @abc.abstractmethod
+    def step(self, torque: list[float]) -> None:
+        """Apply torque to the active arm and update in-place."""
 
 
-def _calculate_mass_matrix(robot: SingleArmPyBulletRobot) -> NDArray:
-    mass_matrix = p.calculateMassMatrix(
-        robot.robot_id,
-        robot.get_joint_positions(),
-        physicsClientId=robot.physics_client_id,
-    )
-    return np.array(mass_matrix)
+class MathRepositioningDynamicsModel(RepositioningDynamicsModel):
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._active_to_passive_ee_twist = self._get_active_to_passive_ee_twist(
+            self._active_arm, self._passive_arm
+        )
+
+    def step(self, torque: list[float]) -> None:
+
+        pos_r = np.array(self._active_arm.get_joint_positions())
+        pos_h = np.array(self._passive_arm.get_joint_positions())
+        vel_r = np.array(self._active_arm.get_joint_velocities())
+        vel_h = np.array(self._passive_arm.get_joint_velocities())
+        R = self._active_to_passive_ee_twist
+
+        Jr = self._calculate_jacobian(self._active_arm)
+        Jh = self._calculate_jacobian(self._passive_arm)
+        Jhinv = np.linalg.pinv(Jh)
+
+        Mr = self._calculate_mass_matrix(self._active_arm)
+        Mh = self._calculate_mass_matrix(self._passive_arm)
+
+        Nr = self._calculate_N_vector(self._active_arm)
+        Nh = self._calculate_N_vector(self._passive_arm)
+
+        acc_r = np.linalg.inv((Jhinv @ R @ -Jr).T @ Mh @ (Jhinv @ R @ Jr) - Mr) @ (
+            (Jhinv @ R @ Jr).T
+            @ (
+                Mh * (1 / self._dt) @ (Jhinv @ R @ Jr) @ vel_r
+                - Mh * (1 / self._dt) @ vel_h
+                + Nh
+            )
+            + Nr
+            - np.array(torque)
+        )
+
+        new_vel_r = vel_r + acc_r * self._dt
+        r_lin_vel = Jr @ new_vel_r
+        h_lin_vel = R @ r_lin_vel
+        new_vel_h = Jhinv @ h_lin_vel
+
+        acc_h = (new_vel_h - vel_h) / self._dt
+
+        vel_r = vel_r + acc_r * self._dt
+        vel_h = vel_h + acc_h * self._dt
+
+        pos_r = pos_r + vel_r * self._dt
+        pos_h = pos_h + vel_h * self._dt
+
+        self._active_arm.set_joints(list(pos_r), joint_velocities=list(vel_r))
+        self._passive_arm.set_joints(list(pos_h), joint_velocities=list(vel_h))
+
+    @staticmethod
+    def _calculate_jacobian(robot: SingleArmPyBulletRobot) -> NDArray:
+        joint_positions = robot.get_joint_positions()
+        jac_t, jac_r = p.calculateJacobian(
+            robot.robot_id,
+            robot.tool_link_id,
+            [0, 0, 0],
+            joint_positions,
+            [0.0] * len(joint_positions),
+            [0.0] * len(joint_positions),
+            physicsClientId=robot.physics_client_id,
+        )
+        return np.concatenate((np.array(jac_t), np.array(jac_r)), axis=0)
+
+    @staticmethod
+    def _calculate_mass_matrix(robot: SingleArmPyBulletRobot) -> NDArray:
+        mass_matrix = p.calculateMassMatrix(
+            robot.robot_id,
+            robot.get_joint_positions(),
+            physicsClientId=robot.physics_client_id,
+        )
+        return np.array(mass_matrix)
+
+    @staticmethod
+    def _calculate_N_vector(robot: SingleArmPyBulletRobot) -> NDArray:
+        joint_positions = robot.get_joint_positions()
+        joint_velocities = robot.get_joint_velocities()
+        joint_accel = [0.0] * len(joint_positions)
+        n_vector = p.calculateInverseDynamics(
+            robot.robot_id,
+            joint_positions,
+            joint_velocities,
+            joint_accel,
+            physicsClientId=robot.physics_client_id,
+        )
+        return np.array(n_vector)
+
+    @staticmethod
+    def _get_active_to_passive_ee_twist(
+        active_arm: SingleArmPyBulletRobot, passive_arm: SingleArmPyBulletRobot
+    ) -> NDArray:
+        active_ee_orn = active_arm.get_end_effector_pose().orientation
+        passive_ee_orn = passive_arm.get_end_effector_pose().orientation
+        active_to_passive_ee = matrix_from_quat(passive_ee_orn).T @ matrix_from_quat(
+            active_ee_orn
+        )
+        active_to_passive_ee_twist = np.eye(6)
+        active_to_passive_ee_twist[:3, :3] = active_to_passive_ee
+        active_to_passive_ee_twist[3:, 3:] = active_to_passive_ee
+        return active_to_passive_ee_twist
 
 
-def _calculate_N_vector(robot: SingleArmPyBulletRobot) -> NDArray:
-    joint_positions = robot.get_joint_positions()
-    joint_velocities = robot.get_joint_velocities()
-    joint_accel = [0.0] * len(joint_positions)
-    n_vector = p.calculateInverseDynamics(
-        robot.robot_id,
-        joint_positions,
-        joint_velocities,
-        joint_accel,
-        physicsClientId=robot.physics_client_id,
-    )
-    return np.array(n_vector)
+class PybulletConstraintRepositioningDynamicsModel(RepositioningDynamicsModel):
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+
+        tf = multiply_poses(
+            self._active_arm.get_end_effector_pose(),
+            self._passive_arm.get_end_effector_pose().invert(),
+        )
+        p.createConstraint(
+            self._active_arm.robot_id,
+            self._active_arm.tool_link_id,
+            self._passive_arm.robot_id,
+            self._passive_arm.tool_link_id,
+            jointType=p.JOINT_FIXED,
+            jointAxis=[0, 0, 0],
+            parentFramePosition=[0, 0, 0],
+            childFramePosition=tf.position,
+            parentFrameOrientation=[0, 0, 0, 1],
+            childFrameOrientation=tf.orientation,
+            physicsClientId=self._active_arm.physics_client_id,
+        )
+
+    def step(self, torque: list[float]) -> None:
+        import ipdb
+
+        ipdb.set_trace()
 
 
-def _get_active_to_passive_ee_twist(
-    active_arm: SingleArmPyBulletRobot, passive_arm: SingleArmPyBulletRobot
-) -> NDArray:
-    active_ee_orn = active_arm.get_end_effector_pose().orientation
-    passive_ee_orn = passive_arm.get_end_effector_pose().orientation
-    active_to_passive_ee = matrix_from_quat(passive_ee_orn).T @ matrix_from_quat(
-        active_ee_orn
-    )
-    active_to_passive_ee_twist = np.eye(6)
-    active_to_passive_ee_twist[:3, :3] = active_to_passive_ee
-    active_to_passive_ee_twist[3:, 3:] = active_to_passive_ee
-    return active_to_passive_ee_twist
-
-
-def _math_step(
+def _create_dynamics_model(
+    name: str,
     active_arm: SingleArmPyBulletRobot,
     passive_arm: SingleArmPyBulletRobot,
-    active_torque: list[float],
-    active_to_passive_ee_twist: NDArray,
-    dt: float = 1e-3,
-) -> None:
+    dt: float,
+) -> RepositioningDynamicsModel:
+    if name == "math":
+        return MathRepositioningDynamicsModel(active_arm, passive_arm, dt)
 
-    pos_r = np.array(active_arm.get_joint_positions())
-    pos_h = np.array(passive_arm.get_joint_positions())
-    vel_r = np.array(active_arm.get_joint_velocities())
-    vel_h = np.array(passive_arm.get_joint_velocities())
-    R = active_to_passive_ee_twist
+    if name == "pybullet-constraint":
+        return PybulletConstraintRepositioningDynamicsModel(active_arm, passive_arm, dt)
 
-    Jr = _calculate_jacobian(active_arm)
-    Jh = _calculate_jacobian(passive_arm)
-    Jhinv = np.linalg.pinv(Jh)
-
-    Mr = _calculate_mass_matrix(active_arm)
-    Mh = _calculate_mass_matrix(passive_arm)
-
-    Nr = _calculate_N_vector(active_arm)
-    Nh = _calculate_N_vector(passive_arm)
-
-    acc_r = np.linalg.inv((Jhinv @ R @ -Jr).T @ Mh @ (Jhinv @ R @ Jr) - Mr) @ (
-        (Jhinv @ R @ Jr).T
-        @ (Mh * (1 / dt) @ (Jhinv @ R @ Jr) @ vel_r - Mh * (1 / dt) @ vel_h + Nh)
-        + Nr
-        - np.array(active_torque)
-    )
-
-    new_vel_r = vel_r + acc_r * dt
-    r_lin_vel = Jr @ new_vel_r
-    h_lin_vel = R @ r_lin_vel
-    new_vel_h = Jhinv @ h_lin_vel
-
-    acc_h = (new_vel_h - vel_h) / dt
-
-    vel_r = vel_r + acc_r * dt
-    vel_h = vel_h + acc_h * dt
-
-    pos_r = pos_r + vel_r * dt
-    pos_h = pos_h + vel_h * dt
-
-    active_arm.set_joints(list(pos_r), joint_velocities=list(vel_r))
-    passive_arm.set_joints(list(pos_h), joint_velocities=list(vel_h))
+    raise NotImplementedError
 
 
 def _create_scenario(
@@ -194,31 +264,17 @@ def _create_scenario(
     raise NotImplementedError
 
 
-def _main(scenario: str, step_fn_name: str) -> None:
+def _main(scenario: str, dynamics: str) -> None:
     dt = 1e-3
     T = 10.0
     t = 0.0
 
     active_arm, passive_arm, torque_fn = _create_scenario(scenario)
-    active_to_passive_ee_twist = _get_active_to_passive_ee_twist(
-        active_arm, passive_arm
-    )
-
-    if step_fn_name == "math":
-        step_fn = _math_step
-
-    elif step_fn_name == "pybullet-constraints":
-        step_fn = _pybullet_constraint_step
+    dynamics_model = _create_dynamics_model(dynamics, active_arm, passive_arm, dt)
 
     while t < T:
-        step_fn(
-            active_arm,
-            passive_arm,
-            active_torque=torque_fn(t),
-            active_to_passive_ee_twist=active_to_passive_ee_twist,
-            dt=dt,
-        )
-
+        torque = torque_fn(t)
+        dynamics_model.step(torque)
         time.sleep(dt)
         t += dt
 
@@ -228,7 +284,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--scenario", type=str, default="two-link")
-    parser.add_argument("--step_fn", type=str, default="math")
+    parser.add_argument("--dynamics", type=str, default="math")
     args = parser.parse_args()
 
-    _main(args.scenario)
+    _main(args.scenario, args.dynamics)
