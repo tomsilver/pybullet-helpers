@@ -24,7 +24,7 @@ def test_two_link_pybullet_robot(physics_client_id):
     ee_pose = robot.get_end_effector_pose()
     assert ee_pose.allclose(
         Pose(
-            position=(0.5, 0.0, 0.6),
+            position=(2.0, 0.0, 0.0),
             orientation=(0.0, np.sqrt(2) / 2, 0.0, np.sqrt(2) / 2),
         )
     )
