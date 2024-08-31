@@ -189,7 +189,8 @@ def get_joint_positions(
     ]
 
 
-def get_joint_velocities(body: int, joints: list[int], physics_client_id: int
+def get_joint_velocities(
+    body: int, joints: list[int], physics_client_id: int
 ) -> JointVelocities:
     """Get the joint velocities for the given joints for a body."""
     return [
