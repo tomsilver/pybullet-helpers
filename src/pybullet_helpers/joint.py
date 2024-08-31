@@ -13,6 +13,7 @@ from pybullet_helpers.geometry import Pose3D, Quaternion
 # Not to be conflated with PyBullet joint states which include
 # positions, velocities and forces.
 JointPositions = list[float]
+JointVelocities = list[float]
 
 
 class JointInfo(NamedTuple):
@@ -180,10 +181,20 @@ def get_joint_states(
 
 def get_joint_positions(
     body: int, joints: list[int], physics_client_id: int
-) -> list[float]:
+) -> JointPositions:
     """Get the joint positions for the given joints for a body."""
     return [
         joint_state.jointPosition
+        for joint_state in get_joint_states(body, joints, physics_client_id)
+    ]
+
+
+def get_joint_velocities(
+    body: int, joints: list[int], physics_client_id: int
+) -> JointVelocities:
+    """Get the joint velocities for the given joints for a body."""
+    return [
+        joint_state.jointVelocity
         for joint_state in get_joint_states(body, joints, physics_client_id)
     ]
 

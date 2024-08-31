@@ -15,10 +15,12 @@ from pybullet_helpers.ikfast import IKFastInfo
 from pybullet_helpers.joint import (
     JointInfo,
     JointPositions,
+    JointVelocities,
     get_joint_infos,
     get_joint_lower_limits,
     get_joint_positions,
     get_joint_upper_limits,
+    get_joint_velocities,
     get_joints,
     get_kinematic_chain,
 )
@@ -224,7 +226,11 @@ class SingleArmPyBulletRobot(abc.ABC):
             self.robot_id, self.arm_joints, self.physics_client_id
         )
 
-    def set_joints(self, joint_positions: JointPositions) -> None:
+    def set_joints(
+        self,
+        joint_positions: JointPositions,
+        joint_velocities: JointVelocities | None = None,
+    ) -> None:
         """Directly set the joint positions.
 
         Outside of resetting to an initial state, this should not be
@@ -232,15 +238,24 @@ class SingleArmPyBulletRobot(abc.ABC):
         be used for motion planning, collision checks, etc., in a robot
         that does not maintain state.
         """
-        assert len(joint_positions) == len(self.arm_joints)
-        for joint_id, joint_val in zip(self.arm_joints, joint_positions):
+        if joint_velocities is None:
+            joint_velocities = [0] * len(joint_positions)
+        for joint_id, joint_pos, joint_vel in zip(
+            self.arm_joints, joint_positions, joint_velocities, strict=True
+        ):
             p.resetJointState(
                 self.robot_id,
                 joint_id,
-                targetValue=joint_val,
-                targetVelocity=0,
+                targetValue=joint_pos,
+                targetVelocity=joint_vel,
                 physicsClientId=self.physics_client_id,
             )
+
+    def get_joint_velocities(self) -> JointVelocities:
+        """Get the joint velocities from the current PyBullet state."""
+        return get_joint_velocities(
+            self.robot_id, self.arm_joints, self.physics_client_id
+        )
 
     def get_end_effector_pose(self) -> Pose:
         """Get the robot end-effector pose based on the current PyBullet
