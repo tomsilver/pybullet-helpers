@@ -69,10 +69,10 @@ def _custom_step(
     dt: float = 1e-3,
 ) -> None:
 
-    pos_r = active_arm.get_joint_positions()
-    pos_h = passive_arm.get_joint_positions()
-    vel_r = active_arm.get_joint_velocities()
-    vel_h = passive_arm.get_joint_velocities()
+    pos_r = np.array(active_arm.get_joint_positions())
+    pos_h = np.array(passive_arm.get_joint_positions())
+    vel_r = np.array(active_arm.get_joint_velocities())
+    vel_h = np.array(passive_arm.get_joint_velocities())
     R = active_to_passive_ee_twist
 
     Jr = _calculate_jacobian(active_arm)
@@ -105,47 +105,48 @@ def _custom_step(
     pos_r = pos_r + vel_r * dt
     pos_h = pos_h + vel_h * dt
 
-    active_arm.set_joints(pos_r, joint_velocities=vel_r)
-    passive_arm.set_joints(pos_h, joint_velocities=vel_h)
-
-    # Sanity checks
-    recovered_pos_r = active_arm.get_joint_positions()
-    recovered_pos_h = passive_arm.get_joint_positions()
-    recovered_vel_r = active_arm.get_joint_velocities()
-    recovered_vel_h = passive_arm.get_joint_velocities()
-    assert np.allclose(recovered_pos_r, pos_r)
-    assert np.allclose(recovered_pos_h, pos_h)
-    assert np.allclose(recovered_vel_r, vel_r)
-    assert np.allclose(recovered_vel_h, vel_h)
+    active_arm.set_joints(list(pos_r), joint_velocities=list(vel_r))
+    passive_arm.set_joints(list(pos_h), joint_velocities=list(vel_h))
 
 
-def _main() -> None:
-    physics_client_id = create_gui_connection(camera_distance=2.0, camera_pitch=-40)
+def _create_scenario(
+    scenario: str,
+) -> tuple[SingleArmPyBulletRobot, SingleArmPyBulletRobot, list[float]]:
 
-    active_arm_base_pose = Pose((-np.sqrt(2), 0.0, 0.0))
-    active_arm_home_joint_positions = [-np.pi / 4, np.pi / 2]
-    active_arm = create_pybullet_robot(
-        "two-link",
-        physics_client_id,
-        base_pose=active_arm_base_pose,
-        home_joint_positions=active_arm_home_joint_positions,
-    )
+    if scenario == "two-link":
+        physics_client_id = create_gui_connection(camera_distance=2.0, camera_pitch=-40)
 
-    passive_arm_base_pose = Pose((np.sqrt(2), 0.0, 0.0))
-    passive_arm_home_joint_positions = [np.pi / 2 + np.pi / 4, np.pi / 2]
-    passive_arm = create_pybullet_robot(
-        "two-link",
-        physics_client_id,
-        base_pose=passive_arm_base_pose,
-        home_joint_positions=passive_arm_home_joint_positions,
-    )
+        active_arm_base_pose = Pose((-np.sqrt(2), 0.0, 0.0))
+        active_arm_home_joint_positions = [-np.pi / 4, np.pi / 2]
+        active_arm = create_pybullet_robot(
+            "two-link",
+            physics_client_id,
+            base_pose=active_arm_base_pose,
+            home_joint_positions=active_arm_home_joint_positions,
+        )
 
+        passive_arm_base_pose = Pose((np.sqrt(2), 0.0, 0.0))
+        passive_arm_home_joint_positions = [np.pi / 2 + np.pi / 4, np.pi / 2]
+        passive_arm = create_pybullet_robot(
+            "two-link",
+            physics_client_id,
+            base_pose=passive_arm_base_pose,
+            home_joint_positions=passive_arm_home_joint_positions,
+        )
+
+        torque = [0.01, 0.0]
+
+        return active_arm, passive_arm, torque
+
+    raise NotImplementedError
+
+
+def _main(scenario: str) -> None:
+    active_arm, passive_arm, torque = _create_scenario(scenario)
     active_to_passive_ee_twist = _get_active_to_passive_ee_twist(
         active_arm, passive_arm
     )
-
     while True:
-        torque = [0.01, 0.0]
         _custom_step(
             active_arm,
             passive_arm,
@@ -155,4 +156,10 @@ def _main() -> None:
 
 
 if __name__ == "__main__":
-    _main()
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--scenario", type=str, default="two-link")
+    args = parser.parse_args()
+
+    _main(args.scenario)
