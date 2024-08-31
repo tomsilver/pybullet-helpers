@@ -97,9 +97,9 @@ def _custom_step(
     )
 
     new_vel_r = vel_r + acc_r * dt
-    robot_lin_vel = Jr @ new_vel_r
-    human_lin_vel = R @ robot_lin_vel
-    new_vel_h = Jhinv @ human_lin_vel
+    r_lin_vel = Jr @ new_vel_r
+    h_lin_vel = R @ r_lin_vel
+    new_vel_h = Jhinv @ h_lin_vel
 
     acc_h = (new_vel_h - vel_h) / dt
 
