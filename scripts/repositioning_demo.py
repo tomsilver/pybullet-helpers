@@ -65,7 +65,7 @@ def _get_active_to_passive_ee_twist(
     return active_to_passive_ee_twist
 
 
-def _custom_step(
+def _math_step(
     active_arm: SingleArmPyBulletRobot,
     passive_arm: SingleArmPyBulletRobot,
     active_torque: list[float],
@@ -141,8 +141,8 @@ def _create_scenario(
         )
 
         def _torque_fn(t: float) -> list[float]:
-            if t < 0.01:
-                return [1, 0.0]
+            if t < 0.05:
+                return [0.0, 1.0]
             return [0.0] * 2
 
         return active_arm, passive_arm, _torque_fn
@@ -194,17 +194,24 @@ def _create_scenario(
     raise NotImplementedError
 
 
-def _main(scenario: str) -> None:
-    active_arm, passive_arm, torque_fn = _create_scenario(scenario)
-    active_to_passive_ee_twist = _get_active_to_passive_ee_twist(
-        active_arm, passive_arm
-    )
+def _main(scenario: str, step_fn_name: str) -> None:
     dt = 1e-3
     T = 10.0
     t = 0.0
 
+    active_arm, passive_arm, torque_fn = _create_scenario(scenario)
+    active_to_passive_ee_twist = _get_active_to_passive_ee_twist(
+        active_arm, passive_arm
+    )
+
+    if step_fn_name == "math":
+        step_fn = _math_step
+
+    elif step_fn_name == "pybullet-constraints":
+        step_fn = _pybullet_constraint_step
+
     while t < T:
-        _custom_step(
+        step_fn(
             active_arm,
             passive_arm,
             active_torque=torque_fn(t),
@@ -221,6 +228,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--scenario", type=str, default="two-link")
+    parser.add_argument("--step_fn", type=str, default="math")
     args = parser.parse_args()
 
     _main(args.scenario)
