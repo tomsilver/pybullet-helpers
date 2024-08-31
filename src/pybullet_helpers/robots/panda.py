@@ -7,7 +7,10 @@ import numpy as np
 
 from pybullet_helpers.ikfast import IKFastInfo
 from pybullet_helpers.joint import JointPositions
-from pybullet_helpers.robots.single_arm import SingleArmPyBulletRobot, FingeredSingleArmPyBulletRobot
+from pybullet_helpers.robots.single_arm import (
+    FingeredSingleArmPyBulletRobot,
+    SingleArmPyBulletRobot,
+)
 from pybullet_helpers.utils import get_assets_path
 
 

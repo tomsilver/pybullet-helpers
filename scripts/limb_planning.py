@@ -20,7 +20,7 @@ from pybullet_helpers.motion_planning import MotionPlanningHyperparameters
 from pybullet_helpers.robots import create_pybullet_robot
 
 
-def _main():
+def _main() -> None:
     # Initialize hyperparameters for planning.
     seed = 0
     fps = 5
@@ -31,10 +31,10 @@ def _main():
     physics_client_id = create_gui_connection()
 
     # Set up the robots.
-    robot_init_pos = [0.8, -0.1, 0.5]
+    robot_init_pos = (0.8, -0.1, 0.5)
     robot_init_orn_obj = R.from_euler("xyz", [0, 0, np.pi])
     robot_base_pose = Pose(robot_init_pos, robot_init_orn_obj.as_quat())
-    human_init_pos = [0.15, 0.1, 1.4]
+    human_init_pos = (0.15, 0.1, 1.4)
     human_init_orn_obj = R.from_euler("xyz", [np.pi, 0, 0])
     human_base_pose = Pose(human_init_pos, human_init_orn_obj.as_quat())
     robot = create_pybullet_robot(
@@ -146,6 +146,7 @@ def _main():
 
     start_time = time.perf_counter()
     plan = birrt.query(init_joints, target_joints)
+    assert plan is not None
     print("Motion planning duration:", time.perf_counter() - start_time)
 
     imgs = []
@@ -157,7 +158,7 @@ def _main():
         imgs.append(img.astype(np.uint8))
 
     outfile = "limb_planning.mp4"
-    iio.mimsave(outfile, imgs, fps=fps)
+    iio.mimsave(outfile, imgs, fps=fps)  # type: ignore
     print(f"Wrote out to {outfile}")
 
 
