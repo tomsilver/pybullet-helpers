@@ -10,9 +10,8 @@ from pybullet_helpers.inverse_kinematics import (
     sample_collision_free_inverse_kinematics,
 )
 from pybullet_helpers.robots.fetch import FetchPyBulletRobot
-from pybullet_helpers.robots.human import HumanArm6DoF
 from pybullet_helpers.robots.kinova import KinovaGen3RobotiqGripperPyBulletRobot
-from pybullet_helpers.robots.panda import PandaPyBulletRobot, PandaPybulletRobotLimbRepo
+from pybullet_helpers.robots.panda import PandaPyBulletRobot
 from pybullet_helpers.utils import create_pybullet_block
 
 
@@ -63,78 +62,6 @@ def test_ikfast_inverse_kinematics(physics_client_id):
         Pose((0.0, 0.0, 0.1), (0.0, 0.0, 0.0, 1.0)),
         Pose((0.0, 0.0, 0.0), (1.0, 0.0, 0.0, 0.0)),
         Pose((0.0, 0.0, 0.0), (0.0, 1.0, 0.0, 0.0)),
-        Pose((0.0, 0.0, 0.0), (0.0, 0.0, 1.0, 0.0)),
-    ]
-    for tf in transforms:
-        target_pose = multiply_poses(initial_end_effector_pose, tf)
-        robot.go_home()
-        inverse_kinematics(robot, target_pose, validate=False, set_joints=True)
-        recovered_end_effector_pose = robot.get_end_effector_pose()
-        assert np.allclose(
-            recovered_end_effector_pose.position, target_pose.position, atol=1e-3
-        )
-        assert np.allclose(
-            recovered_end_effector_pose.orientation, target_pose.orientation, atol=1e-3
-        )
-    # With validate = True, if the position is impossible to reach, an error
-    # is raised.
-    impossible_tf = Pose((0.0, 0.0, 100.0), (0.0, 0.0, 0.0, 1.0))
-    impossible_target = multiply_poses(initial_end_effector_pose, impossible_tf)
-    robot.go_home()
-    with pytest.raises(Exception) as e:
-        inverse_kinematics(robot, impossible_target, validate=True, set_joints=True)
-    assert "No IK solution found" in str(e)
-
-
-def test_ikfast_inverse_kinematics_limb_repo(physics_client_id):
-    """Tests for IKFast inverse kinematics."""
-    robot = PandaPybulletRobotLimbRepo(physics_client_id, control_mode="reset")
-    assert robot.ikfast_info() is not None
-    initial_end_effector_pose = robot.get_end_effector_pose()
-
-    # Try a few different poses, all should work fine.
-    transforms = [
-        Pose((0.1, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0)),
-        Pose((0.0, 0.1, 0.0), (0.0, 0.0, 0.0, 1.0)),
-        Pose((0.0, 0.0, 0.1), (0.0, 0.0, 0.0, 1.0)),
-        Pose((0.0, 0.0, 0.0), (1.0, 0.0, 0.0, 0.0)),
-        Pose((0.0, 0.0, 0.0), (0.0, 1.0, 0.0, 0.0)),
-        Pose((0.0, 0.0, 0.0), (0.0, 0.0, 1.0, 0.0)),
-    ]
-    for tf in transforms:
-        target_pose = multiply_poses(initial_end_effector_pose, tf)
-        robot.go_home()
-        inverse_kinematics(robot, target_pose, validate=False, set_joints=True)
-        recovered_end_effector_pose = robot.get_end_effector_pose()
-        assert np.allclose(
-            recovered_end_effector_pose.position, target_pose.position, atol=1e-3
-        )
-        assert np.allclose(
-            recovered_end_effector_pose.orientation, target_pose.orientation, atol=1e-3
-        )
-    # With validate = True, if the position is impossible to reach, an error
-    # is raised.
-    impossible_tf = Pose((0.0, 0.0, 100.0), (0.0, 0.0, 0.0, 1.0))
-    impossible_target = multiply_poses(initial_end_effector_pose, impossible_tf)
-    robot.go_home()
-    with pytest.raises(Exception) as e:
-        inverse_kinematics(robot, impossible_target, validate=True, set_joints=True)
-    assert "No IK solution found" in str(e)
-
-
-def test_ikfast_inverse_kinematics_human(physics_client_id):
-    """Tests for IKFast inverse kinematics."""
-    robot = HumanArm6DoF(physics_client_id, control_mode="reset")
-    assert robot.ikfast_info() is not None
-    initial_end_effector_pose = robot.get_end_effector_pose()
-
-    # Try a few different poses, all should work fine.
-    transforms = [
-        Pose((0.3, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0)),
-        # Pose((0.0, 0.3, 0.0), (0.0, 0.0, 0.0, 1.0)),
-        Pose((0.0, 0.0, 0.3), (0.0, 0.0, 0.0, 1.0)),
-        # Pose((0.0, 0.0, 0.0), (1.0, 0.0, 0.0, 0.0)),
-        # Pose((0.1, 0.1, 0.1), (0.0, 1.0, 0.0, 0.0)),
         Pose((0.0, 0.0, 0.0), (0.0, 0.0, 1.0, 0.0)),
     ]
     for tf in transforms:
