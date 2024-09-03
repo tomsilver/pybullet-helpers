@@ -57,6 +57,7 @@ class SingleArmPyBulletRobot(abc.ABC):
             baseOrientation=self._base_pose.orientation,
             useFixedBase=True,
             physicsClientId=self.physics_client_id,
+            flags=p.URDF_USE_INERTIA_FROM_FILE,
         )
 
         # Make sure the home joint positions are within limits.
