@@ -46,7 +46,7 @@ def capture_image(
 
     rgb_array = np.array(px).reshape((image_height, image_width, 4))
     rgb_array = rgb_array[:, :, :3]
-    return rgb_array
+    return rgb_array.astype(np.uint8)
 
 
 def capture_superimposed_image(
