@@ -16,7 +16,7 @@ class StretchPyBulletRobot(FingeredSingleArmPyBulletRobot[float]):
         self, physics_client_id: int, fixed_based: bool = False, **kwargs
     ) -> None:
         """By default, stretch can move its based."""
-        super().__init__(physics_client_id, **kwargs, fixed_base=fixed_based)
+        super().__init__(physics_client_id, fixed_base=fixed_based, **kwargs)
 
     @classmethod
     def get_name(cls) -> str:
