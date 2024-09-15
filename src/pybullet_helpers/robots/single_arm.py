@@ -36,11 +36,15 @@ class SingleArmPyBulletRobot(abc.ABC):
         base_pose: Pose = Pose.identity(),
         control_mode: str = "position",
         home_joint_positions: JointPositions | None = None,
+        fixed_base: bool = True,
     ) -> None:
         self.physics_client_id = physics_client_id
 
         # Pose of base of robot.
         self._base_pose = base_pose
+
+        # Whether the base is fixed.
+        self.fixed_base = fixed_base
 
         # Control mode for the robot.
         self._control_mode = control_mode
@@ -55,7 +59,7 @@ class SingleArmPyBulletRobot(abc.ABC):
             str(self.urdf_path()),
             basePosition=self._base_pose.position,
             baseOrientation=self._base_pose.orientation,
-            useFixedBase=True,
+            useFixedBase=fixed_base,
             physicsClientId=self.physics_client_id,
             flags=p.URDF_USE_INERTIA_FROM_FILE,
         )
@@ -269,6 +273,16 @@ class SingleArmPyBulletRobot(abc.ABC):
         return Pose(
             ee_link_state.worldLinkFramePosition,
             ee_link_state.worldLinkFrameOrientation,
+        )
+
+    def set_base(self, pose: Pose) -> None:
+        """Reset the robot base position and orientation."""
+        assert not self.fixed_base, "Cannot set base for fixed-base robot"
+        p.resetBasePositionAndOrientation(
+            self.robot_id,
+            pose.position,
+            pose.orientation,
+            physicsClientId=self.physics_client_id,
         )
 
     def set_motors(self, joint_positions: JointPositions) -> None:
