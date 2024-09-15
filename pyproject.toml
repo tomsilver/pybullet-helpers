@@ -14,6 +14,7 @@ dependencies = [
    "gymnasium==0.29.1",
    "tomsutils@git+https://github.com/tomsilver/toms-utils.git",
    "scipy==1.14.0",
+   "hello-robot-stretch-urdf",
 ]
 
 [project.optional-dependencies]
