@@ -326,6 +326,22 @@ class SingleArmPyBulletRobot(abc.ABC):
         orientation = ee_link_state.worldLinkFrameOrientation
         return Pose(position, orientation)
 
+    @property
+    def default_inverse_kinematics_method(self) -> str:
+        """The default inverse kinematics used with inverse_kinematics()."""
+        if self.ikfast_info() is not None:
+            return "ikfast"
+        return "pybullet"
+
+    def custom_inverse_kinematics(
+        self,
+        end_effector_pose: Pose,
+        validate: bool = True,
+        validation_atol: float = 1e-3,
+    ):
+        """Robots can implement custom IK; see inverse_kinematics()."""
+        raise NotImplementedError
+
     @classmethod
     def ikfast_info(cls) -> Optional[IKFastInfo]:
         """IKFastInfo for this robot.

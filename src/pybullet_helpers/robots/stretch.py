@@ -5,6 +5,7 @@ from pathlib import Path
 
 import numpy as np
 
+from pybullet_helpers.geometry import Pose
 from pybullet_helpers.joint import JointPositions
 from pybullet_helpers.robots.single_arm import FingeredSingleArmPyBulletRobot
 
@@ -73,3 +74,17 @@ class StretchPyBulletRobot(FingeredSingleArmPyBulletRobot[float]):
         assert len(joint_positions) == 2
         assert np.isclose(joint_positions[0], joint_positions[1])
         return joint_positions[0]
+
+    @property
+    def default_inverse_kinematics_method(self) -> str:
+        return "custom"
+
+    def custom_inverse_kinematics(
+        self,
+        end_effector_pose: Pose,
+        validate: bool = True,
+        validation_atol: float = 1e-3,
+    ):
+        import ipdb
+
+        ipdb.set_trace()

@@ -64,7 +64,12 @@ def inverse_kinematics(
     WARNING: if validate is True, physics may be overridden, and so it
     should not be used within simulation.
     """
-    if robot.ikfast_info():
+    if robot.default_inverse_kinematics_method == "custom":
+        joint_positions = robot.custom_inverse_kinematics(
+            end_effector_pose, validate, validation_atol
+        )
+
+    elif robot.default_inverse_kinematics_method == "ikfast":
 
         ik_solutions = ikfast_closest_inverse_kinematics(
             robot,
@@ -91,7 +96,7 @@ def inverse_kinematics(
             except ValueError as e:
                 raise InverseKinematicsError(e)
 
-    else:
+    elif robot.default_inverse_kinematics_method == "pybullet":
         joint_positions = pybullet_inverse_kinematics(
             robot.robot_id,
             robot.end_effector_id,
@@ -100,6 +105,11 @@ def inverse_kinematics(
             robot.arm_joints,
             physics_client_id=robot.physics_client_id,
             validate=validate,
+        )
+
+    else:
+        raise NotImplementedError(
+            f"Unrecognized IK method: {robot.default_inverse_kinematics_method}"
         )
 
     if set_joints:
