@@ -1,4 +1,4 @@
-"""Tests for Kinova robots."""
+"""Tests for Stretch robot."""
 
 from pybullet_helpers.robots.stretch import StretchPyBulletRobot
 
