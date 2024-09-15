@@ -12,9 +12,11 @@ from pybullet_helpers.robots.single_arm import FingeredSingleArmPyBulletRobot
 class StretchPyBulletRobot(FingeredSingleArmPyBulletRobot[float]):
     """Stretch SE3 robot with SG3 end effector."""
 
-    def __init__(self, *args, fixed_based: bool = False, **kwargs) -> None:
+    def __init__(
+        self, physics_client_id: int, fixed_based: bool = False, **kwargs
+    ) -> None:
         """By default, stretch can move its based."""
-        super().__init__(*args, **kwargs, fixed_base=fixed_based)
+        super().__init__(physics_client_id, **kwargs, fixed_base=fixed_based)
 
     @classmethod
     def get_name(cls) -> str:
