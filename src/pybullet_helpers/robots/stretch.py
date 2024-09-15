@@ -13,10 +13,10 @@ class StretchPyBulletRobot(FingeredSingleArmPyBulletRobot[float]):
     """Stretch SE3 robot with SG3 end effector."""
 
     def __init__(
-        self, physics_client_id: int, fixed_based: bool = False, **kwargs
+        self, physics_client_id: int, fixed_base: bool = False, **kwargs
     ) -> None:
         """By default, stretch can move its based."""
-        super().__init__(physics_client_id, fixed_base=fixed_based, **kwargs)
+        super().__init__(physics_client_id, fixed_base=fixed_base, **kwargs)
 
     @classmethod
     def get_name(cls) -> str:
