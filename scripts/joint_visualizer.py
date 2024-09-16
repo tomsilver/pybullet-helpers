@@ -7,7 +7,7 @@ from pybullet_helpers.robots import create_pybullet_robot
 
 
 def _main(robot_name: str) -> None:
-    physics_client_id = create_gui_connection()
+    physics_client_id = create_gui_connection(background_rgb=(1, 1, 1))
     p.configureDebugVisualizer(
         p.COV_ENABLE_GUI, True, physicsClientId=physics_client_id
     )
