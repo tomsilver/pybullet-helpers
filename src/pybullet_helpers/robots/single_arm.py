@@ -10,7 +10,7 @@ import numpy as np
 import pybullet as p
 from gymnasium.spaces import Box
 
-from pybullet_helpers.geometry import Pose
+from pybullet_helpers.geometry import Pose, get_pose
 from pybullet_helpers.ikfast import IKFastInfo
 from pybullet_helpers.joint import (
     JointInfo,
@@ -59,7 +59,10 @@ class SingleArmPyBulletRobot(abc.ABC):
             str(self.urdf_path()),
             basePosition=self._base_pose.position,
             baseOrientation=self._base_pose.orientation,
-            useFixedBase=fixed_base,
+            # Even if the robot has a mobile base, we treat it as static in
+            # pybullet for now and just update the position directly. Otherwise
+            # physics starts to affect the robot base.
+            useFixedBase=True,
             physicsClientId=self.physics_client_id,
             flags=p.URDF_USE_INERTIA_FROM_FILE,
         )
@@ -284,6 +287,10 @@ class SingleArmPyBulletRobot(abc.ABC):
             pose.orientation,
             physicsClientId=self.physics_client_id,
         )
+
+    def get_base_pose(self) -> Pose:
+        """Get the current base pose."""
+        return get_pose(self.robot_id, self.physics_client_id)
 
     def set_motors(self, joint_positions: JointPositions) -> None:
         """Update the motors to move toward the given joint positions."""
