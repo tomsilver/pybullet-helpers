@@ -5,6 +5,7 @@ from pathlib import Path
 
 import numpy as np
 
+import pybullet as p
 from pybullet_helpers.geometry import Pose, multiply_poses, matrix_from_quat
 from pybullet_helpers.joint import JointPositions
 from pybullet_helpers.link import get_relative_link_pose, get_link_pose
@@ -30,7 +31,8 @@ class StretchPyBulletRobot(FingeredSingleArmPyBulletRobot[float]):
         self.set_joints(joints)
         min_pose = self._get_relative_wrist_pose()
         self._arm_horizontal_bounds = [0.0]
-        for arm_joint_name in ["joint_arm_l3", "joint_arm_l2", "joint_arm_l1", "joint_arm_l0"]:
+        self._arm_horizontal_joints = ["joint_arm_l3", "joint_arm_l2", "joint_arm_l1", "joint_arm_l0"]
+        for arm_joint_name in self._arm_horizontal_joints:
             joint_idx = self.arm_joints.index(self.joint_from_name(arm_joint_name))
             joints[joint_idx] = self.joint_upper_limits[joint_idx]
             self.set_joints(joints)
@@ -55,13 +57,10 @@ class StretchPyBulletRobot(FingeredSingleArmPyBulletRobot[float]):
         assert np.allclose(min_pose.orientation, joint_max_pose.orientation, atol=1e-3)
         self._arm_vertical_bounds.append(min_pose.position[1] - joint_max_pose.position[1])
 
-        # Determine approximate "radius" from wrist to end effector and the
-        # offset between the end effector and the wrist plane in the nominal.
-        # TODO simplify and remove a lot of this
+        # Use an approximate Cartesian offset between the end effector and the wrist.
         self.set_joints(self.joint_lower_limits)
         ee_pose = self.get_end_effector_pose()
         wrist_pose = get_link_pose(self.robot_id, self._wrist_id, self.physics_client_id)
-        self._wrist_radius = np.sqrt(np.sum(np.square(np.subtract(ee_pose.position, wrist_pose.position))))
         self._wrist_ee_offset = Pose(tuple(np.subtract(wrist_pose.position, ee_pose.position)))
 
         # Reset the joints after 'calibration'.
@@ -136,13 +135,13 @@ class StretchPyBulletRobot(FingeredSingleArmPyBulletRobot[float]):
                 
         # Start by transforming the end effector pose into the robot frame.
         initial_joints = self.get_joint_positions()
+        
         self.set_joints(self.joint_lower_limits)
         world_to_nominal = get_link_pose(self.robot_id, self._wrist_id, self.physics_client_id)
-        world_to_target = end_effector_pose
-        nominal_to_target = multiply_poses(world_to_nominal.invert(), world_to_target)
-
         world_to_wrist_target = multiply_poses(self._wrist_ee_offset, end_effector_pose)
         nominal_to_wrist_target = multiply_poses(world_to_nominal.invert(), world_to_wrist_target)
+
+        solution = list(self.joint_lower_limits)
 
         # First determine vertical lift, the easier case.
         assert len(self._arm_vertical_bounds) == 2
@@ -155,10 +154,51 @@ class StretchPyBulletRobot(FingeredSingleArmPyBulletRobot[float]):
         joint_lower = self.joint_lower_limits[joint_idx]
         joint_upper = self.joint_upper_limits[joint_idx]
         joint_val = joint_lower + frac_vert * (joint_upper - joint_lower)
+        solution[joint_idx] = joint_val
 
-        joints = list(self.joint_lower_limits)
-        joints[joint_idx] = joint_val
-        self.set_joints(joints)
+        # Next determine the horizontal joint values by completely extending
+        # each until the target is reachable.
+        wrist_horiz = nominal_to_wrist_target.position[2]
+        num_horiz_joints = len(self._arm_horizontal_bounds)
+        for i, arm_joint_name in enumerate(self._arm_horizontal_joints):
+            min_horiz = self._arm_horizontal_bounds[i]
+            max_horiz = self._arm_horizontal_bounds[i+1]
+            joint_idx = self.arm_joints.index(self.joint_from_name(arm_joint_name))
+            joint_lower = self.joint_lower_limits[joint_idx]
+            joint_upper = self.joint_upper_limits[joint_idx]
+            if wrist_horiz > max_horiz and i < num_horiz_joints - 1:
+                solution[joint_idx] = joint_upper
+            else:
+                horiz_scale = max_horiz - min_horiz
+                frac_horiz = np.clip((wrist_horiz - min_horiz) / horiz_scale, 0, 1)
+                joint_val = joint_lower + frac_horiz * (joint_upper - joint_lower)
+                solution[joint_idx] = joint_val
+                break
+
+        # Directly set the wrist roll, pitch, yaw from the target orientation.
+
+        # from scipy.spatial.transform import Rotation
+        # target = Rotation.from_euler('xyz', [0, 0, np.pi / 4])
+        # current = Rotation.from_quat(end_effector_pose.orientation)
+        # temp_tf = target * current.inv()
+        # world_to_wrist = Pose((0, 0, 0), temp_tf.inv().as_quat())
+
+        my_world_to_wrist = get_link_pose(self.robot_id, self._wrist_id, self.physics_client_id)
+        # tf = multiply_poses(my_world_to_wrist.invert(), world_to_wrist)
+        tf = Pose((0, 0, 0), (-0.14644910395145416, 0.3535524010658264, -0.3535563051700592, 0.8535521626472473))
+        world_to_wrist = multiply_poses(my_world_to_wrist, tf)
+
+        wrist_to_ee = multiply_poses(world_to_wrist.invert(), end_effector_pose)
+        roll, pitch, yaw = p.getEulerFromQuaternion(wrist_to_ee.orientation)
+        # roll = 0
+        # pitch = 0
+        # yaw = np.pi / 4
+        wrist_angle_names = ["joint_wrist_roll", "joint_wrist_pitch", "joint_wrist_yaw"]
+        for v, name in zip([roll, pitch, yaw], wrist_angle_names, strict=True):
+            joint_idx = self.arm_joints.index(self.joint_from_name(name))
+            solution[joint_idx] = v
+
+        self.set_joints(solution)
 
         # # Use the sphere radius to determine a point near the reachable plane.
         # z_axis_start = np.array([0, 0, -self._wrist_radius])
@@ -175,11 +215,11 @@ class StretchPyBulletRobot(FingeredSingleArmPyBulletRobot[float]):
 
         # # self.set_joints(initial_joints)
 
-        import pybullet as p
         # from pybullet_helpers.utils import create_pybullet_block
         from pybullet_helpers.gui import visualize_pose
 
         visualize_pose(end_effector_pose, self.physics_client_id)
+        # visualize_pose(world_to_wrist, self.physics_client_id)
         
         # # visualize the reachable plane
         # plane_id = create_pybullet_block((0.9, 0.1, 0.9, 0.25), [1e-2, reachable_plane_height / 2, reachable_plane_width / 2], self.physics_client_id)
