@@ -10,7 +10,7 @@ import numpy as np
 import pybullet as p
 from gymnasium.spaces import Box
 
-from pybullet_helpers.geometry import Pose
+from pybullet_helpers.geometry import Pose, get_pose
 from pybullet_helpers.ikfast import IKFastInfo
 from pybullet_helpers.joint import (
     JointInfo,
@@ -59,7 +59,10 @@ class SingleArmPyBulletRobot(abc.ABC):
             str(self.urdf_path()),
             basePosition=self._base_pose.position,
             baseOrientation=self._base_pose.orientation,
-            useFixedBase=fixed_base,
+            # Even if the robot has a mobile base, we treat it as static in
+            # pybullet for now and just update the position directly. Otherwise
+            # physics starts to affect the robot base.
+            useFixedBase=True,
             physicsClientId=self.physics_client_id,
             flags=p.URDF_USE_INERTIA_FROM_FILE,
         )
@@ -285,6 +288,10 @@ class SingleArmPyBulletRobot(abc.ABC):
             physicsClientId=self.physics_client_id,
         )
 
+    def get_base_pose(self) -> Pose:
+        """Get the current base pose."""
+        return get_pose(self.robot_id, self.physics_client_id)
+
     def set_motors(self, joint_positions: JointPositions) -> None:
         """Update the motors to move toward the given joint positions."""
         assert len(joint_positions) == len(self.arm_joints)
@@ -325,6 +332,22 @@ class SingleArmPyBulletRobot(abc.ABC):
         position = ee_link_state.worldLinkFramePosition
         orientation = ee_link_state.worldLinkFrameOrientation
         return Pose(position, orientation)
+
+    @property
+    def default_inverse_kinematics_method(self) -> str:
+        """The default inverse kinematics used with inverse_kinematics()."""
+        if self.ikfast_info() is not None:
+            return "ikfast"
+        return "pybullet"
+
+    def custom_inverse_kinematics(
+        self,
+        end_effector_pose: Pose,
+        validate: bool = True,
+        validation_atol: float = 1e-3,
+    ):
+        """Robots can implement custom IK; see inverse_kinematics()."""
+        raise NotImplementedError
 
     @classmethod
     def ikfast_info(cls) -> Optional[IKFastInfo]:
