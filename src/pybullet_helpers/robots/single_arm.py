@@ -68,15 +68,7 @@ class SingleArmPyBulletRobot(abc.ABC):
         )
 
         # Make sure the home joint positions are within limits.
-        assert all(
-            l <= v <= h
-            for l, v, h in zip(
-                self.joint_lower_limits,
-                self.home_joint_positions,
-                self.joint_upper_limits,
-                strict=True,
-            )
-        ), "Home joint positions are out of the limit range"
+        assert self.check_joint_limits(self._home_joint_positions), "Home joint positions are out of the limit range"
 
         # Robot initially at home pose.
         self.set_joints(self.home_joint_positions)
@@ -264,6 +256,10 @@ class SingleArmPyBulletRobot(abc.ABC):
         return get_joint_velocities(
             self.robot_id, self.arm_joints, self.physics_client_id
         )
+    
+    def check_joint_limits(self, joint_positions: JointPositions) -> bool:
+        """Check if the given joint positions are within limits."""
+        return all(l <= v <= u for l, v, u in zip(self.joint_lower_limits, joint_positions, self.joint_upper_limits, strict=True))
 
     def get_end_effector_pose(self) -> Pose:
         """Get the robot end-effector pose based on the current PyBullet

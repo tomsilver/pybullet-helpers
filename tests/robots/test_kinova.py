@@ -131,6 +131,10 @@ def test_kinova_gen3_robotiq_gripper_pybullet_robot(physics_client_id):
     fk_result = robot.forward_kinematics(action_arr)
     assert np.allclose(fk_result.position, ee_target_position, atol=1e-2)
 
+    # Test joint limits.
+    oob_joint_state = [-100] * len(robot.home_joint_positions)
+    assert not robot.check_joint_limits(oob_joint_state)
+
     # Test self-collisions.
     assert not check_collisions_with_held_object(
         robot,
@@ -156,6 +160,7 @@ def test_kinova_gen3_robotiq_gripper_pybullet_robot(physics_client_id):
         0.0,
         0.0,
     ]
+    assert robot.check_joint_limits(collision_joint_state)
     assert check_collisions_with_held_object(
         robot,
         collision_bodies=set(),
