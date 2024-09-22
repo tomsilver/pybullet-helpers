@@ -216,7 +216,7 @@ class SingleArmPyBulletRobot(abc.ABC):
                 return joint_info.jointIndex
         raise ValueError(f"Could not find link {link_name}")
 
-    def link_name_from_link(self, link: int) -> int:
+    def link_name_from_link(self, link: int) -> str:
         """Get the link name for a given link name."""
         if link == BASE_LINK:
             return self.base_link_name
