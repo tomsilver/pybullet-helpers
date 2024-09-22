@@ -94,7 +94,8 @@ class KinovaGen3RobotiqGripperPyBulletRobot(FingeredSingleArmPyBulletRobot[float
         for finger_link in all_finger_links:
             exclude_pairs.add(("bracelet_link", finger_link))
             exclude_pairs.add(("end_effector_link", finger_link))
-        return sorted((all_arm_pairs | all_arm_finger_pairs) - exclude_pairs)
+        all_pairs = all_arm_pairs | all_arm_finger_pairs
+        return sorted(all_pairs - exclude_pairs)  # type: ignore
 
     @property
     def finger_joint_names(self) -> list[str]:
