@@ -162,9 +162,12 @@ def check_collisions_with_held_object(
         robot, physics_client_id, held_object, base_link_to_held_obj, joint_state
     )
     p.performCollisionDetection(physicsClientId=physics_client_id)
-    check_self_collisions(robot, perform_collision_detection=False)
+    if check_self_collisions(robot, perform_collision_detection=False):
+        return True
     for body in collision_bodies:
-        if check_body_collisions(robot.robot_id, body, physics_client_id):
+        if check_body_collisions(
+            robot.robot_id, body, physics_client_id, perform_collision_detection=False
+        ):
             return True
         if held_object is not None and check_body_collisions(
             held_object,
@@ -226,7 +229,12 @@ def check_self_collisions(
         p.performCollisionDetection(physicsClientId=robot.physics_client_id)
     for link1, link2 in robot.self_collision_link_ids:
         if check_body_collisions(
-            robot.robot_id, robot.robot_id, robot.physics_client_id, link1, link2
+            robot.robot_id,
+            robot.robot_id,
+            robot.physics_client_id,
+            link1,
+            link2,
+            perform_collision_detection=False,
         ):
             return True
     return False
