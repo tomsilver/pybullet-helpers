@@ -162,36 +162,74 @@ def check_collisions_with_held_object(
         robot, physics_client_id, held_object, base_link_to_held_obj, joint_state
     )
     p.performCollisionDetection(physicsClientId=physics_client_id)
+    check_self_collisions(robot, perform_collision_detection=False)
     for body in collision_bodies:
         if check_body_collisions(robot.robot_id, body, physics_client_id):
             return True
         if held_object is not None and check_body_collisions(
-            held_object, body, physics_client_id
+            held_object,
+            body,
+            physics_client_id,
+            perform_collision_detection=False,
         ):
             return True
     return False
 
 
 def check_body_collisions(
-    body1: int, body2: int, physics_client_id: int, distance_threshold: float = 1e-6
-):
+    body1: int,
+    body2: int,
+    physics_client_id: int,
+    link1: int | None = None,
+    link2: int | None = None,
+    distance_threshold: float = 1e-6,
+    perform_collision_detection: bool = True,
+) -> bool:
     """Check collisions between two bodies.
 
     NOTE: we previously used p.getContactPoints here instead, but ran
     into some very strange issues where the held object was clearly in
     collision, but p.getContactPoints was always empty.
     """
-    return (
-        len(
-            p.getClosestPoints(
-                bodyA=body1,
-                bodyB=body2,
-                distance=distance_threshold,
-                physicsClientId=physics_client_id,
-            )
+    if perform_collision_detection:
+        p.performCollisionDetection(physicsClientId=physics_client_id)
+    if link1 is not None:
+        assert link2 is not None
+        closest_points = p.getClosestPoints(
+            bodyA=body1,
+            bodyB=body2,
+            linkIndexA=link1,
+            linkIndexB=link2,
+            distance=distance_threshold,
+            physicsClientId=physics_client_id,
         )
-        > 0
-    )
+    else:
+        assert link2 is None
+        closest_points = p.getClosestPoints(
+            bodyA=body1,
+            bodyB=body2,
+            distance=distance_threshold,
+            physicsClientId=physics_client_id,
+        )
+    # PyBullet strangely sometimes returns None, other times returns an empty
+    # list in cases where there is no collision. Empty list is more common.
+    if closest_points is None:
+        return False
+    return len(closest_points) > 0
+
+
+def check_self_collisions(
+    robot: SingleArmPyBulletRobot, perform_collision_detection: bool = True
+) -> bool:
+    """Check if the robot has self-collisions in its current state."""
+    if perform_collision_detection:
+        p.performCollisionDetection(physicsClientId=robot.physics_client_id)
+    for link1, link2 in robot.self_collision_link_ids:
+        if check_body_collisions(
+            robot.robot_id, robot.robot_id, robot.physics_client_id, link1, link2
+        ):
+            return True
+    return False
 
 
 def filter_collision_free_joint_generator(

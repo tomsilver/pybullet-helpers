@@ -1,5 +1,6 @@
 """Kinova Gen3 robots."""
 
+import itertools
 from pathlib import Path
 from typing import Optional
 
@@ -66,6 +67,34 @@ class KinovaGen3RobotiqGripperPyBulletRobot(FingeredSingleArmPyBulletRobot[float
     @property
     def tool_link_name(self) -> str:
         return "tool_frame"
+
+    @property
+    def self_collision_link_names(self) -> list[tuple[str, str]]:
+        all_arm_links = [
+            "shoulder_link",
+            "half_arm_1_link",
+            "half_arm_2_link",
+            "forearm_link",
+            "spherical_wrist_1_link",
+            "bracelet_link",
+            "end_effector_link",
+        ]
+        all_arm_pairs = set(itertools.combinations(all_arm_links, 2))
+        all_finger_links = [
+            "right_outer_knuckle",
+            "left_inner_knuckle",
+            "right_inner_knuckle",
+            "left_inner_finger",
+            "right_inner_finger",
+        ]
+        all_arm_finger_pairs = set(
+            itertools.product(*[all_arm_links, all_finger_links])
+        )
+        exclude_pairs = set(zip(all_arm_links[:-1], all_arm_links[1:], strict=True))
+        for finger_link in all_finger_links:
+            exclude_pairs.add(("bracelet_link", finger_link))
+            exclude_pairs.add(("end_effector_link", finger_link))
+        return sorted((all_arm_pairs | all_arm_finger_pairs) - exclude_pairs)
 
     @property
     def finger_joint_names(self) -> list[str]:
