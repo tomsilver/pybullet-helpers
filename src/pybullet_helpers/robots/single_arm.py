@@ -55,6 +55,10 @@ class SingleArmPyBulletRobot(abc.ABC):
         )
 
         # Load the robot and set base position and orientation.
+        flags = p.URDF_USE_INERTIA_FROM_FILE
+        if self.self_collision_link_names:
+            flags |= p.URDF_USE_SELF_COLLISION
+            flags |= p.URDF_USE_SELF_COLLISION_EXCLUDE_ALL_PARENTS
         self.robot_id = p.loadURDF(
             str(self.urdf_path()),
             basePosition=self._base_pose.position,
@@ -64,18 +68,12 @@ class SingleArmPyBulletRobot(abc.ABC):
             # physics starts to affect the robot base.
             useFixedBase=True,
             physicsClientId=self.physics_client_id,
-            flags=p.URDF_USE_INERTIA_FROM_FILE,
+            flags=flags,
         )
 
         # Make sure the home joint positions are within limits.
-        assert all(
-            l <= v <= h
-            for l, v, h in zip(
-                self.joint_lower_limits,
-                self.home_joint_positions,
-                self.joint_upper_limits,
-                strict=True,
-            )
+        assert self.check_joint_limits(
+            self._home_joint_positions
         ), "Home joint positions are out of the limit range"
 
         # Robot initially at home pose.
@@ -170,6 +168,20 @@ class SingleArmPyBulletRobot(abc.ABC):
             )
         ]
 
+    @property
+    def self_collision_link_names(self) -> list[tuple[str, str]]:
+        """Link names for self-collision checking."""
+        # By default, robots do not do self-collision checking.
+        return []
+
+    @cached_property
+    def self_collision_link_ids(self) -> list[tuple[int, int]]:
+        """Link IDs for self-collision checking."""
+        return [
+            (self.link_from_name(n1), self.link_from_name(n2))
+            for n1, n2 in self.self_collision_link_names
+        ]
+
     @cached_property
     def joint_infos(self) -> list[JointInfo]:
         """Get the joint info for each joint of the robot.
@@ -203,6 +215,17 @@ class SingleArmPyBulletRobot(abc.ABC):
             if joint_info.linkName == link_name:
                 return joint_info.jointIndex
         raise ValueError(f"Could not find link {link_name}")
+
+    def link_name_from_link(self, link: int) -> str:
+        """Get the link name for a given link name."""
+        if link == BASE_LINK:
+            return self.base_link_name
+
+        # In PyBullet, each joint has an associated link.
+        for joint_info in self.joint_infos:
+            if joint_info.jointIndex == link:
+                return joint_info.linkName
+        raise ValueError(f"Could not find link {link}")
 
     @cached_property
     def joint_lower_limits(self) -> JointPositions:
@@ -263,6 +286,18 @@ class SingleArmPyBulletRobot(abc.ABC):
         """Get the joint velocities from the current PyBullet state."""
         return get_joint_velocities(
             self.robot_id, self.arm_joints, self.physics_client_id
+        )
+
+    def check_joint_limits(self, joint_positions: JointPositions) -> bool:
+        """Check if the given joint positions are within limits."""
+        return all(
+            l <= v <= u
+            for l, v, u in zip(
+                self.joint_lower_limits,
+                joint_positions,
+                self.joint_upper_limits,
+                strict=True,
+            )
         )
 
     def get_end_effector_pose(self) -> Pose:
