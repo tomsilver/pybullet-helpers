@@ -21,12 +21,18 @@ from pybullet_helpers.joint import (
     JointPositions,
     get_joint_infos,
     get_jointwise_difference,
+    interpolate_joints,
     iter_between_joint_positions,
 )
 from pybullet_helpers.math_utils import geometric_sequence
 from pybullet_helpers.robots.single_arm import (
     FingeredSingleArmPyBulletRobot,
     SingleArmPyBulletRobot,
+)
+from pybullet_helpers.trajectory import (
+    TrajectorySegment,
+    concatenate_trajectories,
+    iter_traj_with_max_distance,
 )
 
 
@@ -357,3 +363,45 @@ def _get_weighted_joint_positions_distance(
     diff = get_jointwise_difference(joint_infos, q2, q1)
     dist = np.abs(diff)
     return np.sum(weights * dist)
+
+
+def remap_joint_position_plan_to_constant_distance(
+    plan: list[JointPositions],
+    robot: SingleArmPyBulletRobot,
+    max_distance: float = 0.1,
+    distance_fn: Callable[[JointPositions, JointPositions], float] | None = None,
+) -> list[JointPositions]:
+    """Re-interpolate a joint position plan so that it has constant distance
+    with a max distance specified."""
+
+    joint_infos = get_joint_infos(
+        robot.robot_id, robot.arm_joints, robot.physics_client_id
+    )
+
+    def _interpolate_fn(q1, q2, t):
+        return interpolate_joints(joint_infos, q1, q2, t)
+
+    if distance_fn is None:
+        distance_fn = create_joint_distance_fn(robot)
+
+    # Use distances as times.
+    distances = []
+    for pt1, pt2 in zip(plan[:-1], plan[1:], strict=True):
+        dist = distance_fn(pt1, pt2)
+        distances.append(dist)
+
+    segments = []
+    for t in range(len(plan) - 1):
+        seg = TrajectorySegment(
+            plan[t],
+            plan[t + 1],
+            distances[t],
+            interpolate_fn=_interpolate_fn,
+            distance_fn=distance_fn,
+        )
+        segments.append(seg)
+    continuous_time_trajectory = concatenate_trajectories(segments)
+    remapped_plan = list(
+        iter_traj_with_max_distance(continuous_time_trajectory, max_distance)
+    )
+    return remapped_plan
