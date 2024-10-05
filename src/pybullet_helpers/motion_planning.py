@@ -291,6 +291,31 @@ def smoothly_follow_end_effector_path(
     return joint_position_path
 
 
+def create_joint_distance_fn(
+    robot: SingleArmPyBulletRobot,
+    metric: str = "weighted_joints",
+    weight_base: float = 0.9,
+) -> Callable[[JointPositions, JointPositions], float]:
+    """Helper for creating a joint distance function for a robot."""
+
+    weights = geometric_sequence(weight_base, len(robot.arm_joint_names))
+    joint_infos = get_joint_infos(
+        robot.robot_id, robot.arm_joints, robot.physics_client_id
+    )
+
+    def _joint_distance_fn(pt1: JointPositions, pt2: JointPositions) -> float:
+        return get_joint_positions_distance(
+            robot,
+            joint_infos,
+            pt1,
+            pt2,
+            metric=metric,
+            weights=weights,
+        )
+
+    return _joint_distance_fn
+
+
 def get_joint_positions_distance(
     robot: SingleArmPyBulletRobot,
     joint_infos: list[JointInfo],
