@@ -156,17 +156,24 @@ def check_collisions_with_held_object(
     held_object: int | None,
     base_link_to_held_obj: Pose | None,
     joint_state: JointPositions,
+    distance_threshold: float = 1e-6,
 ) -> bool:
     """Check if robot or a held object are in collision with certain bodies."""
     set_robot_joints_with_held_object(
         robot, physics_client_id, held_object, base_link_to_held_obj, joint_state
     )
     p.performCollisionDetection(physicsClientId=physics_client_id)
-    if check_self_collisions(robot, perform_collision_detection=False):
+    if check_self_collisions(
+        robot, perform_collision_detection=False, distance_threshold=distance_threshold
+    ):
         return True
     for body in collision_bodies:
         if check_body_collisions(
-            robot.robot_id, body, physics_client_id, perform_collision_detection=False
+            robot.robot_id,
+            body,
+            physics_client_id,
+            perform_collision_detection=False,
+            distance_threshold=distance_threshold,
         ):
             return True
         if held_object is not None and check_body_collisions(
@@ -222,7 +229,9 @@ def check_body_collisions(
 
 
 def check_self_collisions(
-    robot: SingleArmPyBulletRobot, perform_collision_detection: bool = True
+    robot: SingleArmPyBulletRobot,
+    perform_collision_detection: bool = True,
+    distance_threshold: float = 1e-6,
 ) -> bool:
     """Check if the robot has self-collisions in its current state."""
     if perform_collision_detection:
@@ -235,6 +244,7 @@ def check_self_collisions(
             link1,
             link2,
             perform_collision_detection=False,
+            distance_threshold=distance_threshold,
         ):
             return True
     return False
