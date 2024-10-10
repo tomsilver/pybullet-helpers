@@ -10,7 +10,6 @@ https://github.com/caelan/pybullet-planning/blob/master/pybullet_tools/ikfast/ik
 
 from __future__ import annotations
 
-import logging
 import time
 from dataclasses import dataclass
 from functools import partial
@@ -262,7 +261,6 @@ def ikfast_inverse_kinematics(
     for free_positions in generator:
         elapsed_time = time.perf_counter() - start_time
         if elapsed_time >= max_time:
-            logging.warning("Max time reached. No IKFast solution found.")
             break
 
         # Call IKFast to compute candidates for sampled free joint positions
@@ -318,7 +316,6 @@ def ikfast_closest_inverse_kinematics(
             "At least one of max_time, max_attempts, max_candidates must be finite."
         )
 
-    start_time = time.perf_counter()
     ik_joint_infos, _ = get_ikfast_joints(robot)
     ik_joints = [joint_info.jointIndex for joint_info in ik_joint_infos]
     current_joint_positions = get_joint_positions(
@@ -352,15 +349,5 @@ def ikfast_closest_inverse_kinematics(
     # Sort solutions by distance to current joint positions
     candidate_solutions = list(generator)
     solutions = sorted(candidate_solutions, key=difference_from_current)
-    elapsed_time = time.perf_counter() - start_time
-
-    if solutions:
-        min_distance = difference_from_current(solutions[0])
-        logging.debug(
-            f"Identified {len(solutions)} IK solutions with minimum distance "
-            f"of {min_distance:.3f} in {elapsed_time:.3f} seconds"
-        )
-    else:
-        logging.warning(f"No IK solutions found in {elapsed_time:.3f} seconds")
 
     return solutions
