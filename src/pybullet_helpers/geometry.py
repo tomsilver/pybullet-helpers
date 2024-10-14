@@ -108,6 +108,16 @@ def get_pose(body: int, physics_client_id: int) -> Pose:
     return Pose(pybullet_pose[0], pybullet_pose[1])
 
 
+def set_pose(body: int, pose: Pose, physics_client_id: int) -> None:
+    """Set the pose of a body."""
+    p.resetBasePositionAndOrientation(
+        body,
+        pose.position,
+        pose.orientation,
+        physicsClientId=physics_client_id,
+    )
+
+
 def interpolate_quats(
     q1: Quaternion,
     q2: Quaternion,
