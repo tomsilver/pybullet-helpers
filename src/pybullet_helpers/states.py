@@ -57,3 +57,11 @@ class KinematicState:
         for object_id, ee_link_to_object in self.attachments.items():
             world_to_object = multiply_poses(world_to_ee_link, ee_link_to_object)
             set_pose(object_id, world_to_object, robot.physics_client_id)
+
+    def copy_with(self, robot_joints: JointPositions) -> KinematicState:
+        """Create a copy of this state with replacements."""
+        # For now, only robot joint copying is needed, but this function can
+        # be extended in the future if needed.
+        return KinematicState(
+            robot_joints, self.object_poses.copy(), self.attachments.copy()
+        )
