@@ -30,7 +30,7 @@ def get_kinematic_plan_to_pick_object(
 ) -> list[KinematicState] | None:
     """Make a plan to pick up the object from a surface.
 
-    The grasp pose is in the world frame.
+    The grasp pose is in the object frame.
 
     The surface is used to determine the direction that the robot should move
     directly after picking (to remove contact between the object and surface).
@@ -90,11 +90,15 @@ def get_kinematic_plan_to_pick_object(
     )
     postgrasp_translation = Pose(tuple(postgrasp_translation_distance))
 
-    for grasp in grasp_generator:
+    for relative_grasp in grasp_generator:
         # Reset the simulator to the initial state to restart the planning.
         initial_state.set_pybullet(robot)
         state = initial_state
         plan = [state]
+
+        # Calculate the grasp in the world frame.
+        object_pose = state.object_poses[object_id]
+        grasp = multiply_poses(object_pose, relative_grasp)
 
         # Calculate the pregrasp pose.
         pregrasp_translation_direction = np.array([0.0, 0.0, -1.0])
@@ -155,7 +159,6 @@ def get_kinematic_plan_to_pick_object(
         state = KinematicState.from_pybullet(
             robot, all_object_ids, attached_object_ids={object_id}
         )
-        relative_grasp = state.attachments[object_id]
         plan.append(state)
 
         # Move off the table.
@@ -178,7 +181,7 @@ def get_kinematic_plan_to_pick_object(
                 max_time=max_motion_planning_time,
                 include_start=False,
                 held_object=object_id,
-                base_link_to_held_obj=relative_grasp,
+                base_link_to_held_obj=relative_grasp.invert(),
             )
         except InverseKinematicsError:
             grasp_to_postgrasp_plan = None

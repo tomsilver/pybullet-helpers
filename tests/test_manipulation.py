@@ -65,7 +65,7 @@ def test_get_kinematic_plan_to_pick_object():
                 angle_offset=angle_offset,
             )[0]
             rot = Pose.from_rpy((0, 0, 0), (0.0, 0.0, np.pi / 2))
-            yield multiply_poses(object_pose, relative_pose, rot)
+            yield multiply_poses(relative_pose, rot)
 
     # Get a plan.
     plan = get_kinematic_plan_to_pick_object(
