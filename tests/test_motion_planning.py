@@ -18,6 +18,7 @@ from pybullet_helpers.motion_planning import (
     run_motion_planning,
     select_shortest_motion_plan,
     smoothly_follow_end_effector_path,
+    run_base_motion_planning_to_goal,
 )
 from pybullet_helpers.robots.fetch import FetchPyBulletRobot
 from pybullet_helpers.robots.kinova import KinovaGen3RobotiqGripperPyBulletRobot
@@ -500,3 +501,7 @@ def test_smoothly_follow_end_effector_path(physics_client_id):
     #     for s in interpolate_joints(joint_infos, pt1, pt2, num_interp_per_unit=100):
     #         robot.set_joints(s)
     #         import time; time.sleep(0.01)
+
+
+def test_base_motion_planning_to_goal():
+    """Tests for run_base_motion_planning_to_goal()."""
