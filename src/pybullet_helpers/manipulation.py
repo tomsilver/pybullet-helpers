@@ -5,7 +5,7 @@ from typing import Iterator
 import numpy as np
 import pybullet as p
 
-from pybullet_helpers.geometry import Pose, interpolate_poses, multiply_poses, set_pose
+from pybullet_helpers.geometry import Pose, iter_between_poses, multiply_poses, set_pose
 from pybullet_helpers.inverse_kinematics import InverseKinematicsError
 from pybullet_helpers.motion_planning import (
     create_joint_distance_fn,
@@ -97,7 +97,7 @@ def get_kinematic_plan_to_pick_object(
         # Move to grasp.
         end_effector_pose = robot.get_end_effector_pose()
         end_effector_path = list(
-            interpolate_poses(
+            iter_between_poses(
                 end_effector_pose,
                 grasp,
                 include_start=False,
@@ -135,7 +135,7 @@ def get_kinematic_plan_to_pick_object(
         end_effector_pose = robot.get_end_effector_pose()
         post_grasp_pose = multiply_poses(postgrasp_translation, end_effector_pose)
         end_effector_path = list(
-            interpolate_poses(
+            iter_between_poses(
                 end_effector_pose,
                 post_grasp_pose,
                 include_start=False,
@@ -249,7 +249,7 @@ def get_kinematic_plan_to_place_object(
         # Move to place.
         end_effector_pose = robot.get_end_effector_pose()
         end_effector_path = list(
-            interpolate_poses(
+            iter_between_poses(
                 end_effector_pose,
                 placement,
                 include_start=False,
@@ -291,7 +291,7 @@ def get_kinematic_plan_to_place_object(
         # Move back to the preplace pose.
         end_effector_pose = robot.get_end_effector_pose()
         end_effector_path = list(
-            interpolate_poses(
+            iter_between_poses(
                 end_effector_pose,
                 preplace_pose,
                 include_start=False,
