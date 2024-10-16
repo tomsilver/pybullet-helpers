@@ -21,6 +21,7 @@ from pybullet_helpers.joint import JointPositions, get_joint_infos, get_joints
 from pybullet_helpers.link import get_link_pose, get_link_state
 from pybullet_helpers.robots.single_arm import (
     FingeredSingleArmPyBulletRobot,
+    FingerState,
     SingleArmPyBulletRobot,
 )
 
@@ -63,7 +64,12 @@ def inverse_kinematics(
     WARNING: if validate is True, physics may be overridden, and so it
     should not be used within simulation.
     """
-    if robot.ikfast_info():
+    if robot.default_inverse_kinematics_method == "custom":
+        joint_positions = robot.custom_inverse_kinematics(
+            end_effector_pose, validate, validation_atol
+        )
+
+    elif robot.default_inverse_kinematics_method == "ikfast":
 
         ik_solutions = ikfast_closest_inverse_kinematics(
             robot,
@@ -80,7 +86,7 @@ def inverse_kinematics(
 
         # IKFast doesn't handle fingers, so we add them afterwards.
         if isinstance(robot, FingeredSingleArmPyBulletRobot):
-            joint_positions = _add_fingers_to_joint_positions(robot, joint_positions)
+            joint_positions = add_fingers_to_joint_positions(robot, joint_positions)
 
         if validate:
             try:
@@ -90,7 +96,7 @@ def inverse_kinematics(
             except ValueError as e:
                 raise InverseKinematicsError(e)
 
-    else:
+    elif robot.default_inverse_kinematics_method == "pybullet":
         joint_positions = pybullet_inverse_kinematics(
             robot.robot_id,
             robot.end_effector_id,
@@ -99,6 +105,11 @@ def inverse_kinematics(
             robot.arm_joints,
             physics_client_id=robot.physics_client_id,
             validate=validate,
+        )
+
+    else:
+        raise NotImplementedError(
+            f"Unrecognized IK method: {robot.default_inverse_kinematics_method}"
         )
 
     if set_joints:
@@ -145,42 +156,98 @@ def check_collisions_with_held_object(
     held_object: int | None,
     base_link_to_held_obj: Pose | None,
     joint_state: JointPositions,
+    distance_threshold: float = 1e-6,
 ) -> bool:
     """Check if robot or a held object are in collision with certain bodies."""
     set_robot_joints_with_held_object(
         robot, physics_client_id, held_object, base_link_to_held_obj, joint_state
     )
     p.performCollisionDetection(physicsClientId=physics_client_id)
+    if check_self_collisions(
+        robot, perform_collision_detection=False, distance_threshold=distance_threshold
+    ):
+        return True
     for body in collision_bodies:
-        if check_body_collisions(robot.robot_id, body, physics_client_id):
+        if check_body_collisions(
+            robot.robot_id,
+            body,
+            physics_client_id,
+            perform_collision_detection=False,
+            distance_threshold=distance_threshold,
+        ):
             return True
         if held_object is not None and check_body_collisions(
-            held_object, body, physics_client_id
+            held_object,
+            body,
+            physics_client_id,
+            perform_collision_detection=False,
         ):
             return True
     return False
 
 
 def check_body_collisions(
-    body1: int, body2: int, physics_client_id: int, distance_threshold: float = 1e-6
-):
+    body1: int,
+    body2: int,
+    physics_client_id: int,
+    link1: int | None = None,
+    link2: int | None = None,
+    distance_threshold: float = 1e-6,
+    perform_collision_detection: bool = True,
+) -> bool:
     """Check collisions between two bodies.
 
     NOTE: we previously used p.getContactPoints here instead, but ran
     into some very strange issues where the held object was clearly in
     collision, but p.getContactPoints was always empty.
     """
-    return (
-        len(
-            p.getClosestPoints(
-                bodyA=body1,
-                bodyB=body2,
-                distance=distance_threshold,
-                physicsClientId=physics_client_id,
-            )
+    if perform_collision_detection:
+        p.performCollisionDetection(physicsClientId=physics_client_id)
+    if link1 is not None:
+        assert link2 is not None
+        closest_points = p.getClosestPoints(
+            bodyA=body1,
+            bodyB=body2,
+            linkIndexA=link1,
+            linkIndexB=link2,
+            distance=distance_threshold,
+            physicsClientId=physics_client_id,
         )
-        > 0
-    )
+    else:
+        assert link2 is None
+        closest_points = p.getClosestPoints(
+            bodyA=body1,
+            bodyB=body2,
+            distance=distance_threshold,
+            physicsClientId=physics_client_id,
+        )
+    # PyBullet strangely sometimes returns None, other times returns an empty
+    # list in cases where there is no collision. Empty list is more common.
+    if closest_points is None:
+        return False
+    return len(closest_points) > 0
+
+
+def check_self_collisions(
+    robot: SingleArmPyBulletRobot,
+    perform_collision_detection: bool = True,
+    distance_threshold: float = 1e-6,
+) -> bool:
+    """Check if the robot has self-collisions in its current state."""
+    if perform_collision_detection:
+        p.performCollisionDetection(physicsClientId=robot.physics_client_id)
+    for link1, link2 in robot.self_collision_link_ids:
+        if check_body_collisions(
+            robot.robot_id,
+            robot.robot_id,
+            robot.physics_client_id,
+            link1,
+            link2,
+            perform_collision_detection=False,
+            distance_threshold=distance_threshold,
+        ):
+            return True
+    return False
 
 
 def filter_collision_free_joint_generator(
@@ -245,7 +312,7 @@ def sample_collision_free_inverse_kinematics(
     generator = islice(generator, max_candidates)
 
     if isinstance(robot, FingeredSingleArmPyBulletRobot):
-        add_fingers = partial(_add_fingers_to_joint_positions, robot)
+        add_fingers = partial(add_fingers_to_joint_positions, robot)
         generator = map(add_fingers, generator)
 
     yield from filter_collision_free_joint_generator(
@@ -423,14 +490,21 @@ def _validate_joints_state(
         )
 
 
-def _add_fingers_to_joint_positions(
-    robot: FingeredSingleArmPyBulletRobot, joint_positions: JointPositions
+def add_fingers_to_joint_positions(
+    robot: FingeredSingleArmPyBulletRobot,
+    joint_positions: JointPositions,
+    finger_state: FingerState | None = None,
 ) -> JointPositions:
+    """Extend arm joint positions to include the fingers.
+
+    If finger_state is None, use the current robot finger state.
+    """
     joint_idx_to_value = dict(enumerate(joint_positions))
     finger_idxs = robot.finger_joint_idxs
-    current_finger_state = robot.get_finger_state()
-    current_finger_joint_values = robot.finger_state_to_joints(current_finger_state)
-    for idx, value in zip(finger_idxs, current_finger_joint_values, strict=True):
+    if finger_state is None:
+        finger_state = robot.get_finger_state()
+    finger_joint_values = robot.finger_state_to_joints(finger_state)
+    for idx, value in zip(finger_idxs, finger_joint_values, strict=True):
         joint_idx_to_value[idx] = value
     final_joint_positions = [
         joint_idx_to_value[i] for i in range(len(joint_idx_to_value))

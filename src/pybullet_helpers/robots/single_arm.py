@@ -10,15 +10,17 @@ import numpy as np
 import pybullet as p
 from gymnasium.spaces import Box
 
-from pybullet_helpers.geometry import Pose
+from pybullet_helpers.geometry import Pose, get_pose
 from pybullet_helpers.ikfast import IKFastInfo
 from pybullet_helpers.joint import (
     JointInfo,
     JointPositions,
+    JointVelocities,
     get_joint_infos,
     get_joint_lower_limits,
     get_joint_positions,
     get_joint_upper_limits,
+    get_joint_velocities,
     get_joints,
     get_kinematic_chain,
 )
@@ -34,11 +36,15 @@ class SingleArmPyBulletRobot(abc.ABC):
         base_pose: Pose = Pose.identity(),
         control_mode: str = "position",
         home_joint_positions: JointPositions | None = None,
+        fixed_base: bool = True,
     ) -> None:
         self.physics_client_id = physics_client_id
 
         # Pose of base of robot.
         self._base_pose = base_pose
+
+        # Whether the base is fixed.
+        self.fixed_base = fixed_base
 
         # Control mode for the robot.
         self._control_mode = control_mode
@@ -49,23 +55,25 @@ class SingleArmPyBulletRobot(abc.ABC):
         )
 
         # Load the robot and set base position and orientation.
+        flags = p.URDF_USE_INERTIA_FROM_FILE
+        if self.self_collision_link_names:
+            flags |= p.URDF_USE_SELF_COLLISION
+            flags |= p.URDF_USE_SELF_COLLISION_EXCLUDE_ALL_PARENTS
         self.robot_id = p.loadURDF(
             str(self.urdf_path()),
             basePosition=self._base_pose.position,
             baseOrientation=self._base_pose.orientation,
+            # Even if the robot has a mobile base, we treat it as static in
+            # pybullet for now and just update the position directly. Otherwise
+            # physics starts to affect the robot base.
             useFixedBase=True,
             physicsClientId=self.physics_client_id,
+            flags=flags,
         )
 
         # Make sure the home joint positions are within limits.
-        assert all(
-            l <= v <= h
-            for l, v, h in zip(
-                self.joint_lower_limits,
-                self.home_joint_positions,
-                self.joint_upper_limits,
-                strict=True,
-            )
+        assert self.check_joint_limits(
+            self._home_joint_positions
         ), "Home joint positions are out of the limit range"
 
         # Robot initially at home pose.
@@ -160,6 +168,20 @@ class SingleArmPyBulletRobot(abc.ABC):
             )
         ]
 
+    @property
+    def self_collision_link_names(self) -> list[tuple[str, str]]:
+        """Link names for self-collision checking."""
+        # By default, robots do not do self-collision checking.
+        return []
+
+    @cached_property
+    def self_collision_link_ids(self) -> list[tuple[int, int]]:
+        """Link IDs for self-collision checking."""
+        return [
+            (self.link_from_name(n1), self.link_from_name(n2))
+            for n1, n2 in self.self_collision_link_names
+        ]
+
     @cached_property
     def joint_infos(self) -> list[JointInfo]:
         """Get the joint info for each joint of the robot.
@@ -194,6 +216,17 @@ class SingleArmPyBulletRobot(abc.ABC):
                 return joint_info.jointIndex
         raise ValueError(f"Could not find link {link_name}")
 
+    def link_name_from_link(self, link: int) -> str:
+        """Get the link name for a given link name."""
+        if link == BASE_LINK:
+            return self.base_link_name
+
+        # In PyBullet, each joint has an associated link.
+        for joint_info in self.joint_infos:
+            if joint_info.jointIndex == link:
+                return joint_info.linkName
+        raise ValueError(f"Could not find link {link}")
+
     @cached_property
     def joint_lower_limits(self) -> JointPositions:
         """Lower bound on the arm joint limits."""
@@ -224,7 +257,11 @@ class SingleArmPyBulletRobot(abc.ABC):
             self.robot_id, self.arm_joints, self.physics_client_id
         )
 
-    def set_joints(self, joint_positions: JointPositions) -> None:
+    def set_joints(
+        self,
+        joint_positions: JointPositions,
+        joint_velocities: JointVelocities | None = None,
+    ) -> None:
         """Directly set the joint positions.
 
         Outside of resetting to an initial state, this should not be
@@ -232,15 +269,36 @@ class SingleArmPyBulletRobot(abc.ABC):
         be used for motion planning, collision checks, etc., in a robot
         that does not maintain state.
         """
-        assert len(joint_positions) == len(self.arm_joints)
-        for joint_id, joint_val in zip(self.arm_joints, joint_positions):
+        if joint_velocities is None:
+            joint_velocities = [0] * len(joint_positions)
+        for joint_id, joint_pos, joint_vel in zip(
+            self.arm_joints, joint_positions, joint_velocities, strict=True
+        ):
             p.resetJointState(
                 self.robot_id,
                 joint_id,
-                targetValue=joint_val,
-                targetVelocity=0,
+                targetValue=joint_pos,
+                targetVelocity=joint_vel,
                 physicsClientId=self.physics_client_id,
             )
+
+    def get_joint_velocities(self) -> JointVelocities:
+        """Get the joint velocities from the current PyBullet state."""
+        return get_joint_velocities(
+            self.robot_id, self.arm_joints, self.physics_client_id
+        )
+
+    def check_joint_limits(self, joint_positions: JointPositions) -> bool:
+        """Check if the given joint positions are within limits."""
+        return all(
+            l <= v <= u
+            for l, v, u in zip(
+                self.joint_lower_limits,
+                joint_positions,
+                self.joint_upper_limits,
+                strict=True,
+            )
+        )
 
     def get_end_effector_pose(self) -> Pose:
         """Get the robot end-effector pose based on the current PyBullet
@@ -254,6 +312,20 @@ class SingleArmPyBulletRobot(abc.ABC):
             ee_link_state.worldLinkFramePosition,
             ee_link_state.worldLinkFrameOrientation,
         )
+
+    def set_base(self, pose: Pose) -> None:
+        """Reset the robot base position and orientation."""
+        assert not self.fixed_base, "Cannot set base for fixed-base robot"
+        p.resetBasePositionAndOrientation(
+            self.robot_id,
+            pose.position,
+            pose.orientation,
+            physicsClientId=self.physics_client_id,
+        )
+
+    def get_base_pose(self) -> Pose:
+        """Get the current base pose."""
+        return get_pose(self.robot_id, self.physics_client_id)
 
     def set_motors(self, joint_positions: JointPositions) -> None:
         """Update the motors to move toward the given joint positions."""
@@ -295,6 +367,22 @@ class SingleArmPyBulletRobot(abc.ABC):
         position = ee_link_state.worldLinkFramePosition
         orientation = ee_link_state.worldLinkFrameOrientation
         return Pose(position, orientation)
+
+    @property
+    def default_inverse_kinematics_method(self) -> str:
+        """The default inverse kinematics used with inverse_kinematics()."""
+        if self.ikfast_info() is not None:
+            return "ikfast"
+        return "pybullet"
+
+    def custom_inverse_kinematics(
+        self,
+        end_effector_pose: Pose,
+        validate: bool = True,
+        validation_atol: float = 1e-3,
+    ):
+        """Robots can implement custom IK; see inverse_kinematics()."""
+        raise NotImplementedError
 
     @classmethod
     def ikfast_info(cls) -> Optional[IKFastInfo]:

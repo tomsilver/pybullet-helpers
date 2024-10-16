@@ -37,6 +37,13 @@ class Pose(NamedTuple):
         """Create a Pose from translation and Euler roll-pitch-yaw angles."""
         return cls(translation, quaternion_from_euler(*rpy))
 
+    @classmethod
+    def from_matrix(cls, matrix: npt.NDArray) -> Pose:
+        """Create a Pose from a 4x4 homogeneous matrix."""
+        return Pose(
+            position=tuple(matrix[:3, 3]), orientation=quat_from_matrix(matrix[:3, :3])
+        )
+
     @property
     def rpy(self) -> RollPitchYaw:
         """Get the Euler roll-pitch-yaw representation."""
@@ -46,6 +53,13 @@ class Pose(NamedTuple):
     def identity(cls) -> Pose:
         """Unit pose."""
         return cls((0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0))
+
+    def to_matrix(self) -> npt.NDArray:
+        """Get the 4x4 homogenous matrix representation."""
+        matrix = np.zeros((4, 4))
+        matrix[:3, :3] = matrix_from_quat(self.orientation)
+        matrix[:3, 3] = self.position
+        return matrix
 
     def multiply(self, *poses: Pose) -> Pose:
         """Multiplies poses (i.e., rigid transforms) together."""
@@ -92,6 +106,16 @@ def get_pose(body: int, physics_client_id: int) -> Pose:
         body, physicsClientId=physics_client_id
     )
     return Pose(pybullet_pose[0], pybullet_pose[1])
+
+
+def set_pose(body: int, pose: Pose, physics_client_id: int) -> None:
+    """Set the pose of a body."""
+    p.resetBasePositionAndOrientation(
+        body,
+        pose.position,
+        pose.orientation,
+        physicsClientId=physics_client_id,
+    )
 
 
 def iter_between_quats(

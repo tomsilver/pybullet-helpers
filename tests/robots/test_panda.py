@@ -77,6 +77,21 @@ def test_panda_pybullet_robot_joints(panda):
         panda.joint_info_from_name("non_existent_joint")
 
 
+def test_panda_movable_base_inverse_kinematics(physics_client_id):
+    """Test IK when panda base can move."""
+    # Need to create a separate movable base robot for this test.
+    panda = PandaPyBulletRobot(
+        physics_client_id, control_mode="reset", fixed_base=False
+    )
+    # Set the robot base to be very far from default.
+    panda.set_base(Pose((100, 100, 0)))
+    # Run IK for a pose that should be reachable.
+    pose = Pose((100.25, 100.25, 0.25), (0.7071, 0.7071, 0.0, 0.0))
+    joint_positions = inverse_kinematics(panda, end_effector_pose=pose, validate=True)
+    recovered_pose = panda.forward_kinematics(joint_positions)
+    assert np.allclose(recovered_pose.position, pose.position)
+
+
 def test_panda_pybullet_robot_inverse_kinematics_no_solutions(panda):
     """Test when IKFast returns no solutions."""
     # Impossible target pose with no solutions

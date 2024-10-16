@@ -27,6 +27,9 @@ def test_pose():
     inverted_pose = pose.invert()
     assert not pose.allclose(inverted_pose)
     assert pose.allclose(inverted_pose.invert())
+    matrix = pose.to_matrix()
+    reconstructed_pose = Pose.from_matrix(matrix)
+    assert pose.allclose(reconstructed_pose)
 
 
 def test_matrix_from_quat():
