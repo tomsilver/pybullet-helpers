@@ -8,11 +8,18 @@ from functools import partial
 from typing import Callable, Collection, Iterable, Iterator, Optional
 
 import numpy as np
-from tomsutils.motion_planning import BiRRT, RRT
+from tomsutils.motion_planning import RRT, BiRRT
 
-from pybullet_helpers.geometry import Pose, multiply_poses, get_pose, set_pose
+from pybullet_helpers.geometry import (
+    Pose,
+    get_pose,
+    iter_between_poses,
+    multiply_poses,
+    set_pose,
+)
 from pybullet_helpers.inverse_kinematics import (
     InverseKinematicsError,
+    check_body_collisions,
     check_collisions_with_held_object,
     sample_collision_free_inverse_kinematics,
 )
@@ -420,7 +427,7 @@ def run_base_motion_planning_to_goal(
     base_link_to_held_obj: Pose | None = None,
     platform: int | None = None,
     hyperparameters: MotionPlanningHyperparameters | None = None,
-    ) -> Optional[list[Pose]]:
+) -> Optional[list[Pose]]:
     """Run motion planning for the robot base in SE2."""
     if hyperparameters is None:
         hyperparameters = MotionPlanningHyperparameters()
@@ -434,8 +441,9 @@ def run_base_motion_planning_to_goal(
         world_to_platform = get_pose(platform, physics_client_id)
         base_to_platform = multiply_poses(world_to_base.invert(), world_to_platform)
 
-    # The z position of the robot won't change.
+    # The joint positions and z position of the robot won't change.
     base_z = robot.get_base_pose().position[2]
+    joint_state = robot.get_joint_positions()
 
     def _set_robot(pt: Pose) -> None:
         robot.set_base(pt)
@@ -445,16 +453,31 @@ def run_base_motion_planning_to_goal(
 
     def _collision_fn(pt: Pose) -> bool:
         _set_robot(pt)
-        return check_collisions_with_held_object(
+        if check_collisions_with_held_object(
             robot,
             collision_bodies,
             physics_client_id,
             held_object,
             base_link_to_held_obj,
-        )
+            joint_state,
+        ):
+            return True
+        if platform is not None:
+            for collision_body in collision_bodies:
+                if check_body_collisions(
+                    platform,
+                    collision_body,
+                    physics_client_id,
+                    perform_collision_detection=False,
+                ):
+                    return True
+        return False
 
     def _distance_fn(pt1: Pose, pt2: Pose) -> float:
-        return np.linalg.norm(np.subtract(pt1.position, pt2.position)) + np.linalg.norm(np.subtract(pt1.orientation, pt2.orientation))
+        return float(
+            np.linalg.norm(np.subtract(pt1.position, pt2.position))
+            + np.linalg.norm(np.subtract(pt1.orientation, pt2.orientation))
+        )
 
     def _sampling_fn(pt: Pose) -> Pose:
         del pt  # not used
@@ -462,10 +485,10 @@ def run_base_motion_planning_to_goal(
         yaw = rng.uniform(-np.pi, np.pi)
         return Pose.from_rpy((x, y, base_z), rpy=(0, 0, yaw))
 
-    def _extend_fn(
-        pt1: Pose, pt2: Pose
-    ) -> Iterator[Pose]:
-        import ipdb; ipdb.set_trace()
+    def _extend_fn(pt1: Pose, pt2: Pose) -> Iterator[Pose]:
+        yield from iter_between_poses(
+            pt1, pt2, num_interp=num_interp, include_start=False
+        )
 
     rrt = RRT(
         _sampling_fn,
