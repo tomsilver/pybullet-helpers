@@ -15,7 +15,7 @@ from pybullet_helpers.math_utils import geometric_sequence
 from pybullet_helpers.motion_planning import (
     MotionPlanningHyperparameters,
     get_joint_positions_distance,
-    run_base_motion_planning_to_goal,
+    run_base_motion_planning,
     run_motion_planning,
     select_shortest_motion_plan,
     smoothly_follow_end_effector_path,
@@ -538,7 +538,7 @@ def test_base_motion_planning_to_goal():
             < 1.0
         )
 
-    plan = run_base_motion_planning_to_goal(
+    plan = run_base_motion_planning(
         robot,
         initial_pose,
         goal_check,
