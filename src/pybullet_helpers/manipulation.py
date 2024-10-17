@@ -224,6 +224,7 @@ def get_kinematic_plan_to_place_object(
             translation_magnitude=preplace_translation_magnitude,
         )
         preplace_pose = multiply_poses(preplace_translation, placement)
+
         # Set the state back to continue planning.
         state.set_pybullet(robot)
 
@@ -235,6 +236,8 @@ def get_kinematic_plan_to_place_object(
             end_effector_frame_to_plan_frame=Pose.identity(),
             seed=seed,
             max_time=max_motion_planning_time,
+            held_object=object_id,
+            base_link_to_held_obj=initial_state.attachments[object_id],
         )
         # If motion planning failed, try a different placement.
         if plan_to_preplace is None:

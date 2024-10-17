@@ -27,10 +27,10 @@ class KinematicState:
         robot: SingleArmPyBulletRobot,
         object_ids: set[int],
         attached_object_ids: set[int] | None = None,
-        robot_base_pose: Pose | None = None,
     ) -> KinematicState:
         """Create a KinematicStatic from pybullet."""
         robot_joints = robot.get_joint_positions()
+        robot_base_pose = None if robot.fixed_base else robot.get_base_pose()
         object_poses = {o: get_pose(o, robot.physics_client_id) for o in object_ids}
         attachments: dict[int, Pose] = {}
         if attached_object_ids is not None:
@@ -63,13 +63,17 @@ class KinematicState:
             world_to_object = multiply_poses(world_to_ee_link, ee_link_to_object)
             set_pose(object_id, world_to_object, robot.physics_client_id)
 
-    def copy_with(self, robot_joints: JointPositions) -> KinematicState:
+    def copy_with(
+        self,
+        robot_joints: JointPositions | None = None,
+        robot_base_pose: Pose | None = None,
+    ) -> KinematicState:
         """Create a copy of this state with replacements."""
         # For now, only robot joint copying is needed, but this function can
         # be extended in the future if needed.
         return KinematicState(
-            robot_joints,
+            (robot_joints or self.robot_joints),
             self.object_poses.copy(),
             self.attachments.copy(),
-            self.robot_base_pose,
+            (robot_base_pose or self.robot_base_pose),
         )
