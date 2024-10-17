@@ -414,10 +414,10 @@ def remap_joint_position_plan_to_constant_distance(
     return remapped_plan
 
 
-def run_base_motion_planning_to_goal(
+def run_base_motion_planning(
     robot: SingleArmPyBulletRobot,
     initial_pose: Pose,
-    goal_check: Callable[[Pose], bool],
+    goal: Pose | Callable[[Pose], bool],
     position_lower_bounds: tuple[float, float],
     position_upper_bounds: tuple[float, float],
     collision_bodies: Collection[int],
@@ -490,6 +490,22 @@ def run_base_motion_planning_to_goal(
             pt1, pt2, num_interp=num_interp, include_start=False
         )
 
+    # Use BiRRT if a target base pose is given.
+    if isinstance(goal, Pose):
+        birrt = BiRRT(
+            _sampling_fn,
+            _extend_fn,
+            _collision_fn,
+            _distance_fn,
+            rng,
+            num_attempts=hyperparameters.birrt_num_attempts,
+            num_iters=hyperparameters.birrt_num_iters,
+            smooth_amt=hyperparameters.birrt_smooth_amt,
+        )
+
+        return birrt.query(initial_pose, goal)
+
+    # Use RRT is the goal is a function.
     rrt = RRT(
         _sampling_fn,
         _extend_fn,
@@ -501,4 +517,4 @@ def run_base_motion_planning_to_goal(
         smooth_amt=hyperparameters.birrt_smooth_amt,
     )
 
-    return rrt.query_to_goal_fn(initial_pose, goal_check)
+    return rrt.query_to_goal_fn(initial_pose, goal)
