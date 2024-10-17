@@ -8,11 +8,18 @@ from functools import partial
 from typing import Callable, Collection, Iterable, Iterator, Optional
 
 import numpy as np
-from tomsutils.motion_planning import BiRRT
+from tomsutils.motion_planning import RRT, BiRRT
 
-from pybullet_helpers.geometry import Pose, multiply_poses
+from pybullet_helpers.geometry import (
+    Pose,
+    get_pose,
+    iter_between_poses,
+    multiply_poses,
+    set_pose,
+)
 from pybullet_helpers.inverse_kinematics import (
     InverseKinematicsError,
+    check_body_collisions,
     check_collisions_with_held_object,
     sample_collision_free_inverse_kinematics,
 )
@@ -405,3 +412,93 @@ def remap_joint_position_plan_to_constant_distance(
         iter_traj_with_max_distance(continuous_time_trajectory, max_distance)
     )
     return remapped_plan
+
+
+def run_base_motion_planning_to_goal(
+    robot: SingleArmPyBulletRobot,
+    initial_pose: Pose,
+    goal_check: Callable[[Pose], bool],
+    position_lower_bounds: tuple[float, float],
+    position_upper_bounds: tuple[float, float],
+    collision_bodies: Collection[int],
+    seed: int,
+    physics_client_id: int,
+    held_object: int | None = None,
+    base_link_to_held_obj: Pose | None = None,
+    platform: int | None = None,
+    hyperparameters: MotionPlanningHyperparameters | None = None,
+) -> Optional[list[Pose]]:
+    """Run motion planning for the robot base in SE2."""
+    if hyperparameters is None:
+        hyperparameters = MotionPlanningHyperparameters()
+
+    rng = np.random.default_rng(seed)
+    num_interp = hyperparameters.birrt_extend_num_interp
+
+    # Determine the transform between the platform and robot base if applicable.
+    if platform is not None:
+        world_to_base = robot.get_base_pose()
+        world_to_platform = get_pose(platform, physics_client_id)
+        base_to_platform = multiply_poses(world_to_base.invert(), world_to_platform)
+
+    # The joint positions and z position of the robot won't change.
+    base_z = robot.get_base_pose().position[2]
+    joint_state = robot.get_joint_positions()
+
+    def _set_robot(pt: Pose) -> None:
+        robot.set_base(pt)
+        if platform is not None:
+            platform_pose = multiply_poses(pt, base_to_platform)
+            set_pose(platform, platform_pose, physics_client_id)
+
+    def _collision_fn(pt: Pose) -> bool:
+        _set_robot(pt)
+        if check_collisions_with_held_object(
+            robot,
+            collision_bodies,
+            physics_client_id,
+            held_object,
+            base_link_to_held_obj,
+            joint_state,
+        ):
+            return True
+        if platform is not None:
+            for collision_body in collision_bodies:
+                if check_body_collisions(
+                    platform,
+                    collision_body,
+                    physics_client_id,
+                    perform_collision_detection=False,
+                ):
+                    return True
+        return False
+
+    def _distance_fn(pt1: Pose, pt2: Pose) -> float:
+        return float(
+            np.linalg.norm(np.subtract(pt1.position, pt2.position))
+            + np.linalg.norm(np.subtract(pt1.orientation, pt2.orientation))
+        )
+
+    def _sampling_fn(pt: Pose) -> Pose:
+        del pt  # not used
+        x, y = rng.uniform(position_lower_bounds, position_upper_bounds)
+        yaw = rng.uniform(-np.pi, np.pi)
+        return Pose.from_rpy((x, y, base_z), rpy=(0, 0, yaw))
+
+    def _extend_fn(pt1: Pose, pt2: Pose) -> Iterator[Pose]:
+        yield from iter_between_poses(
+            pt1, pt2, num_interp=num_interp, include_start=False
+        )
+
+    rrt = RRT(
+        _sampling_fn,
+        _extend_fn,
+        _collision_fn,
+        _distance_fn,
+        rng,
+        num_attempts=hyperparameters.birrt_num_attempts,
+        num_iters=hyperparameters.birrt_num_iters,
+        smooth_amt=hyperparameters.birrt_smooth_amt,
+    )
+
+    return rrt.query_to_goal_fn(initial_pose, goal_check)
