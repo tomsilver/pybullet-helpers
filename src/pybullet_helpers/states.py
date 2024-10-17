@@ -18,6 +18,8 @@ class KinematicState:
     object_poses: dict[int, Pose]  # maps pybullet ID to pose
     # Maps held object IDs to end-effector transforms.
     attachments: dict[int, Pose] = field(default_factory=dict)
+    # Only need to track base for non-fixed-base robots.
+    robot_base_pose: Pose | None = None
 
     @classmethod
     def from_pybullet(
@@ -25,6 +27,7 @@ class KinematicState:
         robot: SingleArmPyBulletRobot,
         object_ids: set[int],
         attached_object_ids: set[int] | None = None,
+        robot_base_pose: Pose | None = None,
     ) -> KinematicState:
         """Create a KinematicStatic from pybullet."""
         robot_joints = robot.get_joint_positions()
@@ -42,11 +45,13 @@ class KinematicState:
                     world_to_ee_link.invert(), world_to_object
                 )
                 attachments[object_id] = ee_link_to_object
-        return KinematicState(robot_joints, object_poses, attachments)
+        return KinematicState(robot_joints, object_poses, attachments, robot_base_pose)
 
     def set_pybullet(self, robot: SingleArmPyBulletRobot) -> None:
         """Reset the pybullet simulator to this kinematic state."""
         robot.set_joints(self.robot_joints)
+        if self.robot_base_pose is not None:
+            robot.set_base(self.robot_base_pose)
         for object_id, pose in self.object_poses.items():
             set_pose(object_id, pose, robot.physics_client_id)
         world_to_ee_link = get_link_state(
@@ -63,5 +68,8 @@ class KinematicState:
         # For now, only robot joint copying is needed, but this function can
         # be extended in the future if needed.
         return KinematicState(
-            robot_joints, self.object_poses.copy(), self.attachments.copy()
+            robot_joints,
+            self.object_poses.copy(),
+            self.attachments.copy(),
+            self.robot_base_pose,
         )
