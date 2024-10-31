@@ -185,7 +185,7 @@ def run_smooth_motion_planning_to_pose(
     held_object: int | None = None,
     base_link_to_held_obj: Pose | None = None,
     max_time: float = np.inf,
-    max_iters: int | None = None,
+    max_candidate_plans: int | None = None,
     joint_geometric_scalar: float = 0.9,
     sampling_fn: Callable[[JointPositions], JointPositions] | None = None,
 ) -> Optional[list[JointPositions]]:
@@ -193,8 +193,8 @@ def run_smooth_motion_planning_to_pose(
     and then picks the "smoothest" result according to a geometric weighting of
     the joints (so the lowest joint should move the least)."""
     assert (
-        not np.isinf(max_time) or max_iters is not None
-    ), "Must specify either max_time or max_iters"
+        not np.isinf(max_time) or max_candidate_plans is not None
+    ), "Must specify either max_time or max_candidate_plans"
 
     # Target poses can be sampled or singletons.
     if isinstance(target_pose, Pose):
@@ -223,10 +223,9 @@ def run_smooth_motion_planning_to_pose(
     best_motion_plan: list[JointPositions] | None = None
     best_motion_plan_score: float = np.inf  # lower is better
     num_iters = 0
-    iter_ub = max_iters if max_iters is not None else np.inf
+    iter_ub = max_candidate_plans if max_candidate_plans is not None else np.inf
 
     while time.perf_counter() - start_time < max_time and num_iters < iter_ub:
-        num_iters += 1
         # Sample a target pose.
         target_pose = target_pose_sampler()
         # Transform to end effector space.
@@ -256,6 +255,7 @@ def run_smooth_motion_planning_to_pose(
             )
             # Score the motion plan.
             if motion_plan is not None:
+                num_iters += 1
                 score = _score_motion_plan(motion_plan)
                 if score < best_motion_plan_score:
                     best_motion_plan = motion_plan
