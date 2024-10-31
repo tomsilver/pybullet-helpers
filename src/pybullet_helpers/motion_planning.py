@@ -224,6 +224,7 @@ def run_smooth_motion_planning_to_pose(
     best_motion_plan_score: float = np.inf  # lower is better
     num_iters = 0
     iter_ub = max_candidate_plans if max_candidate_plans is not None else np.inf
+    rng = np.random.default_rng(seed)
 
     while time.perf_counter() - start_time < max_time and num_iters < iter_ub:
         # Sample a target pose.
@@ -238,6 +239,7 @@ def run_smooth_motion_planning_to_pose(
             robot,
             end_effector_pose,
             collision_ids,
+            rng,
             max_candidates=1,
         ):
             # Try motion planning to the target.
@@ -275,6 +277,7 @@ def smoothly_follow_end_effector_path(
     max_time: float = 5.0,
     max_smoothing_iters_per_step: int = 1000000,
     include_start: bool = True,
+    seed: int = 0,
 ) -> list[JointPositions]:
     """Find a smooth (short) joint trajectory that follows the given end
     effector path while avoiding collisions."""
@@ -285,6 +288,7 @@ def smoothly_follow_end_effector_path(
     current_joints = initial_joints
 
     max_time_per_step = max_time / len(end_effector_path)
+    rng = np.random.default_rng(seed)
     for end_effector_pose in end_effector_path:
         # Get the closest neighbor in joint space.
         robot.set_joints(current_joints)  # for warm starting IK
@@ -294,6 +298,7 @@ def smoothly_follow_end_effector_path(
             robot,
             end_effector_pose,
             collision_ids,
+            rng,
             held_object,
             base_link_to_held_obj,
             max_time=max_time_per_step,
