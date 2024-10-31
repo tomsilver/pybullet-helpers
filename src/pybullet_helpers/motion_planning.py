@@ -184,13 +184,17 @@ def run_smooth_motion_planning_to_pose(
     seed: int,
     held_object: int | None = None,
     base_link_to_held_obj: Pose | None = None,
-    max_time: float = 5.0,
+    max_time: float = np.inf,
+    max_iters: int | None = None,
     joint_geometric_scalar: float = 0.9,
     sampling_fn: Callable[[JointPositions], JointPositions] | None = None,
 ) -> Optional[list[JointPositions]]:
     """A naive smooth motion planner that reruns motion planning multiple times
     and then picks the "smoothest" result according to a geometric weighting of
     the joints (so the lowest joint should move the least)."""
+    assert (
+        not np.isinf(max_time) or max_iters is not None
+    ), "Must specify either max_time or max_iters"
 
     # Target poses can be sampled or singletons.
     if isinstance(target_pose, Pose):
@@ -218,8 +222,11 @@ def run_smooth_motion_planning_to_pose(
     start_time = time.perf_counter()
     best_motion_plan: list[JointPositions] | None = None
     best_motion_plan_score: float = np.inf  # lower is better
+    num_iters = 0
+    iter_ub = max_iters if max_iters is not None else np.inf
 
-    while time.perf_counter() - start_time < max_time:
+    while time.perf_counter() - start_time < max_time and num_iters < iter_ub:
+        num_iters += 1
         # Sample a target pose.
         target_pose = target_pose_sampler()
         # Transform to end effector space.
