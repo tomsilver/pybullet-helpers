@@ -145,6 +145,7 @@ def get_kinematic_plan_to_pick_object(
                 include_start=False,
             )
         )
+
         try:
             grasp_to_postgrasp_plan = smoothly_follow_end_effector_path(
                 robot,
