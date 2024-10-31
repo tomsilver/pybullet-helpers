@@ -284,13 +284,13 @@ def sample_collision_free_inverse_kinematics(
     robot: SingleArmPyBulletRobot,
     end_effector_pose: Pose,
     collision_bodies: set[int],
+    rng: np.random.Generator,
     held_object: int | None = None,
     base_link_to_held_obj: Pose | None = None,
     max_time: float = 0.05,
     max_attempts: int = 1000000000,
     max_distance: float = np.inf,
     max_candidates: int = 100,
-    seed: int = 0,
     norm: float = np.inf,
 ) -> Iterator[JointPositions]:
     """Sample in joints consistent with the end effector pose that also avoid
@@ -306,7 +306,7 @@ def sample_collision_free_inverse_kinematics(
         max_distance=max_distance,
         max_attempts=max_attempts,
         norm=norm,
-        rng=np.random.default_rng(seed),
+        rng=rng,
     )
 
     generator = islice(generator, max_candidates)

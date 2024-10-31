@@ -87,6 +87,7 @@ def test_ikfast_inverse_kinematics(physics_client_id):
 
 def test_sample_collision_free_inverse_kinematics(physics_client_id):
     """Tests for sample_collision_free_inverse_kinematics()."""
+    rng = np.random.default_rng(123)
 
     # Test trying to grasp an object when there is a collision body between
     # the robot and the target. The robot should move its joints to avoid
@@ -139,7 +140,7 @@ def test_sample_collision_free_inverse_kinematics(physics_client_id):
     max_candidates = 10
     ignored_collision_samples = list(
         sample_collision_free_inverse_kinematics(
-            robot, grasp_target, collision_ids, max_candidates=max_candidates
+            robot, grasp_target, collision_ids, rng, max_candidates=max_candidates
         )
     )
 
@@ -147,7 +148,7 @@ def test_sample_collision_free_inverse_kinematics(physics_client_id):
     collision_ids = {collision_region_id}
     with_collision_samples = list(
         sample_collision_free_inverse_kinematics(
-            robot, grasp_target, collision_ids, max_candidates=max_candidates
+            robot, grasp_target, collision_ids, rng, max_candidates=max_candidates
         )
     )
 
