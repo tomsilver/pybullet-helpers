@@ -27,6 +27,7 @@ def get_kinematic_plan_to_pick_object(
     postgrasp_translation_magnitude: float = 0.05,
     max_motion_planning_time: float = 1.0,
     max_motion_planning_candidates: int | None = None,
+    max_smoothing_iters_per_step: int = 1,
     seed: int = 0,
 ) -> list[KinematicState] | None:
     """Make a plan to pick up the object from a surface.
@@ -113,6 +114,7 @@ def get_kinematic_plan_to_pick_object(
                 collision_ids,
                 joint_distance_fn,
                 max_time=max_motion_planning_time,
+                max_smoothing_iters_per_step=max_smoothing_iters_per_step,
                 include_start=False,
             )
         except InverseKinematicsError:
@@ -151,6 +153,7 @@ def get_kinematic_plan_to_pick_object(
                 collision_ids - {object_id},
                 joint_distance_fn,
                 max_time=max_motion_planning_time,
+                max_smoothing_iters_per_step=max_smoothing_iters_per_step,
                 include_start=False,
                 held_object=object_id,
                 base_link_to_held_obj=relative_grasp.invert(),
@@ -184,6 +187,7 @@ def get_kinematic_plan_to_place_object(
     preplace_translation_magnitude: float = 0.05,
     max_motion_planning_time: float = 1.0,
     max_motion_planning_candidates: int | None = None,
+    max_smoothing_iters_per_step: int = 1,
     seed: int = 0,
 ) -> list[KinematicState] | None:
     """Make a plan to place the held object onto the surface.
@@ -270,6 +274,7 @@ def get_kinematic_plan_to_place_object(
                 collision_ids - {surface_id},
                 joint_distance_fn,
                 max_time=max_motion_planning_time,
+                max_smoothing_iters_per_step=max_smoothing_iters_per_step,
                 include_start=False,
                 held_object=object_id,
                 base_link_to_held_obj=end_effector_to_object,
@@ -312,6 +317,7 @@ def get_kinematic_plan_to_place_object(
                 collision_ids,
                 joint_distance_fn,
                 max_time=max_motion_planning_time,
+                max_smoothing_iters_per_step=max_smoothing_iters_per_step,
                 include_start=False,
             )
         except InverseKinematicsError:
