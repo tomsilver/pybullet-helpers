@@ -26,6 +26,7 @@ def get_kinematic_plan_to_pick_object(
     pregrasp_pad_scale: float = 1.1,
     postgrasp_translation_magnitude: float = 0.05,
     max_motion_planning_time: float = 1.0,
+    max_motion_planning_candidates: int | None = None,
     seed: int = 0,
 ) -> list[KinematicState] | None:
     """Make a plan to pick up the object from a surface.
@@ -83,6 +84,7 @@ def get_kinematic_plan_to_pick_object(
             end_effector_frame_to_plan_frame=Pose.identity(),
             seed=seed,
             max_time=max_motion_planning_time,
+            max_candidate_plans=max_motion_planning_candidates,
         )
         # If motion planning failed, try a different grasp.
         if plan_to_pregrasp is None:
@@ -181,6 +183,7 @@ def get_kinematic_plan_to_place_object(
     placement_generator: Iterator[Pose],
     preplace_translation_magnitude: float = 0.05,
     max_motion_planning_time: float = 1.0,
+    max_motion_planning_candidates: int | None = None,
     seed: int = 0,
 ) -> list[KinematicState] | None:
     """Make a plan to place the held object onto the surface.
@@ -236,6 +239,7 @@ def get_kinematic_plan_to_place_object(
             end_effector_frame_to_plan_frame=Pose.identity(),
             seed=seed,
             max_time=max_motion_planning_time,
+            max_candidate_plans=max_motion_planning_candidates,
             held_object=object_id,
             base_link_to_held_obj=initial_state.attachments[object_id],
         )
