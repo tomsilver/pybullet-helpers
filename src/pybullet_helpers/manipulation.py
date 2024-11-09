@@ -6,6 +6,7 @@ import numpy as np
 import pybullet as p
 
 from pybullet_helpers.geometry import Pose, iter_between_poses, multiply_poses, set_pose, get_half_extents_from_aabb
+from pybullet_helpers.link import get_relative_link_pose
 from pybullet_helpers.inverse_kinematics import InverseKinematicsError
 from pybullet_helpers.motion_planning import (
     create_joint_distance_fn,
@@ -14,6 +15,7 @@ from pybullet_helpers.motion_planning import (
 )
 from pybullet_helpers.robots.single_arm import FingeredSingleArmPyBulletRobot
 from pybullet_helpers.states import KinematicState
+from pybullet_helpers.utils import get_closest_points_with_optional_links
 
 
 def get_kinematic_plan_to_pick_object(
@@ -23,6 +25,8 @@ def get_kinematic_plan_to_pick_object(
     surface_id: int,
     collision_ids: set[int],
     grasp_generator: Iterator[Pose],
+    object_link_id: int = -1,
+    surface_link_id: int = -1,
     pregrasp_pad_scale: float = 1.1,
     postgrasp_translation_magnitude: float = 0.05,
     max_motion_planning_time: float = 1.0,
@@ -53,14 +57,22 @@ def get_kinematic_plan_to_pick_object(
     # The translation amount is determined based on the size of the axis aligned
     # bounding box for the object and the robot end effector.
     pregrasp_distance = _get_approach_distance_from_aabbs(
-        robot, object_id, pad_scale=pregrasp_pad_scale
+        robot, object_id, object_link_id=object_link_id, pad_scale=pregrasp_pad_scale
     )
 
     # Calculate once the direction to move after grasping succeeds. Using the
     # contact normal with the surface.
     postgrasp_translation = _get_approach_pose_from_contact_normals(
-        object_id, surface_id, robot.physics_client_id, postgrasp_translation_magnitude
+        object_id, surface_id, robot.physics_client_id,
+        surface_link_id=surface_link_id,
+        translation_magnitude=postgrasp_translation_magnitude,
     )
+
+    # Prepare to transform grasps relative to the link into the object frame.
+    if object_link_id == -1:
+        object_to_link = Pose.identity()
+    else:
+        object_to_link = get_relative_link_pose(object_id, -1, object_link_id, robot.physics_client_id)
 
     for relative_grasp in grasp_generator:
         # Reset the simulator to the initial state to restart the planning.
@@ -70,7 +82,7 @@ def get_kinematic_plan_to_pick_object(
 
         # Calculate the grasp in the world frame.
         object_pose = state.object_poses[object_id]
-        grasp = multiply_poses(object_pose, relative_grasp)
+        grasp = multiply_poses(object_pose, object_to_link.invert(), relative_grasp)
 
         # Calculate the pregrasp pose.
         pregrasp_translation_direction = np.array([0.0, 0.0, -1.0])
@@ -357,27 +369,17 @@ def generate_surface_placements(object_id: int, surface_id: int, rng: np.random.
 
 
 def _get_approach_distance_from_aabbs(
-    robot: FingeredSingleArmPyBulletRobot, object_id: int, pad_scale: float = 1.1
+    robot: FingeredSingleArmPyBulletRobot, object_id: int, object_link_id: int = -1, pad_scale: float = 1.1
 ) -> float:
-    object_aabb = p.getAABB(object_id, -1, robot.physics_client_id)
-    object_extent = max(
-        object_aabb[1][0] - object_aabb[0][0],
-        object_aabb[1][1] - object_aabb[0][1],
-        object_aabb[1][2] - object_aabb[0][2],
-    )
-    object_radius = object_extent / 2
+    object_half_extents = get_half_extents_from_aabb(object_id, physics_client_id=robot.physics_client_id,
+                                                     link_id=object_link_id)
+    object_radius = max(object_half_extents)
     robot_end_effector_radius = 0.0  # find max value over fingers
     for finger_id in robot.finger_ids:
-        robot_end_effector_aabb = p.getAABB(
-            robot.robot_id, finger_id, robot.physics_client_id
-        )
-        robot_end_effector_extent = max(
-            robot_end_effector_aabb[1][0] - robot_end_effector_aabb[0][0],
-            robot_end_effector_aabb[1][1] - robot_end_effector_aabb[0][1],
-            robot_end_effector_aabb[1][2] - robot_end_effector_aabb[0][2],
-        )
+        robot_end_effector_half_extents = get_half_extents_from_aabb(robot.robot_id, physics_client_id=robot.physics_client_id,
+                                                     link_id=finger_id)
         robot_end_effector_radius = max(
-            robot_end_effector_radius, robot_end_effector_extent / 2
+            robot_end_effector_radius, max(robot_end_effector_half_extents),
         )
 
     return (object_radius + robot_end_effector_radius) * pad_scale
@@ -387,14 +389,18 @@ def _get_approach_pose_from_contact_normals(
     object_id: int,
     surface_id: int,
     physics_client_id: int,
+    object_link_id: int | None = None,
+    surface_link_id: int | None = None,
     translation_magnitude: float = 0.05,
     contact_distance_threshold: float = 1e-3,
 ):
-    contact_points = p.getClosestPoints(
+    contact_points = get_closest_points_with_optional_links(
         object_id,
         surface_id,
-        distance=contact_distance_threshold,
-        physicsClientId=physics_client_id,
+        physics_client_id=physics_client_id,
+        link1=object_link_id,
+        link2=surface_link_id,
+        distance_threshold=contact_distance_threshold,
     )
     assert len(contact_points) > 0
     contact_normals = []

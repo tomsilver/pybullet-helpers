@@ -169,13 +169,21 @@ def test_kinematic_pick_place():
         robot,
         object_id,
         table_id,
-        collision_ids={table_id},
+        collision_ids={table_id, object_id},
         grasp_generator=_grasp_generator(),
         object_link_id=0,  # handle
         surface_link_id=0,  # table surface
     )
 
     assert plan is not None
+
+
+    # TODO remove
+    for state in plan:
+        state.set_pybullet(robot)
+        import time; time.sleep(0.1)
+    import ipdb; ipdb.set_trace()
+
 
     # Advance to the end of the plan.
     initial_state = plan[-1]
@@ -192,6 +200,13 @@ def test_kinematic_pick_place():
         object_link_id=1,  # attachment
         surface_link_id=0,  # table surface
     )
+
+    # TODO remove
+    for state in plan:
+        state.set_pybullet(robot)
+        import time; time.sleep(0.1)
+    import ipdb; ipdb.set_trace()
+
 
     assert plan is not None
 
