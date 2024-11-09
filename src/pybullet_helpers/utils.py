@@ -132,7 +132,7 @@ def get_closest_points_with_optional_links(
     perform_collision_detection: bool = True,
 ) -> list[tuple]:
     """Wrapper around getClosestPoints, which doesn't seem to work with
-     optional link setting."""
+    optional link setting."""
     if perform_collision_detection:
         p.performCollisionDetection(physicsClientId=physics_client_id)
     if link1 is not None and link2 is not None:

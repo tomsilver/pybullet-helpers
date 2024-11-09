@@ -202,10 +202,15 @@ def check_body_collisions(
     into some very strange issues where the held object was clearly in
     collision, but p.getContactPoints was always empty.
     """
-    closest_points = get_closest_points_with_optional_links(body1, body2, physics_client_id,
-                                                            link1=link1, link2=link2,
-                                                            distance_threshold=distance_threshold,
-                                                            perform_collision_detection=perform_collision_detection)
+    closest_points = get_closest_points_with_optional_links(
+        body1,
+        body2,
+        physics_client_id,
+        link1=link1,
+        link2=link2,
+        distance_threshold=distance_threshold,
+        perform_collision_detection=perform_collision_detection,
+    )
     return len(closest_points) > 0
 
 

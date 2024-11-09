@@ -4,11 +4,10 @@ import numpy as np
 import pybullet as p
 
 from pybullet_helpers.geometry import Pose, multiply_poses, set_pose
-from pybullet_helpers.link import get_link_pose, get_relative_link_pose
 from pybullet_helpers.manipulation import (
+    generate_surface_placements,
     get_kinematic_plan_to_pick_object,
     get_kinematic_plan_to_place_object,
-    generate_surface_placements,
 )
 from pybullet_helpers.math_utils import get_poses_facing_line
 from pybullet_helpers.robots import create_pybullet_robot
@@ -23,11 +22,11 @@ def test_kinematic_pick_place():
     rng = np.random.default_rng(123)
 
     # Set up a scene to test manipuation.
-    # physics_client_id = p.connect(p.DIRECT)
+    physics_client_id = p.connect(p.DIRECT)
 
     # Uncomment to debug.
-    from pybullet_helpers.gui import create_gui_connection
-    physics_client_id = create_gui_connection(camera_yaw=0)
+    # from pybullet_helpers.gui import create_gui_connection
+    # physics_client_id = create_gui_connection(camera_yaw=0)
 
     # Create robot.
     robot = create_pybullet_robot("panda", physics_client_id)
@@ -128,31 +127,15 @@ def test_kinematic_pick_place():
         physicsClientId=physics_client_id,
     )
 
-    placement_generator = generate_surface_placements(object_id, table_id, rng, physics_client_id,
-                                                      object_link_id=1,
-                                                      surface_link_id=0)
-    
-
-    # TODO remove and move the code above down
-    # for _ in range(100):
-    #     attachment_to_surface_placement = next(placement_generator)
-    #     attachment_to_object = get_relative_link_pose(object_id, 1, -1, physics_client_id)
-    #     surface_to_table = get_relative_link_pose(table_id, 0, -1, physics_client_id)
-    #     object_to_table_placement = multiply_poses(attachment_to_object.invert(), attachment_to_surface_placement, surface_to_table)
-    #     world_to_object_placement = multiply_poses(Pose(table_position), object_to_table_placement)
-    #     set_pose(object_id, world_to_object_placement, physics_client_id)
-
-    #     for _ in range(100):
-    #         p.stepSimulation(physics_client_id)
-    #         import time; time.sleep(0.001)
-
     # Extract the initial state.
     initial_state = KinematicState.from_pybullet(robot, {object_id, table_id})
 
     # Set up a grasp generator.
     def _grasp_generator():
         while True:
-            angle_offset = rng.uniform(-np.pi, np.pi)
+            # Uncomment to make this test slower but more realistic.
+            # angle_offset = rng.uniform(-np.pi, np.pi)
+            angle_offset = 0
             relative_pose = get_poses_facing_line(
                 axis=(0.0, 0.0, 1.0),
                 point_on_line=(0.0, 0.0, 0.0),
@@ -177,19 +160,15 @@ def test_kinematic_pick_place():
 
     assert plan is not None
 
-
-    # TODO remove
-    for state in plan:
-        state.set_pybullet(robot)
-        import time; time.sleep(0.1)
-    import ipdb; ipdb.set_trace()
-
-
     # Advance to the end of the plan.
     initial_state = plan[-1]
     initial_state.set_pybullet(robot)
 
     # Get a plan.
+    placement_generator = generate_surface_placements(
+        object_id, table_id, rng, physics_client_id, object_link_id=1, surface_link_id=0
+    )
+
     plan = get_kinematic_plan_to_place_object(
         initial_state,
         robot,
@@ -200,13 +179,6 @@ def test_kinematic_pick_place():
         object_link_id=1,  # attachment
         surface_link_id=0,  # table surface
     )
-
-    # TODO remove
-    for state in plan:
-        state.set_pybullet(robot)
-        import time; time.sleep(0.1)
-    import ipdb; ipdb.set_trace()
-
 
     assert plan is not None
 
@@ -248,7 +220,9 @@ def test_generate_surface_placements():
     )
     set_pose(object_id, object_pose, physics_client_id)
 
-    placement_generator = generate_surface_placements(object_id, table_id, rng, physics_client_id)
+    placement_generator = generate_surface_placements(
+        object_id, table_id, rng, physics_client_id
+    )
 
     for _ in range(100):
         relative_placement = next(placement_generator)

@@ -5,9 +5,15 @@ from typing import Iterator
 import numpy as np
 import pybullet as p
 
-from pybullet_helpers.geometry import Pose, iter_between_poses, multiply_poses, set_pose, get_half_extents_from_aabb
-from pybullet_helpers.link import get_relative_link_pose
+from pybullet_helpers.geometry import (
+    Pose,
+    get_half_extents_from_aabb,
+    iter_between_poses,
+    multiply_poses,
+    set_pose,
+)
 from pybullet_helpers.inverse_kinematics import InverseKinematicsError
+from pybullet_helpers.link import get_relative_link_pose
 from pybullet_helpers.motion_planning import (
     create_joint_distance_fn,
     run_smooth_motion_planning_to_pose,
@@ -63,7 +69,9 @@ def get_kinematic_plan_to_pick_object(
     # Calculate once the direction to move after grasping succeeds. Using the
     # contact normal with the surface.
     postgrasp_translation = _get_approach_pose_from_contact_normals(
-        object_id, surface_id, robot.physics_client_id,
+        object_id,
+        surface_id,
+        robot.physics_client_id,
         surface_link_id=surface_link_id,
         translation_magnitude=postgrasp_translation_magnitude,
     )
@@ -72,7 +80,9 @@ def get_kinematic_plan_to_pick_object(
     if object_link_id == -1:
         object_to_link = Pose.identity()
     else:
-        object_to_link = get_relative_link_pose(object_id, -1, object_link_id, robot.physics_client_id)
+        object_to_link = get_relative_link_pose(
+            object_id, object_link_id, -1, robot.physics_client_id
+        )
 
     for relative_grasp in grasp_generator:
         # Reset the simulator to the initial state to restart the planning.
@@ -82,7 +92,7 @@ def get_kinematic_plan_to_pick_object(
 
         # Calculate the grasp in the world frame.
         object_pose = state.object_poses[object_id]
-        grasp = multiply_poses(object_pose, object_to_link.invert(), relative_grasp)
+        grasp = multiply_poses(object_pose, object_to_link, relative_grasp)
 
         # Calculate the pregrasp pose.
         pregrasp_translation_direction = np.array([0.0, 0.0, -1.0])
@@ -197,6 +207,8 @@ def get_kinematic_plan_to_place_object(
     surface_id: int,
     collision_ids: set[int],
     placement_generator: Iterator[Pose],
+    object_link_id: int = -1,
+    surface_link_id: int = -1,
     preplace_translation_magnitude: float = 0.05,
     max_motion_planning_time: float = 1.0,
     max_motion_planning_candidates: int | None = None,
@@ -221,6 +233,20 @@ def get_kinematic_plan_to_place_object(
     all_object_ids = set(state.object_poses)
     joint_distance_fn = create_joint_distance_fn(robot)
 
+    # Prepare to transform placements relative to parent frames.
+    if object_link_id == -1:
+        object_to_link = Pose.identity()
+    else:
+        object_to_link = get_relative_link_pose(
+            object_id, object_link_id, -1, robot.physics_client_id
+        )
+    if surface_link_id == -1:
+        surface_to_link = Pose.identity()
+    else:
+        surface_to_link = get_relative_link_pose(
+            surface_id, surface_link_id, -1, robot.physics_client_id
+        )
+
     for relative_placement in placement_generator:
         # Reset the simulator to the initial state to restart the planning.
         initial_state.set_pybullet(robot)
@@ -229,7 +255,12 @@ def get_kinematic_plan_to_place_object(
 
         # Calculate the placement.
         surface_pose = state.object_poses[surface_id]
-        world_to_object_placement = multiply_poses(surface_pose, relative_placement)
+        object_to_surface_placement = multiply_poses(
+            object_to_link.invert(), relative_placement, surface_to_link
+        )
+        world_to_object_placement = multiply_poses(
+            surface_pose, object_to_surface_placement
+        )
         end_effector_to_object = state.attachments[object_id]
         object_to_end_effector = end_effector_to_object.invert()
         placement = multiply_poses(world_to_object_placement, object_to_end_effector)
@@ -237,6 +268,7 @@ def get_kinematic_plan_to_place_object(
         # Temporary set the placement so that we can calculate contact normals
         # to determine the preplace pose.
         set_pose(object_id, world_to_object_placement, robot.physics_client_id)
+
         preplace_translation = _get_approach_pose_from_contact_normals(
             object_id,
             surface_id,
@@ -351,35 +383,58 @@ def get_kinematic_plan_to_place_object(
     return None
 
 
-def generate_surface_placements(object_id: int, surface_id: int, rng: np.random.Generator, physics_client_id: int,
-                                object_link_id: int = -1, surface_link_id: int = -1) -> Iterator[Pose]:
+def generate_surface_placements(
+    object_id: int,
+    surface_id: int,
+    rng: np.random.Generator,
+    physics_client_id: int,
+    object_link_id: int = -1,
+    surface_link_id: int = -1,
+) -> Iterator[Pose]:
     """Generate placement poses relative to the object (link)."""
     while True:
-        object_half_extents = get_half_extents_from_aabb(object_id, physics_client_id, link_id=object_link_id)
-        surface_half_extents = get_half_extents_from_aabb(surface_id, physics_client_id, link_id=surface_link_id)
+        object_half_extents = get_half_extents_from_aabb(
+            object_id, physics_client_id, link_id=object_link_id
+        )
+        surface_half_extents = get_half_extents_from_aabb(
+            surface_id, physics_client_id, link_id=surface_link_id
+        )
         relative_placement_position = (
-            rng.uniform(-surface_half_extents[0] + object_half_extents[0], surface_half_extents[0] - object_half_extents[0]),
-            rng.uniform(-surface_half_extents[1] + object_half_extents[1], surface_half_extents[1] - object_half_extents[1]),
+            rng.uniform(
+                -surface_half_extents[0] + object_half_extents[0],
+                surface_half_extents[0] - object_half_extents[0],
+            ),
+            rng.uniform(
+                -surface_half_extents[1] + object_half_extents[1],
+                surface_half_extents[1] - object_half_extents[1],
+            ),
             object_half_extents[2] + surface_half_extents[2],
         )
         relative_placement_yaw = rng.uniform(-np.pi, np.pi)
-        relative_placement_orn = tuple(p.getQuaternionFromEuler([0, 0, relative_placement_yaw]))
+        relative_placement_orn = tuple(
+            p.getQuaternionFromEuler([0, 0, relative_placement_yaw])
+        )
         yield Pose(relative_placement_position, relative_placement_orn)
 
 
-
 def _get_approach_distance_from_aabbs(
-    robot: FingeredSingleArmPyBulletRobot, object_id: int, object_link_id: int = -1, pad_scale: float = 1.1
+    robot: FingeredSingleArmPyBulletRobot,
+    object_id: int,
+    object_link_id: int = -1,
+    pad_scale: float = 1.1,
 ) -> float:
-    object_half_extents = get_half_extents_from_aabb(object_id, physics_client_id=robot.physics_client_id,
-                                                     link_id=object_link_id)
+    object_half_extents = get_half_extents_from_aabb(
+        object_id, physics_client_id=robot.physics_client_id, link_id=object_link_id
+    )
     object_radius = max(object_half_extents)
     robot_end_effector_radius = 0.0  # find max value over fingers
     for finger_id in robot.finger_ids:
-        robot_end_effector_half_extents = get_half_extents_from_aabb(robot.robot_id, physics_client_id=robot.physics_client_id,
-                                                     link_id=finger_id)
+        robot_end_effector_half_extents = get_half_extents_from_aabb(
+            robot.robot_id, physics_client_id=robot.physics_client_id, link_id=finger_id
+        )
         robot_end_effector_radius = max(
-            robot_end_effector_radius, max(robot_end_effector_half_extents),
+            robot_end_effector_radius,
+            *robot_end_effector_half_extents,
         )
 
     return (object_radius + robot_end_effector_radius) * pad_scale
