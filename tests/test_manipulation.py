@@ -171,6 +171,8 @@ def test_kinematic_pick_place():
         table_id,
         collision_ids={table_id},
         grasp_generator=_grasp_generator(),
+        object_link_id=0,  # handle
+        surface_link_id=0,  # table surface
     )
 
     assert plan is not None
@@ -187,6 +189,8 @@ def test_kinematic_pick_place():
         table_id,
         collision_ids={table_id},
         placement_generator=placement_generator,
+        object_link_id=1,  # attachment
+        surface_link_id=0,  # table surface
     )
 
     assert plan is not None
