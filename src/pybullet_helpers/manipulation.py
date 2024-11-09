@@ -5,7 +5,7 @@ from typing import Iterator
 import numpy as np
 import pybullet as p
 
-from pybullet_helpers.geometry import Pose, iter_between_poses, multiply_poses, set_pose
+from pybullet_helpers.geometry import Pose, iter_between_poses, multiply_poses, set_pose, get_half_extents_from_aabb
 from pybullet_helpers.inverse_kinematics import InverseKinematicsError
 from pybullet_helpers.motion_planning import (
     create_joint_distance_fn,
@@ -337,6 +337,23 @@ def get_kinematic_plan_to_place_object(
         return plan
 
     return None
+
+
+def generate_surface_placements(object_id: int, surface_id: int, rng: np.random.Generator, physics_client_id: int,
+                                object_link_id: int = -1, surface_link_id: int = -1) -> Iterator[Pose]:
+    """Generate placement poses relative to the object (link)."""
+    while True:
+        object_half_extents = get_half_extents_from_aabb(object_id, physics_client_id, link_id=object_link_id)
+        surface_half_extents = get_half_extents_from_aabb(surface_id, physics_client_id, link_id=surface_link_id)
+        relative_placement_position = (
+            rng.uniform(-surface_half_extents[0] + object_half_extents[0], surface_half_extents[0] - object_half_extents[0]),
+            rng.uniform(-surface_half_extents[1] + object_half_extents[1], surface_half_extents[1] - object_half_extents[1]),
+            object_half_extents[2] + surface_half_extents[2],
+        )
+        relative_placement_yaw = rng.uniform(-np.pi, np.pi)
+        relative_placement_orn = tuple(p.getQuaternionFromEuler([0, 0, relative_placement_yaw]))
+        yield Pose(relative_placement_position, relative_placement_orn)
+
 
 
 def _get_approach_distance_from_aabbs(
