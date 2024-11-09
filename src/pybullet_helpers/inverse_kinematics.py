@@ -24,6 +24,7 @@ from pybullet_helpers.robots.single_arm import (
     FingerState,
     SingleArmPyBulletRobot,
 )
+from pybullet_helpers.utils import get_closest_points_with_optional_links
 
 
 class InverseKinematicsError(ValueError):
@@ -201,30 +202,15 @@ def check_body_collisions(
     into some very strange issues where the held object was clearly in
     collision, but p.getContactPoints was always empty.
     """
-    if perform_collision_detection:
-        p.performCollisionDetection(physicsClientId=physics_client_id)
-    if link1 is not None:
-        assert link2 is not None
-        closest_points = p.getClosestPoints(
-            bodyA=body1,
-            bodyB=body2,
-            linkIndexA=link1,
-            linkIndexB=link2,
-            distance=distance_threshold,
-            physicsClientId=physics_client_id,
-        )
-    else:
-        assert link2 is None
-        closest_points = p.getClosestPoints(
-            bodyA=body1,
-            bodyB=body2,
-            distance=distance_threshold,
-            physicsClientId=physics_client_id,
-        )
-    # PyBullet strangely sometimes returns None, other times returns an empty
-    # list in cases where there is no collision. Empty list is more common.
-    if closest_points is None:
-        return False
+    closest_points = get_closest_points_with_optional_links(
+        body1,
+        body2,
+        physics_client_id,
+        link1=link1,
+        link2=link2,
+        distance_threshold=distance_threshold,
+        perform_collision_detection=perform_collision_detection,
+    )
     return len(closest_points) > 0
 
 

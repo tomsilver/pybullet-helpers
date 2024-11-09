@@ -120,3 +120,55 @@ def create_pybullet_cylinder(
         )
 
     return cylinder_id
+
+
+def get_closest_points_with_optional_links(
+    body1: int,
+    body2: int,
+    physics_client_id: int,
+    link1: int | None = None,
+    link2: int | None = None,
+    distance_threshold: float = 1e-6,
+    perform_collision_detection: bool = True,
+) -> list[tuple]:
+    """Wrapper around getClosestPoints, which doesn't seem to work with
+    optional link setting."""
+    if perform_collision_detection:
+        p.performCollisionDetection(physicsClientId=physics_client_id)
+    if link1 is not None and link2 is not None:
+        closest_points = p.getClosestPoints(
+            bodyA=body1,
+            bodyB=body2,
+            linkIndexA=link1,
+            linkIndexB=link2,
+            distance=distance_threshold,
+            physicsClientId=physics_client_id,
+        )
+    elif link1 is not None:
+        closest_points = p.getClosestPoints(
+            bodyA=body1,
+            bodyB=body2,
+            linkIndexA=link1,
+            distance=distance_threshold,
+            physicsClientId=physics_client_id,
+        )
+    elif link2 is not None:
+        closest_points = p.getClosestPoints(
+            bodyA=body1,
+            bodyB=body2,
+            linkIndexB=link2,
+            distance=distance_threshold,
+            physicsClientId=physics_client_id,
+        )
+    else:
+        closest_points = p.getClosestPoints(
+            bodyA=body1,
+            bodyB=body2,
+            distance=distance_threshold,
+            physicsClientId=physics_client_id,
+        )
+    # PyBullet strangely sometimes returns None, other times returns an empty
+    # list in cases where there is no collision. Empty list is more common.
+    if closest_points is None:
+        return []
+    return closest_points
