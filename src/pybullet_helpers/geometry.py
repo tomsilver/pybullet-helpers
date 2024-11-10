@@ -193,12 +193,17 @@ def interpolate_poses(
 
 
 def get_half_extents_from_aabb(
-    body_id: int, physics_client_id: int, link_id: int = -1
+    body_id: int,
+    physics_client_id: int,
+    link_id: int | None = None,
 ) -> tuple[float, float, float]:
     """Get box half extents based on AABB."""
-    aabb_min, aabb_max = p.getAABB(
-        body_id, linkIndex=link_id, physicsClientId=physics_client_id
-    )
+    if link_id is None:
+        aabb_min, aabb_max = p.getAABB(body_id, physicsClientId=physics_client_id)
+    else:
+        aabb_min, aabb_max = p.getAABB(
+            body_id, linkIndex=link_id, physicsClientId=physics_client_id
+        )
     return (
         (aabb_max[0] - aabb_min[0]) / 2,
         (aabb_max[1] - aabb_min[1]) / 2,

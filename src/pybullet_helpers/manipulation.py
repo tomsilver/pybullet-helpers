@@ -31,8 +31,8 @@ def get_kinematic_plan_to_pick_object(
     surface_id: int,
     collision_ids: set[int],
     grasp_generator: Iterator[Pose],
-    object_link_id: int = -1,
-    surface_link_id: int = -1,
+    object_link_id: int | None = None,
+    surface_link_id: int | None = None,
     pregrasp_pad_scale: float = 1.1,
     postgrasp_translation_magnitude: float = 0.05,
     max_motion_planning_time: float = 1.0,
@@ -77,7 +77,7 @@ def get_kinematic_plan_to_pick_object(
     )
 
     # Prepare to transform grasps relative to the link into the object frame.
-    if object_link_id == -1:
+    if object_link_id is None:
         object_to_link = Pose.identity()
     else:
         object_to_link = get_relative_link_pose(
@@ -207,8 +207,8 @@ def get_kinematic_plan_to_place_object(
     surface_id: int,
     collision_ids: set[int],
     placement_generator: Iterator[Pose],
-    object_link_id: int = -1,
-    surface_link_id: int = -1,
+    object_link_id: int | None = None,
+    surface_link_id: int | None = None,
     preplace_translation_magnitude: float = 0.05,
     max_motion_planning_time: float = 1.0,
     max_motion_planning_candidates: int | None = None,
@@ -234,13 +234,13 @@ def get_kinematic_plan_to_place_object(
     joint_distance_fn = create_joint_distance_fn(robot)
 
     # Prepare to transform placements relative to parent frames.
-    if object_link_id == -1:
+    if object_link_id is None:
         object_to_link = Pose.identity()
     else:
         object_to_link = get_relative_link_pose(
             object_id, object_link_id, -1, robot.physics_client_id
         )
-    if surface_link_id == -1:
+    if surface_link_id is None:
         surface_to_link = Pose.identity()
     else:
         surface_to_link = get_relative_link_pose(
@@ -284,7 +284,7 @@ def get_kinematic_plan_to_place_object(
         plan_to_preplace = run_smooth_motion_planning_to_pose(
             preplace_pose,
             robot,
-            collision_ids=collision_ids,
+            collision_ids=collision_ids - {object_id},
             end_effector_frame_to_plan_frame=Pose.identity(),
             seed=seed,
             max_time=max_motion_planning_time,
@@ -316,7 +316,7 @@ def get_kinematic_plan_to_place_object(
                 robot,
                 end_effector_path,
                 state.robot_joints,
-                collision_ids - {surface_id},
+                collision_ids - {object_id, surface_id},
                 joint_distance_fn,
                 max_time=max_motion_planning_time,
                 max_smoothing_iters_per_step=max_smoothing_iters_per_step,
@@ -359,7 +359,7 @@ def get_kinematic_plan_to_place_object(
                 robot,
                 end_effector_path,
                 state.robot_joints,
-                collision_ids,
+                collision_ids - {object_id},
                 joint_distance_fn,
                 max_time=max_motion_planning_time,
                 max_smoothing_iters_per_step=max_smoothing_iters_per_step,
@@ -388,8 +388,8 @@ def generate_surface_placements(
     surface_id: int,
     rng: np.random.Generator,
     physics_client_id: int,
-    object_link_id: int = -1,
-    surface_link_id: int = -1,
+    object_link_id: int | None = None,
+    surface_link_id: int | None = None,
 ) -> Iterator[Pose]:
     """Generate placement poses relative to the object (link)."""
     while True:
@@ -420,7 +420,7 @@ def generate_surface_placements(
 def _get_approach_distance_from_aabbs(
     robot: FingeredSingleArmPyBulletRobot,
     object_id: int,
-    object_link_id: int = -1,
+    object_link_id: int | None = None,
     pad_scale: float = 1.1,
 ) -> float:
     object_half_extents = get_half_extents_from_aabb(
