@@ -9,6 +9,7 @@ from pybullet_helpers.geometry import (
     Pose,
     get_half_extents_from_aabb,
     iter_between_poses,
+    matrix_from_quat,
     multiply_poses,
     set_pose,
 )
@@ -190,8 +191,6 @@ def get_kinematic_plan_to_pick_object(
         for robot_joints in grasp_to_postgrasp_plan:
             state = state.copy_with(robot_joints=robot_joints)
             plan.append(state)
-        # Sync the simulator.
-        state.set_pybullet(robot)
 
         # Planning succeeded.
         return plan
@@ -214,6 +213,7 @@ def get_kinematic_plan_to_place_object(
     max_motion_planning_candidates: int | None = None,
     max_smoothing_iters_per_step: int = 1,
     seed: int = 0,
+    retract_after: bool = True,
 ) -> list[KinematicState] | None:
     """Make a plan to place the held object onto the surface.
 
@@ -265,7 +265,7 @@ def get_kinematic_plan_to_place_object(
         object_to_end_effector = end_effector_to_object.invert()
         placement = multiply_poses(world_to_object_placement, object_to_end_effector)
 
-        # Temporary set the placement so that we can calculate contact normals
+        # Temporarily set the placement so that we can calculate contact normals
         # to determine the preplace pose.
         set_pose(object_id, world_to_object_placement, robot.physics_client_id)
 
@@ -345,42 +345,109 @@ def get_kinematic_plan_to_place_object(
         )
         plan.append(state)
 
-        # Move back to the preplace pose.
-        end_effector_pose = robot.get_end_effector_pose()
-        end_effector_path = list(
-            iter_between_poses(
-                end_effector_pose,
-                preplace_pose,
-                include_start=False,
+        if retract_after:
+
+            # Move back to the preplace pose.
+            end_effector_pose = robot.get_end_effector_pose()
+            end_effector_path = list(
+                iter_between_poses(
+                    end_effector_pose,
+                    preplace_pose,
+                    include_start=False,
+                )
             )
-        )
-        try:
-            place_to_postplace_plan = smoothly_follow_end_effector_path(
-                robot,
-                end_effector_path,
-                state.robot_joints,
-                collision_ids - {object_id},
-                joint_distance_fn,
-                max_time=max_motion_planning_time,
-                max_smoothing_iters_per_step=max_smoothing_iters_per_step,
-                include_start=False,
-            )
-        except InverseKinematicsError:
-            place_to_postplace_plan = None
-        # If motion planning failed, try a different placement.
-        if place_to_postplace_plan is None:
-            continue
-        # Motion planning succeeded, so update the plan.
-        for robot_joints in place_to_postplace_plan:
-            state = state.copy_with(robot_joints=robot_joints)
-            plan.append(state)
-        # Sync the simulator.
-        state.set_pybullet(robot)
+            try:
+                place_to_postplace_plan = smoothly_follow_end_effector_path(
+                    robot,
+                    end_effector_path,
+                    state.robot_joints,
+                    collision_ids - {object_id},
+                    joint_distance_fn,
+                    max_time=max_motion_planning_time,
+                    max_smoothing_iters_per_step=max_smoothing_iters_per_step,
+                    include_start=False,
+                )
+            except InverseKinematicsError:
+                place_to_postplace_plan = None
+            # If motion planning failed, try a different placement.
+            if place_to_postplace_plan is None:
+                continue
+            # Motion planning succeeded, so update the plan.
+            for robot_joints in place_to_postplace_plan:
+                state = state.copy_with(robot_joints=robot_joints)
+                plan.append(state)
 
         # Planning succeeded.
         return plan
 
     return None
+
+
+def get_kinematic_plan_to_retract(
+    initial_state: KinematicState,
+    robot: FingeredSingleArmPyBulletRobot,
+    collision_ids: set[int],
+    translation_magnitude: float = 0.05,
+    max_motion_planning_time: float = 1.0,
+    max_smoothing_iters_per_step: int = 1,
+) -> list[KinematicState] | None:
+    """Make a plan to retract the robot in opposite direction of the fingers.
+
+    It can be good practice to call this after picking or placing to make any
+    subsequent calls to motion planning easier.
+
+    NOTE: this function updates pybullet directly and arbitrarily. Users should
+    reset the pybullet state as appropriate after calling this function.
+    """
+    # Reset the simulator to the initial state to restart the planning.
+    initial_state.set_pybullet(robot)
+    state = initial_state
+    joint_distance_fn = create_joint_distance_fn(robot)
+
+    end_effector_pose = robot.get_end_effector_pose()
+    rot_mat = matrix_from_quat(end_effector_pose.orientation)
+    retract_direction = -1 * rot_mat[:, 2]
+    translation = Pose((tuple(translation_magnitude * retract_direction)))
+    retract_pose = multiply_poses(translation, end_effector_pose)
+
+    end_effector_path = list(
+        iter_between_poses(
+            end_effector_pose,
+            retract_pose,
+            include_start=True,
+        )
+    )
+
+    if state.attachments:
+        assert len(state.attachments) == 1
+        held_object = next(iter(state.attachments))
+        base_link_to_held_obj = state.attachments[held_object]
+    else:
+        held_object = None
+        base_link_to_held_obj = None
+    try:
+        retract_plan = smoothly_follow_end_effector_path(
+            robot,
+            end_effector_path,
+            state.robot_joints,
+            collision_ids,
+            joint_distance_fn,
+            max_time=max_motion_planning_time,
+            max_smoothing_iters_per_step=max_smoothing_iters_per_step,
+            include_start=True,
+            held_object=held_object,
+            base_link_to_held_obj=base_link_to_held_obj,
+        )
+    except InverseKinematicsError:
+        return None
+
+    # Motion planning succeeded, so update the plan.
+    kinematic_plan: list[KinematicState] = []
+    for robot_joints in retract_plan:
+        state = state.copy_with(robot_joints=robot_joints)
+        kinematic_plan.append(state)
+
+    return kinematic_plan
 
 
 def generate_surface_placements(
