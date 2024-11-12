@@ -8,6 +8,7 @@ from pybullet_helpers.manipulation import (
     generate_surface_placements,
     get_kinematic_plan_to_pick_object,
     get_kinematic_plan_to_place_object,
+    get_kinematic_plan_to_retract,
 )
 from pybullet_helpers.math_utils import get_poses_facing_line
 from pybullet_helpers.robots import create_pybullet_robot
@@ -178,9 +179,22 @@ def test_kinematic_pick_place():
         placement_generator=placement_generator,
         object_link_id=1,  # attachment
         surface_link_id=0,  # table surface
+        retract_after=False,
     )
 
     assert plan is not None
+
+    # Advance to the end of the plan.
+    initial_state = plan[-1]
+    initial_state.set_pybullet(robot)
+
+    # Get a plan.
+    plan = get_kinematic_plan_to_retract(
+        initial_state,
+        robot,
+        collision_ids={table_id, object_id},
+        translation_magnitude=0.1,
+    )
 
     p.disconnect(physics_client_id)
 
