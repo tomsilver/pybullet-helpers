@@ -414,14 +414,14 @@ def get_kinematic_plan_to_retract(
         iter_between_poses(
             end_effector_pose,
             retract_pose,
-            include_start=False,
+            include_start=True,
         )
     )
 
-    if initial_state.attachments:
-        assert len(initial_state.attachments) == 1
-        held_object = next(iter(initial_state.attachments))
-        base_link_to_held_obj = initial_state.attachments[held_object]
+    if state.attachments:
+        assert len(state.attachments) == 1
+        held_object = next(iter(state.attachments))
+        base_link_to_held_obj = state.attachments[held_object]
     else:
         held_object = None
         base_link_to_held_obj = None
@@ -434,7 +434,7 @@ def get_kinematic_plan_to_retract(
             joint_distance_fn,
             max_time=max_motion_planning_time,
             max_smoothing_iters_per_step=max_smoothing_iters_per_step,
-            include_start=False,
+            include_start=True,
             held_object=held_object,
             base_link_to_held_obj=base_link_to_held_obj,
         )
