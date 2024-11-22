@@ -168,3 +168,59 @@ def visualize_pose(
     )
 
     return {x_id, y_id, z_id}
+
+
+def visualize_aabb(
+    aabb: tuple[tuple[float, float, float], tuple[float, float, float]],
+    physics_client_id: int,
+    rgb: tuple[float, float, float] = (1.0, 0.0, 0.0),
+) -> set[int]:
+    """Visualize an axis-aligned bounding box.
+
+    Returns the IDs of the debug lines.
+    """
+    aabb_min, aabb_max = aabb
+    x_min, y_min, z_min = aabb_min
+    x_max, y_max, z_max = aabb_max
+
+    # Define the 8 corners of the AABB.
+    corners = [
+        (x_min, y_min, z_min),
+        (x_min, y_min, z_max),
+        (x_min, y_max, z_min),
+        (x_min, y_max, z_max),
+        (x_max, y_min, z_min),
+        (x_max, y_min, z_max),
+        (x_max, y_max, z_min),
+        (x_max, y_max, z_max),
+    ]
+
+    # Define the 12 edges of the AABB by connecting corners.
+    edges = [
+        (0, 1),
+        (0, 2),
+        (0, 4),  # Edges from corner 0
+        (1, 3),
+        (1, 5),  # Edges from corner 1
+        (2, 3),
+        (2, 6),  # Edges from corner 2
+        (3, 7),  # Edges from corner 3
+        (4, 5),
+        (4, 6),  # Edges from corner 4
+        (5, 7),  # Edges from corner 5
+        (6, 7),  # Edges from corner 6
+    ]
+
+    # Add debug lines for all edges.
+    debug_line_ids = set()
+    for start, end in edges:
+        line_id = p.addUserDebugLine(
+            lineFromXYZ=corners[start],
+            lineToXYZ=corners[end],
+            lineColorRGB=rgb,
+            lifeTime=0.0,
+            physicsClientId=physics_client_id,
+        )
+        debug_line_ids.add(line_id)
+
+    return debug_line_ids
