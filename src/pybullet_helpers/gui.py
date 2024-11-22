@@ -173,7 +173,7 @@ def visualize_pose(
 def visualize_aabb(
     aabb: tuple[tuple[float, float, float], tuple[float, float, float]],
     physics_client_id: int,
-    rgb: tuple[float, float, float, float] = (1.0, 0.0, 0.0),
+    rgb: tuple[float, float, float] = (1.0, 0.0, 0.0),
 ) -> set[int]:
     """Visualize an axis-aligned bounding box.
 
