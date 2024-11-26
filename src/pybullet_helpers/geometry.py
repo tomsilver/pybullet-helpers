@@ -72,9 +72,9 @@ class Pose(NamedTuple):
 
     def allclose(self, other: Pose, atol: float = 1e-6) -> bool:
         """Return whether this pose is close enough to another pose."""
-        return np.allclose(self.position, other.position, atol=atol) and np.allclose(
-            self.orientation, other.orientation, atol=atol
-        )
+        return np.allclose(
+            self.position, other.position, atol=atol
+        ) and orientations_all_close(self.orientation, other.orientation, atol=atol)
 
 
 def multiply_poses(*poses: Pose) -> Pose:
@@ -86,6 +86,23 @@ def multiply_poses(*poses: Pose) -> Pose:
         )
         pose = Pose(pybullet_pose[0], pybullet_pose[1])
     return pose
+
+
+def orientations_all_close(
+    quat1: Quaternion, quat2: Quaternion, atol: float = 1e-6
+) -> bool:
+    """Check whether two quaternion orientations are close, accounting for
+    double coverage.
+
+    Note that this should not be used to check if two rotations are
+    equal, e.g., in the context of slerp.
+
+    For example, see
+    https://gamedev.stackexchange.com/questions/75072/.
+    """
+    return np.allclose(quat1, quat2, atol=atol) or np.allclose(
+        quat1, -1 * np.array(quat2), atol=atol
+    )
 
 
 def matrix_from_quat(quat: Quaternion) -> npt.NDArray[np.float64]:
