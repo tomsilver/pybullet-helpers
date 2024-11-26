@@ -74,7 +74,7 @@ class Pose(NamedTuple):
         """Return whether this pose is close enough to another pose."""
         return np.allclose(
             self.position, other.position, atol=atol
-        ) and orientations_all_close(self.orientation, other.orientation, atol=atol)
+        ) and orientations_allclose(self.orientation, other.orientation, atol=atol)
 
 
 def multiply_poses(*poses: Pose) -> Pose:
@@ -88,7 +88,7 @@ def multiply_poses(*poses: Pose) -> Pose:
     return pose
 
 
-def orientations_all_close(
+def orientations_allclose(
     quat1: Quaternion, quat2: Quaternion, atol: float = 1e-6
 ) -> bool:
     """Check whether two quaternion orientations are close, accounting for
