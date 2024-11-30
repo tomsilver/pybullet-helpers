@@ -274,6 +274,8 @@ def get_kinematic_plan_to_place_object(
             surface_id,
             robot.physics_client_id,
             translation_magnitude=preplace_translation_magnitude,
+            object_link_id=object_link_id,
+            surface_link_id=surface_link_id,
         )
         preplace_pose = multiply_poses(preplace_translation, placement)
 
