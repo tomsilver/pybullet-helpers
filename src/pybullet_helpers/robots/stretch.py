@@ -6,7 +6,7 @@ from pathlib import Path
 import numpy as np
 from scipy.spatial.transform import Rotation
 
-from pybullet_helpers.geometry import Pose, multiply_poses
+from pybullet_helpers.geometry import Pose, multiply_poses, TFUtil
 from pybullet_helpers.joint import JointPositions
 from pybullet_helpers.link import get_link_pose, get_relative_link_pose
 from pybullet_helpers.robots.single_arm import FingeredSingleArmPyBulletRobot
@@ -66,15 +66,17 @@ class StretchPyBulletRobot(FingeredSingleArmPyBulletRobot[float]):
             min_pose.position[1] - joint_max_pose.position[1]
         )
 
-        # Use an approximate Cartesian offset between the end effector and the wrist.
-        self.set_joints(self.joint_lower_limits)
-        ee_pose = self.get_end_effector_pose()
-        wrist_pose = get_link_pose(
-            self.robot_id, self._wrist_id, self.physics_client_id
-        )
-        self._wrist_ee_offset = Pose(
-            tuple(np.subtract(wrist_pose.position, ee_pose.position))
-        )
+        # TODO
+        # # Use an approximate Cartesian offset between the end effector and the wrist.
+        # self.set_joints(self.joint_lower_limits)
+        # ee_pose = self.get_end_effector_pose()
+        # wrist_pose = get_link_pose(
+        #     self.robot_id, self._wrist_id, self.physics_client_id
+        # )
+        # self._wrist_ee_offset = Pose(
+        #     tuple(np.subtract(wrist_pose.position, ee_pose.position)),
+        #     frame="end_effector",
+        # )
 
         # Reset the joints after 'calibration'.
         self.set_joints(self._home_joint_positions)
@@ -145,19 +147,29 @@ class StretchPyBulletRobot(FingeredSingleArmPyBulletRobot[float]):
         validate: bool = True,
         validation_atol: float = 1e-3,
     ) -> JointPositions:
+        
+        # Create TFUtil for frame math.
+        tf_util = TFUtil()
 
-        # Start by transforming the end effector pose into the robot frame.
+        # Start by transforming the end effector pose into the wrist frame.
         initial_joints = self.get_joint_positions()
-
         self.set_joints(self.joint_lower_limits)
-        world_to_nominal = get_link_pose(
-            self.robot_id, self._wrist_id, self.physics_client_id
-        )
-        world_to_wrist_target = multiply_poses(self._wrist_ee_offset, end_effector_pose)
-        nominal_to_wrist_target = multiply_poses(
-            world_to_nominal.invert(), world_to_wrist_target
-        )
 
+        # Frame at the wrist when at min joint positions.
+        nominal_wrist = get_link_pose(self.robot_id, self._wrist_id, self.physics_client_id)
+        tf_util.add("nominal_wrist", nominal_wrist)
+
+        # Frame at the end effector when at min joint positions.
+        tf_util.add("nominal_ee", self.get_end_effector_pose())
+
+        # Target end effector pose in world frame.
+        tf_util.add("target_ee", end_effector_pose)
+
+        # Target wrist in nominal frame.
+        nominal_to_target = tf_util.get_transform("nominal_ee", "target_ee")
+        target_wrist = multiply_poses(nominal_wrist, nominal_to_target)
+        
+        # Initialize the final solution.
         solution = list(self.joint_lower_limits)
 
         # First determine vertical lift, the easier case.

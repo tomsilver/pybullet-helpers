@@ -316,6 +316,7 @@ class SingleArmPyBulletRobot(abc.ABC):
     def set_base(self, pose: Pose) -> None:
         """Reset the robot base position and orientation."""
         assert not self.fixed_base, "Cannot set base for fixed-base robot"
+        assert pose.frame == "world"
         p.resetBasePositionAndOrientation(
             self.robot_id,
             pose.position,

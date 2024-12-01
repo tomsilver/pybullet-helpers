@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import Iterator, NamedTuple
+from dataclasses import dataclass, field
 
 import numpy as np
 import numpy.typing as npt
@@ -20,72 +21,102 @@ Quaternion = tuple[float, float, float, float]
 RollPitchYaw = tuple[float, float, float]
 
 
-class Pose(NamedTuple):
-    """Pose which is a position (translation) and rotation.
+@dataclass(frozen=True)
+class Pose:
+    """A position and orientation in a frame."""
 
-    We use a NamedTuple as it supports retrieving by integer indexing
-    and most closely follows the PyBullet API.
-    """
+    # All poses exist in some frame.
+    frame: Frame
 
-    # Cartesian (x, y, z) position
+    # Cartesian (x, y, z) position.
     position: Pose3D
-    # Quaternion in (x, y, z, w) representation
+
+    # Quaternion in (x, y, z, w) representation.
     orientation: Quaternion = (0.0, 0.0, 0.0, 1.0)
 
-    @classmethod
-    def from_rpy(cls, translation: Pose3D, rpy: RollPitchYaw) -> Pose:
-        """Create a Pose from translation and Euler roll-pitch-yaw angles."""
-        return cls(translation, quaternion_from_euler(*rpy))
 
-    @classmethod
-    def from_matrix(cls, matrix: npt.NDArray) -> Pose:
-        """Create a Pose from a 4x4 homogeneous matrix."""
-        return Pose(
-            position=tuple(matrix[:3, 3]), orientation=quat_from_matrix(matrix[:3, :3])
+@dataclass(frozen=True)
+class Frame:
+    """A position and axes in SO(3)."""
+
+    # The name of the frame.
+    name: str
+    
+    # Cartesian (x, y, z) position in world.
+    origin: Pose3D
+    
+    # Orthogonal unit vectors.
+    x_axis: Pose3D
+    y_axis: Pose3D
+    z_axis: Pose3D
+
+    def __post_init__(self) -> None:
+        # Verify that axes are orthogonal unit vectors.
+        assert np.isclose(np.linalg.norm(self.x_axis), 1.0)
+        assert np.isclose(np.linalg.norm(self.y_axis), 1.0)
+        assert np.isclose(np.linalg.norm(self.z_axis), 1.0)
+        assert np.isclose(np.dot(self.x_axis, self.y_axis), 0.0)
+        assert np.isclose(np.dot(self.x_axis, self.z_axis), 0.0)
+        assert np.isclose(np.dot(self.y_axis, self.z_axis), 0.0)
+    
+
+@dataclass(frozen=True)
+class Transform:
+    """Transform between frames."""
+
+    source: Frame
+    target: Frame
+    _source_to_target_translation: Pose3D = field(init=False)
+    _source_to_target_rotation: Quaternion = field(init=False)
+
+    def __post_init__(self) -> None:
+        # Compute translation from source to target.
+        self._source_to_target_translation = (
+            self.target.origin[0] - self.source.origin[0],
+            self.target.origin[1] - self.source.origin[1],
+            self.target.origin[2] - self.source.origin[2]
         )
+        # Compute rotation from source to target.
+        source_rotation_matrix = np.column_stack([self.source.x_axis, self.source.y_axis, self.source.z_axis])
+        target_rotation_matrix = np.column_stack([self.target.x_axis, self.target.y_axis, self.target.z_axis])
+        relative_rotation_matrix = target_rotation_matrix @ np.linalg.inv(source_rotation_matrix)
+        relative_rotation = ScipyRotation.from_matrix(relative_rotation_matrix).as_quat()
+        self._source_to_target_rotation = tuple(relative_rotation)
 
-    @property
-    def rpy(self) -> RollPitchYaw:
-        """Get the Euler roll-pitch-yaw representation."""
-        return euler_from_quaternion(self.orientation)
-
-    @classmethod
-    def identity(cls) -> Pose:
-        """Unit pose."""
-        return cls((0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0))
-
-    def to_matrix(self) -> npt.NDArray:
-        """Get the 4x4 homogenous matrix representation."""
-        matrix = np.zeros((4, 4))
-        matrix[:3, :3] = matrix_from_quat(self.orientation)
-        matrix[:3, 3] = self.position
-        return matrix
-
-    def multiply(self, *poses: Pose) -> Pose:
-        """Multiplies poses (i.e., rigid transforms) together."""
-        return multiply_poses(self, *poses)
-
-    def invert(self) -> Pose:
-        """Invert the pose (i.e., transform)."""
-        pos, quat = p.invertTransform(self.position, self.orientation)
-        return Pose(pos, quat)
-
-    def allclose(self, other: Pose, atol: float = 1e-6) -> bool:
-        """Return whether this pose is close enough to another pose."""
-        return np.allclose(
-            self.position, other.position, atol=atol
-        ) and orientations_allclose(self.orientation, other.orientation, atol=atol)
-
-
-def multiply_poses(*poses: Pose) -> Pose:
-    """Multiplies poses (which are essentially transforms) together."""
-    pose = poses[0]
-    for next_pose in poses[1:]:
+    def transform(self, pose: Pose) -> Pose:
+        """Transform a pose in the source frame to the target frame."""
+        assert pose.frame == self.source
         pybullet_pose = p.multiplyTransforms(
-            pose.position, pose.orientation, next_pose.position, next_pose.orientation
+            pose.position,
+            pose.orientation,
+            self._source_to_target_translation,
+            self._source_to_target_rotation
         )
-        pose = Pose(pybullet_pose[0], pybullet_pose[1])
-    return pose
+        return Pose(self.target, pybullet_pose[0], pybullet_pose[1])
+
+
+class TFUtil:
+    """Utilities for transforms."""
+    def __init__(self) -> None:
+        self._name_to_frame: dict[str, Frame] = {}
+
+    def get_transform(self, from_frame: str, to_frame: str) -> Transform:
+        """Get transform from one frame to another."""
+        return Transform(self._name_to_frame[from_frame], self._name_to_frame[to_frame])
+
+    def get_pose_in_frame(self, pose: Pose, new_frame: str) -> Pose:
+        """Transform a pose into a new frame."""
+        old_to_new = self.get_transform(pose.frame, new_frame)
+        return old_to_new.transform(pose)
+
+    def add(self, frame: Frame) -> None:
+        """Add or change a frame."""
+        self._name_to_frame[frame.name] = frame
+
+    def update(self, frames: list[Frame]) -> None:
+        """Add or change multiple frames."""
+        for frame in frames:
+            self.add(frame)
 
 
 def orientations_allclose(
@@ -122,11 +153,12 @@ def get_pose(body: int, physics_client_id: int) -> Pose:
     pybullet_pose = p.getBasePositionAndOrientation(
         body, physicsClientId=physics_client_id
     )
-    return Pose(pybullet_pose[0], pybullet_pose[1])
+    return Pose(pybullet_pose[0], pybullet_pose[1], frame="world")
 
 
 def set_pose(body: int, pose: Pose, physics_client_id: int) -> None:
     """Set the pose of a body."""
+    assert pose.frame == "world"
     p.resetBasePositionAndOrientation(
         body,
         pose.position,
@@ -171,6 +203,8 @@ def iter_between_poses(
 ) -> Iterator[Pose]:
     """Interpolate between two poses in pose space."""
     # Determine the number of interpolation steps.
+    assert p1.frame == p2.frame
+    frame = p1.frame
     pose3d_gen = iter_between_pose3ds(
         p1.position, p2.position, num_interp=num_interp, include_start=include_start
     )
@@ -181,7 +215,7 @@ def iter_between_poses(
         include_start=include_start,
     )
     for position, orientation in zip(pose3d_gen, quat_gen, strict=True):
-        yield Pose(position, orientation)
+        yield Pose(position, orientation, frame=frame)
 
 
 def interpolate_quats(q1: Quaternion, q2: Quaternion, t: float) -> Quaternion:
@@ -203,10 +237,12 @@ def interpolate_poses(
     t: float,
 ) -> Pose:
     """Interpolate between p1 and p2 given 0 <= t <= 1."""
+    assert p1.frame == p2.frame
+    frame = p1.frame
     assert 0 <= t <= 1
     position = interpolate_pose3d(p1.position, p2.position, t)
     quat = interpolate_quats(p1.orientation, p2.orientation, t)
-    return Pose(position, quat)
+    return Pose(position, quat, frame=frame)
 
 
 def get_half_extents_from_aabb(
