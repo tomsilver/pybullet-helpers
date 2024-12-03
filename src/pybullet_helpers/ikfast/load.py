@@ -34,7 +34,9 @@ def install_ikfast_module(ikfast_dir: Path) -> None:
     if exit_value != 0:
         raise RuntimeError(
             f"IKFast install failed with exit code {exit_value}. "
-            "Check messages above."
+            "If there is a compilation error on linux, look at the environment "
+            "variables in compile.py. You may need to export LAPACK_DIR, "
+            "LIBGFORTRAN_DIR, or BLAS_DIR if the defaults are wrong."
         )
 
 
