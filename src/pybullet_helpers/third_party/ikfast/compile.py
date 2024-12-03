@@ -57,7 +57,5 @@ def compile_ikfast(module_name, cpp_filename, remove_build=False):
         print('\nikfast module {} imported successful'.format(module_name))
     except ImportError as e:
         print('\nikfast module {} imported failed'.format(module_name))
-        print("If there is a compilation error on linux, look at the environment variables in compile.py. "
-              "You may need to export LAPACK_DIR, LIBGFORTRAN_DIR, or BLAS_DIR if the defaults are wrong.")
         raise e
     return True
