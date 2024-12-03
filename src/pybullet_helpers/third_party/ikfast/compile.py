@@ -29,7 +29,7 @@ def compile_ikfast(module_name, cpp_filename, remove_build=False):
             os.path.join(blas_parent_dir, 'libgfortran.so.5.0.0'),
             os.path.join(blas_parent_dir, 'blas/libblas.a'),
         ]
-        print("NOTE: if you hit a compilation error related to blas, do export BLAS_PARENT_DIR=/path/to/blas/parent and try again.")
+        print("NOTE: if you hit a compilation error related to blas, do export BLAS_PARENT_DIR=<path> where $BLAS_PARENT_DIR/blas/libblas.a exists and try again.")
     else:
         extra_objects = []
     ikfast_module = Extension(module_name, sources=[cpp_filename], extra_objects=extra_objects)
