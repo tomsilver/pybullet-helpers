@@ -23,11 +23,13 @@ from distutils.extension import Extension
 def compile_ikfast(module_name, cpp_filename, remove_build=False):
     if platform.system() == "Linux":
         # https://github.com/cyberbotics/pyikfast/issues/5
+        blas_parent_dir = os.environ.get("BLAS_PARENT_DIR", "/usr/lib/x86_64-linux-gnu")
         extra_objects = [
-            '/usr/lib/x86_64-linux-gnu/lapack/liblapack.a',
-            '/usr/lib/x86_64-linux-gnu/libgfortran.so.5.0.0',
-            '/usr/lib/x86_64-linux-gnu/blas/libblas.a',
+            os.path.join(blas_parent_dir, 'lapack/liblapack.a'),
+            os.path.join(blas_parent_dir, 'libgfortran.so.5.0.0'),
+            os.path.join(blas_parent_dir, 'blas/libblas.a'),
         ]
+        print("NOTE: if you hit a compilation error related to blas, do export BLAS_PARENT_DIR=/path/to/blas/parent and try again.")
     else:
         extra_objects = []
     ikfast_module = Extension(module_name, sources=[cpp_filename], extra_objects=extra_objects)
