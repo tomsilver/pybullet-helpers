@@ -23,13 +23,14 @@ from distutils.extension import Extension
 def compile_ikfast(module_name, cpp_filename, remove_build=False):
     if platform.system() == "Linux":
         # https://github.com/cyberbotics/pyikfast/issues/5
-        blas_parent_dir = os.environ.get("BLAS_PARENT_DIR", "/usr/lib/x86_64-linux-gnu")
+        lapack_dir = os.environ.get("LAPACK_DIR", "/usr/lib/x86_64-linux-gnu")
+        libgfortran_dir = os.environ.get("LIBGFORTRAN_DIR", "/usr/lib/x86_64-linux-gnu")
+        blas_dir = os.environ.get("BLAS_DIR", "/usr/lib/x86_64-linux-gnu/blas")
         extra_objects = [
-            os.path.join(blas_parent_dir, 'lapack/liblapack.a'),
-            os.path.join(blas_parent_dir, 'libgfortran.so.5.0.0'),
-            os.path.join(blas_parent_dir, 'blas/libblas.a'),
+            os.path.join(lapack_dir, 'lapack/liblapack.a'),
+            os.path.join(libgfortran_dir, 'libgfortran.so.5.0.0'),
+            os.path.join(blas_dir, 'libblas.a'),
         ]
-        print("NOTE: if you hit a compilation error related to blas, do export BLAS_PARENT_DIR=<path> where $BLAS_PARENT_DIR/blas/libblas.a exists and try again.")
     else:
         extra_objects = []
     ikfast_module = Extension(module_name, sources=[cpp_filename], extra_objects=extra_objects)
@@ -56,5 +57,7 @@ def compile_ikfast(module_name, cpp_filename, remove_build=False):
         print('\nikfast module {} imported successful'.format(module_name))
     except ImportError as e:
         print('\nikfast module {} imported failed'.format(module_name))
+        print("If there is a compilation error on linux, look at the environment variables in compile.py. "
+              "You may need to export LAPACK_DIR, LIBGFORTRAN_DIR, or BLAS_DIR if the defaults are wrong.")
         raise e
     return True
