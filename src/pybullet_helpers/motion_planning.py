@@ -21,6 +21,7 @@ from pybullet_helpers.inverse_kinematics import (
     InverseKinematicsError,
     check_body_collisions,
     check_collisions_with_held_object,
+    pybullet_inverse_kinematics,
     sample_collision_free_inverse_kinematics,
 )
 from pybullet_helpers.joint import (
@@ -294,6 +295,24 @@ def smoothly_follow_end_effector_path(
         robot.set_joints(current_joints)  # for warm starting IK
         closest_neighbor: JointPositions | None = None
         closest_dist = np.inf
+        # Try differential IK first because that often leads to closer solutions
+        # when the target is close to the current end effector pose.
+        remaining_candidates = max_smoothing_iters_per_step
+        try:
+            neighbor = pybullet_inverse_kinematics(
+                robot.robot_id,
+                robot.end_effector_id,
+                end_effector_pose.position,
+                end_effector_pose.orientation,
+                robot.arm_joints,
+                robot.physics_client_id,
+                validate=True,
+            )
+            closest_dist = joint_distance_fn(current_joints, neighbor)
+            closest_neighbor = neighbor
+            remaining_candidates -= 1
+        except InverseKinematicsError:
+            pass
         for neighbor in sample_collision_free_inverse_kinematics(
             robot,
             end_effector_pose,
@@ -302,7 +321,7 @@ def smoothly_follow_end_effector_path(
             held_object,
             base_link_to_held_obj,
             max_time=max_time_per_step,
-            max_candidates=max_smoothing_iters_per_step,
+            max_candidates=remaining_candidates,
         ):
             dist = joint_distance_fn(current_joints, neighbor)
             if dist < closest_dist:

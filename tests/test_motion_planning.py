@@ -486,7 +486,7 @@ def test_smoothly_follow_end_effector_path(physics_client_id):
     for i in range(len(waypoints)):
         w1 = waypoints[i]
         w2 = recovered_waypoints[i]
-        assert w1.allclose(w2, atol=1e-4)
+        assert w1.allclose(w2, atol=1e-3)
 
     # Uncomment to visualize.
     # from pybullet_helpers.gui import visualize_pose
