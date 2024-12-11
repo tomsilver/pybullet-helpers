@@ -2,6 +2,7 @@
 
 import pybullet as p
 from pybullet_helpers.joint import get_joint_info, get_num_joints
+import os
 
 
 def _get_urdf_pose_str(pos: list[float], orn: list[float]) -> str:
@@ -22,7 +23,8 @@ def _get_urdf_geometry_str(geom_type: int, dims: list[int], filename: str) -> st
         geometry_str = f'<cylinder radius="{radius}" length="{length}"/>'
     elif geom_type == p.GEOM_MESH:
         # dims for mesh are scaling factors.
-        geometry_str = f'<mesh filename="{filename}" scale="{dims[0]} {dims[1]} {dims[2]}"/>'
+        filepath = os.path.relpath(filename)
+        geometry_str = f'<mesh filename="{filepath}" scale="{dims[0]} {dims[1]} {dims[2]}"/>'
     else:
         raise ValueError(f"Unsupported geom type: {geom_type}")
     return geometry_str
@@ -76,7 +78,7 @@ def create_urdf_from_body_id(body_id: int, physics_client_id: int,
             #      localVisualFramePos, localVisualFrameOrn, color, specular).
             geom_type = v[2]
             dims = v[3]
-            filename = v[4]
+            filename = v[4].decode("UTF-8")
             pos = v[5]
             orn = v[6]
             color = v[7]
@@ -108,7 +110,7 @@ def create_urdf_from_body_id(body_id: int, physics_client_id: int,
             #      localCollisionFramePos, localCollisionFrameOrn).
             geom_type = c[2]
             dims = c[3]
-            filename = c[4]
+            filename = c[4].decode("UTF-8")
             pos = c[5]
             orn = c[6]
 
