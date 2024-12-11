@@ -71,6 +71,7 @@ def create_urdf_from_body_id(
         else:
             joint_info = get_joint_info(body_id, link_idx, physics_client_id)
             link_name = joint_info.linkName
+            assert link_name != "base_link", "Cannot have multiple base links"
 
         # Visual shapes for this link.
         link_visuals = [v for v in visual_data if v[1] == link_idx]
@@ -127,11 +128,8 @@ def create_urdf_from_body_id(
                 origin_to_pose = com_to_pose
             else:
                 link_state = get_link_state(c[0], c[1], physics_client_id)
-                tf = Pose(
-                    link_state.localInertialFramePosition,
-                    link_state.localInertialFrameOrientation,
-                )
-                origin_to_pose = multiply_poses(com_to_pose, tf)
+                tf = link_state.com_pose
+                origin_to_pose = multiply_poses(tf, com_to_pose)
             pos = origin_to_pose.position
             orn = origin_to_pose.orientation
 
@@ -199,11 +197,8 @@ def create_urdf_from_body_id(
 
         if parent_idx != -1:
             parent_link_state = get_link_state(body_id, parent_idx, physics_client_id)
-            tf = Pose(
-                parent_link_state.localInertialFramePosition,
-                link_state.localInertialFrameOrientation,
-            )
-            local_frame = multiply_poses(Pose(parent_frame_pos, parent_frame_orn), tf)
+            tf = parent_link_state.com_pose
+            local_frame = multiply_poses(tf, Pose(parent_frame_pos, parent_frame_orn))
             parent_frame_pos = local_frame.position
             parent_frame_orn = local_frame.orientation
 
