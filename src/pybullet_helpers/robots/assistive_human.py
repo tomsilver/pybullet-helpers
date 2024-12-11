@@ -25,7 +25,9 @@ class AssistiveHumanPyBulletRobot(SingleArmPyBulletRobot):
     @classmethod
     def urdf_path(cls) -> Path:
         dir_path = get_assets_path() / "urdf"
-        import ipdb; ipdb.set_trace()
+        import ipdb
+
+        ipdb.set_trace()
 
     @property
     def default_home_joint_positions(self) -> JointPositions:
@@ -33,8 +35,12 @@ class AssistiveHumanPyBulletRobot(SingleArmPyBulletRobot):
 
     @property
     def end_effector_name(self) -> str:
-        import ipdb; ipdb.set_trace()
+        import ipdb
+
+        ipdb.set_trace()
 
     @property
     def tool_link_name(self) -> str:
-        import ipdb; ipdb.set_trace()
+        import ipdb
+
+        ipdb.set_trace()

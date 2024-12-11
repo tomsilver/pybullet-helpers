@@ -7,9 +7,7 @@ from pybullet_helpers.geometry import Pose
 from pybullet_helpers.inverse_kinematics import (
     inverse_kinematics,
 )
-from pybullet_helpers.robots.assistive_human import (
-    AssistiveHumanPyBulletRobot
-)
+from pybullet_helpers.robots.assistive_human import AssistiveHumanPyBulletRobot
 
 
 def test_assistive_human_pybullet_robot(physics_client_id):
