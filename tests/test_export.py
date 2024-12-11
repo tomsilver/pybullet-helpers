@@ -100,17 +100,84 @@ def test_write_urdf_from_body_id():
     # )
     # assert np.isclose(original_mass, recovered_mass)
 
-    # Test for a two-link arm (joints but no meshes).
-    robot = create_pybullet_robot("two-link", physics_client_id)
-    original_pose = get_pose(robot.robot_id, physics_client_id)
+    # Test for a one-joint (revolute) arm.
+    original_urdf = f"""
+    <?xml version="1.0"?>
+<robot name="one-joint-urdf">
+  <link name="base_link">
+    <visual>
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 -0.0 0.0"/>
+      <geometry>
+        <cylinder radius="0.1" length="0.2"/>
+      </geometry>
+      <material name="color_0">
+        <color rgba="0.0 0.0 1.0 1.0"/>
+     </material>
+    </visual>
+    <collision>
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 -0.0 0.0"/>
+      <geometry>
+        <cylinder radius="0.1" length="0.2"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 -0.0 0.0"/>
+      <mass value="0.0"/>
+      <inertia ixx="0.0" ixy="0.0" ixz="0.0" iyy="0.0" iyz="0.0" izz="0.0"/>
+    </inertial>
+  </link>
+  <link name="link1">
+    <visual>
+      <origin xyz="0.5 0.0 0.0" rpy="0.0 -0.0 0.0"/>
+      <geometry>
+        <box size="1.0 0.1 0.1"/>
+      </geometry>
+      <material name="color_1">
+        <color rgba="0.0 0.0 1.0 1.0"/>
+     </material>
+    </visual>
+    <collision>
+      <origin xyz="1.0 0.0 0.0" rpy="0.0 -0.0 0.0"/>
+      <geometry>
+        <box size="1.0 0.1 0.1"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="-0.5 0.0 0.0" rpy="0.0 -0.0 0.0"/>
+      <mass value="1.0"/>
+      <inertia ixx="0.0" ixy="0.0" ixz="0.0" iyy="0.0" iyz="0.0" izz="0.0"/>
+    </inertial>
+  </link>
+  <joint name="joint1" type="revolute">
+    <parent link="base_link"/>
+    <child link="link1"/>
+    <origin xyz="0.0 0.0 0.0" rpy="0.0 -0.0 0.0"/>
+    <axis xyz="0.0 0.0 1.0"/>
+    <limit effort="1000.0" velocity="1.0" lower="-3.14" upper="3.14"/>
+  </joint>
+</robot>
+"""
+    original_urdf_file = tempfile.NamedTemporaryFile(delete=False, suffix=".urdf").name
+    with open(original_urdf_file, mode="w", encoding="utf-8") as f:
+        f.write(original_urdf)
 
-    urdf = create_urdf_from_body_id(robot.robot_id, physics_client_id)
-    # urdf_file = tempfile.NamedTemporaryFile(delete=False, suffix=".urdf").name
-    urdf_file = "test.urdf"
+    original_robot_id = p.loadURDF(
+        original_urdf_file,
+        (0, 0, 0),
+        (0, 0, 0, 1),
+        physicsClientId=physics_client_id
+    )
+
+    urdf = create_urdf_from_body_id(original_robot_id, physics_client_id)
+    # TODO remove after resolving this
+    assert '<origin xyz="1.5 0.0 0.0" rpy="0.0 -0.0 0.0"/>' not in urdf
+    urdf_file = tempfile.NamedTemporaryFile(delete=False, suffix=".urdf").name
     with open(urdf_file, mode="w", encoding="utf-8") as f:
         f.write(urdf)
 
-    p.removeBody(robot.robot_id, physicsClientId=physics_client_id)
+    import ipdb; ipdb.set_trace()
+
+    p.removeBody(original_robot_id, physicsClientId=physics_client_id)
 
     # Recreate and compare.
     recreated_robot_id = p.loadURDF(
@@ -120,3 +187,30 @@ def test_write_urdf_from_body_id():
         physicsClientId=physics_client_id
     )
     recovered_pose = get_pose(recreated_robot_id, physics_client_id)
+
+    while True:
+        p.stepSimulation(physics_client_id)
+
+    # # Test for a two-link arm.
+    # robot = create_pybullet_robot("two-link", physics_client_id)
+    # original_pose = get_pose(robot.robot_id, physics_client_id)
+
+    # urdf = create_urdf_from_body_id(robot.robot_id, physics_client_id)
+    # # urdf_file = tempfile.NamedTemporaryFile(delete=False, suffix=".urdf").name
+    # urdf_file = "test.urdf"
+    # with open(urdf_file, mode="w", encoding="utf-8") as f:
+    #     f.write(urdf)
+
+    # p.removeBody(robot.robot_id, physicsClientId=physics_client_id)
+
+    # # Recreate and compare.
+    # recreated_robot_id = p.loadURDF(
+    #     urdf_file,
+    #     (0, 0, 0),
+    #     (0, 0, 0, 1),
+    #     physicsClientId=physics_client_id
+    # )
+    # recovered_pose = get_pose(recreated_robot_id, physics_client_id)
+
+    # while True:
+    #     p.stepSimulation(physics_client_id)

@@ -2,6 +2,7 @@
 
 import pybullet as p
 from pybullet_helpers.joint import get_joint_info, get_num_joints
+from pybullet_helpers.link import get_link_state
 import os
 
 
@@ -168,6 +169,9 @@ def create_urdf_from_body_id(body_id: int, physics_client_id: int,
         parent_idx = joint_info.parentIndex
         child_name = joint_info.linkName
         parent_name = "base_link" if parent_idx == -1 else get_joint_info(body_id, parent_idx, physics_client_id).linkName
+        if parent_idx > -1:
+            parent_link_state = get_link_state(body_id, parent_idx, physics_client_id)
+            import ipdb; ipdb.set_trace()
 
         parentFramePos = joint_info.parentFramePos
         parentFrameOrn = joint_info.parentFrameOrn
@@ -188,7 +192,7 @@ def create_urdf_from_body_id(body_id: int, physics_client_id: int,
             upper = joint_info.jointUpperLimit
             max_velocity = joint_info.jointMaxVelocity
             max_effort = joint_info.jointMaxForce
-            urdf_content += f'    <limit effort="{max_effort}" velocity="{max_velocity}" lower="{lower}" upper="{upper}"/>'
+            urdf_content += f'    <limit effort="{max_effort}" velocity="{max_velocity}" lower="{lower}" upper="{upper}"/>\n'
 
         urdf_content += '  </joint>\n'
 
