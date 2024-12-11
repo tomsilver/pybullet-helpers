@@ -108,7 +108,7 @@ def test_write_urdf_from_body_id():
     assert np.isclose(original_mass, recovered_mass)
 
     # Test for a one-joint (revolute) arm.
-    original_urdf = f"""
+    original_urdf = """
     <?xml version="1.0"?>
 <robot name="one-joint-urdf">
   <link name="base_link">

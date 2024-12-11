@@ -11,7 +11,10 @@ from pybullet_helpers.link import get_link_state
 
 def _get_urdf_pose_str(pos: list[float], orn: list[float]) -> str:
     euler = p.getEulerFromQuaternion(orn)
-    return f'<origin xyz="{pos[0]} {pos[1]} {pos[2]}" rpy="{euler[0]} {euler[1]} {euler[2]}"/>'
+    return (
+        f'<origin xyz="{pos[0]} {pos[1]} {pos[2]}" '
+        f'rpy="{euler[0]} {euler[1]} {euler[2]}"/>'
+    )
 
 
 def _get_urdf_geometry_str(geom_type: int, dims: list[int], filename: str) -> str:
@@ -175,7 +178,10 @@ def create_urdf_from_body_id(
         urdf_content += "    <inertial>\n"
         urdf_content += f"      {inertial_pose_str}\n"
         urdf_content += f'      <mass value="{mass}"/>\n'
-        urdf_content += f'      <inertia ixx="{ixx}" ixy="0.0" ixz="0.0" iyy="{iyy}" iyz="0.0" izz="{izz}"/>\n'
+        urdf_content += (
+            f'      <inertia ixx="{ixx}" ixy="0.0" ixz="0.0" '
+            f'iyy="{iyy}" iyz="0.0" izz="{izz}"/>\n'
+        )
         urdf_content += "    </inertial>\n"
 
         urdf_content += "  </link>\n"
@@ -228,7 +234,10 @@ def create_urdf_from_body_id(
             upper = joint_info.jointUpperLimit
             max_velocity = joint_info.jointMaxVelocity
             max_effort = joint_info.jointMaxForce
-            urdf_content += f'    <limit effort="{max_effort}" velocity="{max_velocity}" lower="{lower}" upper="{upper}"/>\n'
+            urdf_content += (
+                f'    <limit effort="{max_effort}" '
+                f'velocity="{max_velocity}" lower="{lower}" upper="{upper}"/>\n'
+            )
 
         urdf_content += "  </joint>\n"
 
