@@ -3,7 +3,12 @@
 import numpy as np
 import pybullet as p
 
-from pybullet_helpers.geometry import Pose, multiply_poses, set_pose
+from pybullet_helpers.geometry import (
+    Pose,
+    get_half_extents_from_aabb,
+    multiply_poses,
+    set_pose,
+)
 from pybullet_helpers.manipulation import (
     generate_surface_placements,
     get_kinematic_plan_to_pick_object,
@@ -166,8 +171,11 @@ def test_kinematic_pick_place():
     initial_state.set_pybullet(robot)
 
     # Get a plan.
+    obj_half_extents = get_half_extents_from_aabb(
+        object_id, physics_client_id, link_id=1
+    )
     placement_generator = generate_surface_placements(
-        object_id, table_id, rng, physics_client_id, object_link_id=1, surface_link_id=0
+        table_id, obj_half_extents, rng, physics_client_id, surface_link_id=0
     )
 
     plan = get_kinematic_plan_to_place_object(
@@ -233,9 +241,10 @@ def test_generate_surface_placements():
         physics_client_id=physics_client_id,
     )
     set_pose(object_id, object_pose, physics_client_id)
+    object_half_extents_at_placement = [object_radius, object_radius, object_length / 2]
 
     placement_generator = generate_surface_placements(
-        object_id, table_id, rng, physics_client_id
+        table_id, object_half_extents_at_placement, rng, physics_client_id
     )
 
     for _ in range(100):

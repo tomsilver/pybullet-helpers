@@ -212,6 +212,8 @@ def get_kinematic_plan_to_place_object(
     max_motion_planning_time: float = 1.0,
     max_motion_planning_candidates: int | None = None,
     max_smoothing_iters_per_step: int = 1,
+    birrt_num_attempts: int = 10,
+    birrt_num_iters: int = 100,
     seed: int = 0,
     retract_after: bool = True,
 ) -> list[KinematicState] | None:
@@ -291,6 +293,8 @@ def get_kinematic_plan_to_place_object(
             seed=seed,
             max_time=max_motion_planning_time,
             max_candidate_plans=max_motion_planning_candidates,
+            birrt_num_attempts=birrt_num_attempts,
+            birrt_num_iters=birrt_num_iters,
             held_object=object_id,
             base_link_to_held_obj=initial_state.attachments[object_id],
         )
@@ -453,31 +457,27 @@ def get_kinematic_plan_to_retract(
 
 
 def generate_surface_placements(
-    object_id: int,
     surface_id: int,
+    object_half_extents_at_placement: tuple[float, float, float],
     rng: np.random.Generator,
     physics_client_id: int,
-    object_link_id: int | None = None,
     surface_link_id: int | None = None,
 ) -> Iterator[Pose]:
     """Generate placement poses relative to the object (link)."""
+    surface_half_extents = get_half_extents_from_aabb(
+        surface_id, physics_client_id, link_id=surface_link_id
+    )
     while True:
-        object_half_extents = get_half_extents_from_aabb(
-            object_id, physics_client_id, link_id=object_link_id
-        )
-        surface_half_extents = get_half_extents_from_aabb(
-            surface_id, physics_client_id, link_id=surface_link_id
-        )
         relative_placement_position = (
             rng.uniform(
-                -surface_half_extents[0] + object_half_extents[0],
-                surface_half_extents[0] - object_half_extents[0],
+                -surface_half_extents[0] + object_half_extents_at_placement[0],
+                surface_half_extents[0] - object_half_extents_at_placement[0],
             ),
             rng.uniform(
-                -surface_half_extents[1] + object_half_extents[1],
-                surface_half_extents[1] - object_half_extents[1],
+                -surface_half_extents[1] + object_half_extents_at_placement[1],
+                surface_half_extents[1] - object_half_extents_at_placement[1],
             ),
-            object_half_extents[2] + surface_half_extents[2],
+            object_half_extents_at_placement[2] + surface_half_extents[2],
         )
         relative_placement_yaw = rng.uniform(-np.pi, np.pi)
         relative_placement_orn = tuple(
