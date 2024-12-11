@@ -167,15 +167,14 @@ def test_write_urdf_from_body_id():
         (0, 0, 0, 1),
         physicsClientId=physics_client_id
     )
+    original_pose = get_pose(original_robot_id, physics_client_id)
+    original_half_extents = get_half_extents_from_aabb(original_robot_id, physics_client_id)
+    original_mass = p.getDynamicsInfo(original_robot_id, -1, physicsClientId=physics_client_id)[0]
 
     urdf = create_urdf_from_body_id(original_robot_id, physics_client_id)
-    # TODO remove after resolving this
-    assert '<origin xyz="1.5 0.0 0.0" rpy="0.0 -0.0 0.0"/>' not in urdf
     urdf_file = tempfile.NamedTemporaryFile(delete=False, suffix=".urdf").name
     with open(urdf_file, mode="w", encoding="utf-8") as f:
         f.write(urdf)
-
-    import ipdb; ipdb.set_trace()
 
     p.removeBody(original_robot_id, physicsClientId=physics_client_id)
 
@@ -187,9 +186,18 @@ def test_write_urdf_from_body_id():
         physicsClientId=physics_client_id
     )
     recovered_pose = get_pose(recreated_robot_id, physics_client_id)
+    recovered_half_extents = get_half_extents_from_aabb(recreated_robot_id, physics_client_id)
+    recovered_mass = p.getDynamicsInfo(recreated_robot_id, -1, physicsClientId=physics_client_id)[0]
 
-    while True:
-        p.stepSimulation(physics_client_id)
+    assert original_pose.allclose(recovered_pose, atol=1e-6)
+    # NOTE: bounding box may be slightly enlarged in loading URDF, probably
+    # because of some conservative thing that pybullet is doing.
+    assert np.allclose(
+        original_half_extents,
+        recovered_half_extents,
+        atol=1e-2
+    )
+    assert np.isclose(original_mass, recovered_mass)
 
     # # Test for a two-link arm.
     # robot = create_pybullet_robot("two-link", physics_client_id)
