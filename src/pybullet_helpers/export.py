@@ -177,20 +177,24 @@ def create_urdf_from_body_id(body_id: int, physics_client_id: int,
         parent_idx = joint_info.parentIndex
         child_name = joint_info.linkName
         parent_name = "base_link" if parent_idx == -1 else get_joint_info(body_id, parent_idx, physics_client_id).linkName
-        if parent_idx > -1:
+
+        parent_frame_pos = joint_info.parentFramePos
+        parent_frame_orn = joint_info.parentFrameOrn
+
+        if parent_idx != -1:
             parent_link_state = get_link_state(body_id, parent_idx, physics_client_id)
-            import ipdb; ipdb.set_trace()
+            tf = Pose(parent_link_state.localInertialFramePosition, link_state.localInertialFrameOrientation)
+            local_frame = multiply_poses(Pose(parent_frame_pos, parent_frame_orn), tf)
+            parent_frame_pos = local_frame.position
+            parent_frame_orn = local_frame.orientation
 
-        parentFramePos = joint_info.parentFramePos
-        parentFrameOrn = joint_info.parentFrameOrn
-
-        peuler = p.getEulerFromQuaternion(parentFrameOrn)
+        peuler = p.getEulerFromQuaternion(parent_frame_orn)
 
         urdf_content += f'  <joint name="{joint_name}" type="{jtype_str}">\n'
         urdf_content += f'    <parent link="{parent_name}"/>\n'
         urdf_content += f'    <child link="{child_name}"/>\n'
-        urdf_content += (f'    <origin xyz="{parentFramePos[0]} {parentFramePos[1]} '
-                         f'{parentFramePos[2]}" rpy="{peuler[0]} {peuler[1]} {peuler[2]}"/>\n')
+        urdf_content += (f'    <origin xyz="{parent_frame_pos[0]} {parent_frame_pos[1]} '
+                         f'{parent_frame_pos[2]}" rpy="{peuler[0]} {peuler[1]} {peuler[2]}"/>\n')
 
         # If not fixed, add the axis and limits.
         if jtype_str in ["revolute", "prismatic"]:
