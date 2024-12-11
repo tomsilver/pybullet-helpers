@@ -28,6 +28,7 @@ def test_write_urdf_from_body_id():
     set_pose(block_id, Pose.identity(), physics_client_id)
     original_pose = get_pose(block_id, physics_client_id)
     original_half_extents = get_half_extents_from_aabb(block_id, physics_client_id)
+    original_mass = p.getDynamicsInfo(block_id, -1, physicsClientId=physics_client_id)[0]
 
     urdf = create_urdf_from_body_id(block_id, physics_client_id)
     
@@ -46,6 +47,8 @@ def test_write_urdf_from_body_id():
     )
     recovered_pose = get_pose(recreated_block_id, physics_client_id)
     recovered_half_extents = get_half_extents_from_aabb(recreated_block_id, physics_client_id)
+    recovered_mass = p.getDynamicsInfo(recreated_block_id, -1, physicsClientId=physics_client_id)[0]
+
     assert original_pose.allclose(recovered_pose, atol=1e-6)
     # NOTE: bounding box may be slightly enlarged in loading URDF, probably
     # because of some conservative thing that pybullet is doing.
@@ -54,6 +57,7 @@ def test_write_urdf_from_body_id():
         recovered_half_extents,
         atol=1e-2
     )
+    assert np.isclose(original_mass, recovered_mass)
 
     # Test create / save / load for a cylinder.
     cylinder_id = create_pybullet_cylinder(
@@ -66,6 +70,7 @@ def test_write_urdf_from_body_id():
     set_pose(cylinder_id, Pose.identity(), physics_client_id)
     original_pose = get_pose(cylinder_id, physics_client_id)
     original_half_extents = get_half_extents_from_aabb(cylinder_id, physics_client_id)
+    original_mass = p.getDynamicsInfo(cylinder_id, -1, physicsClientId=physics_client_id)[0]
 
     urdf = create_urdf_from_body_id(cylinder_id, physics_client_id)
     urdf_file = tempfile.NamedTemporaryFile(delete=False, suffix=".urdf").name
@@ -83,6 +88,8 @@ def test_write_urdf_from_body_id():
     )
     recovered_pose = get_pose(recreated_cylinder_id, physics_client_id)
     recovered_half_extents = get_half_extents_from_aabb(recreated_cylinder_id, physics_client_id)
+    recovered_mass = p.getDynamicsInfo(recreated_cylinder_id, -1, physicsClientId=physics_client_id)[0]
+
     assert original_pose.allclose(recovered_pose, atol=1e-6)
     # NOTE: bounding box may be slightly enlarged in loading URDF, probably
     # because of some conservative thing that pybullet is doing.
@@ -91,6 +98,7 @@ def test_write_urdf_from_body_id():
         recovered_half_extents,
         atol=1e-2
     )
+    assert np.isclose(original_mass, recovered_mass)
 
     # # Test create / save / load for a multibody mesh (robot).
     # robot = create_pybullet_robot("kinova-gen3", physics_client_id)

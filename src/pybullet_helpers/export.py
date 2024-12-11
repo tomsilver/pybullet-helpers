@@ -130,7 +130,19 @@ def create_urdf_from_body_id(body_id: int, physics_client_id: int,
 
         urdf_content += '  </link>\n'
 
-        # TODO add intertial stuff.
+        # Add inertial properties.
+        dynamics_info = p.getDynamicsInfo(body_id, link_idx, physicsClientId=physics_client_id)
+        mass = dynamics_info[0]
+        ixx, iyy, izz = dynamics_info[2]
+        inertial_pos = dynamics_info[3]
+        inertial_orn = dynamics_info[4]
+        inertial_pose_str = _get_urdf_pose_str(inertial_pos, inertial_orn)
+
+        urdf_content += '    <inertial>\n'
+        urdf_content += f'      {inertial_pose_str}'
+        urdf_content += f'      <mass value="{mass}"/>\n'
+        urdf_content += f'      <inertia ixx="{ixx}" ixy="0.0" ixz="0.0" iyy="{iyy}" iyz="0.0" izz="{izz}"/>\n'
+        urdf_content += '    </inertial>\n'
 
     # Add joints.
     for joint_idx in range(num_joints):
