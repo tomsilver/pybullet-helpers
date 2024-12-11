@@ -2,6 +2,7 @@
 
 import pybullet as p
 from pybullet_helpers.joint import get_joint_info, get_num_joints
+from pybullet_helpers.geometry import Pose, multiply_poses
 from pybullet_helpers.link import get_link_state
 import os
 
@@ -114,8 +115,15 @@ def create_urdf_from_body_id(body_id: int, physics_client_id: int,
             geom_type = c[2]
             dims = c[3]
             filename = c[4].decode("UTF-8")
-            pos = c[5]
-            orn = c[6]
+            com_to_pose = Pose(c[5], c[6])
+            if c[1] == -1:
+                origin_to_pose = com_to_pose
+            else:
+                link_state = get_link_state(c[0], c[1], physics_client_id)
+                tf = Pose(link_state.localInertialFramePosition, link_state.localInertialFrameOrientation)
+                origin_to_pose = multiply_poses(com_to_pose, tf)
+            pos = origin_to_pose.position
+            orn = origin_to_pose.orientation
 
             urdf_content += '    <collision>\n'
 
