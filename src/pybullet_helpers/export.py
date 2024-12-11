@@ -23,6 +23,8 @@ def _get_urdf_geometry_str(geom_type: int, dims: list[int], filename: str) -> st
         geometry_str = f'<cylinder radius="{radius}" length="{length}"/>'
     elif geom_type == p.GEOM_MESH:
         # dims for mesh are scaling factors.
+        if filename == "unknown_file":
+            raise ValueError("Tried to create mesh with unknown file.")
         filepath = os.path.relpath(filename)
         geometry_str = f'<mesh filename="{filepath}" scale="{dims[0]} {dims[1]} {dims[2]}"/>'
     else:
@@ -121,14 +123,24 @@ def create_urdf_from_body_id(body_id: int, physics_client_id: int,
             urdf_content += f'      {pose_str}\n'
             
             # Add geometry.
-            geometry_str = _get_urdf_geometry_str(geom_type, dims, filename)
+            try:
+                geometry_str = _get_urdf_geometry_str(geom_type, dims, filename)
+            except ValueError:
+                # PyBullet seems to internally replace cylinders with meshes
+                # when loading from URDF. In this case the best we can do is
+                # steal the geometry from visual shape data.
+                matching_link_visuals = [v for v in link_visuals if v[:2] == c[:2]]
+                if len(matching_link_visuals) == 1:
+                    print("WARNING: using visual geometry for collisions.")
+                    v = matching_link_visuals[0]
+                    geom_type = v[2]
+                    dims = v[3]
+                    geometry_str = _get_urdf_geometry_str(geom_type, dims, filename)
             urdf_content += '      <geometry>\n'
             urdf_content += f'        {geometry_str}\n'
             urdf_content += '      </geometry>\n'
 
             urdf_content += '    </collision>\n'
-
-        urdf_content += '  </link>\n'
 
         # Add inertial properties.
         dynamics_info = p.getDynamicsInfo(body_id, link_idx, physicsClientId=physics_client_id)
@@ -139,10 +151,12 @@ def create_urdf_from_body_id(body_id: int, physics_client_id: int,
         inertial_pose_str = _get_urdf_pose_str(inertial_pos, inertial_orn)
 
         urdf_content += '    <inertial>\n'
-        urdf_content += f'      {inertial_pose_str}'
+        urdf_content += f'      {inertial_pose_str}\n'
         urdf_content += f'      <mass value="{mass}"/>\n'
         urdf_content += f'      <inertia ixx="{ixx}" ixy="0.0" ixz="0.0" iyy="{iyy}" iyz="0.0" izz="{izz}"/>\n'
         urdf_content += '    </inertial>\n'
+
+        urdf_content += '  </link>\n'
 
     # Add joints.
     for joint_idx in range(num_joints):
@@ -155,7 +169,6 @@ def create_urdf_from_body_id(body_id: int, physics_client_id: int,
         child_name = joint_info.linkName
         parent_name = "base_link" if parent_idx == -1 else get_joint_info(body_id, parent_idx, physics_client_id).linkName
 
-        joint_axis = joint_info.jointAxis
         parentFramePos = joint_info.parentFramePos
         parentFrameOrn = joint_info.parentFrameOrn
 
@@ -167,9 +180,15 @@ def create_urdf_from_body_id(body_id: int, physics_client_id: int,
         urdf_content += (f'    <origin xyz="{parentFramePos[0]} {parentFramePos[1]} '
                          f'{parentFramePos[2]}" rpy="{peuler[0]} {peuler[1]} {peuler[2]}"/>\n')
 
-        # If not fixed, add the axis.
+        # If not fixed, add the axis and limits.
         if jtype_str in ["revolute", "prismatic"]:
+            joint_axis = joint_info.jointAxis
             urdf_content += f'    <axis xyz="{joint_axis[0]} {joint_axis[1]} {joint_axis[2]}"/>\n'
+            lower = joint_info.jointLowerLimit
+            upper = joint_info.jointUpperLimit
+            max_velocity = joint_info.jointMaxVelocity
+            max_effort = joint_info.jointMaxForce
+            urdf_content += f'    <limit effort="{max_effort}" velocity="{max_velocity}" lower="{lower}" upper="{upper}"/>'
 
         urdf_content += '  </joint>\n'
 
