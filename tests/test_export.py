@@ -16,16 +16,8 @@ from pybullet_helpers.robots import create_pybullet_robot
 from pybullet_helpers.utils import create_pybullet_block, create_pybullet_cylinder
 
 
-def test_write_urdf_from_body_id():
-    """Tests for write_urdf_from_body_id()."""
-
-    physics_client_id = p.connect(p.DIRECT)
-
-    # Uncomment to debug.
-    # from pybullet_helpers.gui import create_gui_connection
-    # physics_client_id = create_gui_connection()
-
-    # Test for a block.
+def test_block_write_urdf_from_body_id(physics_client_id):
+    """Tests for write_urdf_from_body_id() with a block."""
     block_id = create_pybullet_block(
         color=(0.1, 0.5, 0.9, 1.0),
         half_extents=(1.0, 2.0, 0.5),
@@ -66,7 +58,9 @@ def test_write_urdf_from_body_id():
     assert np.allclose(original_half_extents, recovered_half_extents, atol=1e-2)
     assert np.isclose(original_mass, recovered_mass)
 
-    # Test for a cylinder.
+
+def test_cylinder_write_urdf_from_body_id(physics_client_id):
+    """Tests for write_urdf_from_body_id() with a cylinder."""
     cylinder_id = create_pybullet_cylinder(
         color=(0.1, 0.5, 0.9, 1.0),
         radius=0.2,
@@ -107,7 +101,10 @@ def test_write_urdf_from_body_id():
     assert np.allclose(original_half_extents, recovered_half_extents, atol=1e-2)
     assert np.isclose(original_mass, recovered_mass)
 
-    # Test for a one-joint (revolute) arm.
+
+def test_revolute_joint_write_urdf_from_body_id(physics_client_id):
+    """Tests for write_urdf_from_body_id() with a revolute joint."""
+
     original_urdf = """
     <?xml version="1.0"?>
 <robot name="one-joint-urdf">
@@ -204,7 +201,9 @@ def test_write_urdf_from_body_id():
     assert np.allclose(original_half_extents, recovered_half_extents, atol=1e-2)
     assert np.isclose(original_mass, recovered_mass)
 
-    # Test for a simple single-arm robot.
+
+def test_two_link_robot_write_urdf_from_body_id(physics_client_id):
+    """Tests for write_urdf_from_body_id() with a two-link robot."""
     robot = create_pybullet_robot("two-link", physics_client_id)
     original_robot_id = robot.robot_id
     original_pose = get_pose(original_robot_id, physics_client_id)
