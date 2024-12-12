@@ -1,7 +1,6 @@
 """Tests for assistive human robots."""
 
 import numpy as np
-import pybullet as p
 
 from pybullet_helpers.geometry import Pose
 from pybullet_helpers.inverse_kinematics import (
@@ -26,6 +25,3 @@ def test_assistive_human_pybullet_robot(physics_client_id):
     joint_target = inverse_kinematics(robot, ee_target, validate=True)
     robot.set_joints(joint_target)
     assert robot.get_end_effector_pose().allclose(ee_target, atol=1e-3)
-
-    while True:
-        p.stepSimulation(physics_client_id)

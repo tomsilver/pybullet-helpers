@@ -1,15 +1,11 @@
 """Human from assistive gym with right arm animated."""
 
-import itertools
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 
-from pybullet_helpers.ikfast import IKFastInfo
 from pybullet_helpers.joint import JointPositions
 from pybullet_helpers.robots.single_arm import (
-    FingeredSingleArmPyBulletRobot,
     SingleArmPyBulletRobot,
 )
 from pybullet_helpers.utils import get_assets_path
@@ -29,15 +25,7 @@ class AssistiveHumanPyBulletRobot(SingleArmPyBulletRobot):
 
     @property
     def default_home_joint_positions(self) -> JointPositions:
-        return [
-            0.0,
-            0.0,
-            0.0,
-            np.pi / 2,
-            0.0,
-            0.0,
-            -np.pi / 2
-        ]
+        return [0.0, 0.0, 0.0, np.pi / 2, 0.0, 0.0, -np.pi / 2]
 
     @property
     def end_effector_name(self) -> str:
@@ -46,4 +34,3 @@ class AssistiveHumanPyBulletRobot(SingleArmPyBulletRobot):
     @property
     def tool_link_name(self) -> str:
         return "end_effector_link"
-    
