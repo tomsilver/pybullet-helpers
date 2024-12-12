@@ -102,25 +102,42 @@ def _add_urdf_lines_for_link(
         link_name = joint_info.linkName
         assert link_name != "base_link", "Cannot have multiple base links"
 
+    # Get visual data.
+    all_visual_data = _get_visual_shape_data_for_link(
+        body_id, link_idx, physics_client_id
+    )
+    assert len(all_visual_data) <= 1
+    visual_data = all_visual_data[0] if all_visual_data else None
+
+    # Get collision data.
+    all_collision_data = p.getCollisionShapeData(
+        body_id, link_idx, physicsClientId=physics_client_id
+    )
+    assert len(all_collision_data) <= 1
+    collision_data = all_collision_data[0] if all_collision_data else None
+
+    # Get inertial data.
+    inertial_data = p.getDynamicsInfo(
+        body_id, link_idx, physicsClientId=physics_client_id
+    )
+
     # Start the URDF for the link.
     urdf_lines = [(f'<link name="{link_name}">', 2)]
 
     # Add visual tags.
-    visual_urdf_lines = _get_visual_urdf_lines_for_link(
-        body_id, link_idx, physics_client_id
-    )
-    urdf_lines.extend(visual_urdf_lines)
+    if visual_data:
+        visual_urdf_lines = _get_visual_urdf_lines_for_link(visual_data)
+        urdf_lines.extend(visual_urdf_lines)
 
     # Add collision tags.
-    collision_urdf_lines = _get_collision_urdf_lines_for_link(
-        body_id, link_idx, physics_client_id
-    )
-    urdf_lines.extend(collision_urdf_lines)
+    if collision_data:
+        collision_urdf_lines = _get_collision_urdf_lines_for_link(
+            collision_data, physics_client_id
+        )
+        urdf_lines.extend(collision_urdf_lines)
 
     # Add inertial tag.
-    inertial_urdf_lines = _get_inertial_urdf_lines_for_link(
-        body_id, link_idx, physics_client_id
-    )
+    inertial_urdf_lines = _get_inertial_urdf_lines_for_link(inertial_data)
     urdf_lines.extend(inertial_urdf_lines)
 
     # Finish the URDF for the link.
@@ -130,27 +147,21 @@ def _add_urdf_lines_for_link(
 
 
 def _get_visual_urdf_lines_for_link(
-    body_id: int, link_idx: int, physics_client_id: int
+    visual_data: tuple,
 ) -> list[tuple[str, int]]:
-    urdf_lines = []
-    link_visuals = _get_visual_shape_data_for_link(body_id, link_idx, physics_client_id)
-    for v in link_visuals:
-        # Visual shape data format:
-        # v = (bodyUniqueId, linkIndex, visualGeometryType, dimensions, filename,
-        #      localVisualFramePos, localVisualFrameOrn, color, specular).
-        geom_type = v[2]
-        dims = v[3]
-        filename = v[4].decode("UTF-8")
-        pos = v[5]
-        orn = v[6]
-        color = v[7]
+    # Visual shape data format:
+    # v = (bodyUniqueId, linkIndex, visualGeometryType, dimensions, filename,
+    #      localVisualFramePos, localVisualFrameOrn, color, specular).
+    geom_type = visual_data[2]
+    dims = visual_data[3]
+    filename = visual_data[4].decode("UTF-8")
+    pos = visual_data[5]
+    orn = visual_data[6]
+    color = visual_data[7]
 
-        urdf_lines.extend(
-            _get_single_visual_urdf_lines_for_link(
-                geom_type, dims, filename, pos, orn, color
-            )
-        )
-    return urdf_lines
+    return _get_single_visual_urdf_lines_for_link(
+        geom_type, dims, filename, pos, orn, color
+    )
 
 
 def _get_single_visual_urdf_lines_for_link(
@@ -187,48 +198,40 @@ def _get_single_visual_urdf_lines_for_link(
 
 
 def _get_collision_urdf_lines_for_link(
-    body_id: int, link_idx: int, physics_client_id: int
+    collision_data: tuple,
+    physics_client_id: int,
 ) -> list[tuple[str, int]]:
-    urdf_lines = []
-
-    collision_data = p.getCollisionShapeData(
-        body_id, link_idx, physicsClientId=physics_client_id
-    )
-
-    for c in collision_data:
-        # Collision shape data format:
-        # c = (object id, linkIndex, geometryType, dimensions, filename,
-        #      localCollisionFramePos, localCollisionFrameOrn).
-        geom_type = c[2]
-        dims = c[3]
-        filename = c[4].decode("UTF-8")
-        com_to_pose = Pose(c[5], c[6])
-        if c[1] == -1:
-            origin_to_pose = com_to_pose
-        else:
-            link_state = get_link_state(c[0], c[1], physics_client_id)
-            tf = Pose(
-                link_state.localInertialFramePosition,
-                link_state.localInertialFrameOrientation,
-            )
-            origin_to_pose = multiply_poses(tf, com_to_pose)
-        pos = origin_to_pose.position
-        orn = origin_to_pose.orientation
-
-        urdf_lines.extend(
-            _get_single_collision_urdf_lines_for_link(
-                body_id,
-                link_idx,
-                physics_client_id,
-                geom_type,
-                dims,
-                filename,
-                pos,
-                orn,
-            )
+    # Collision shape data format:
+    # c = (object id, linkIndex, geometryType, dimensions, filename,
+    #      localCollisionFramePos, localCollisionFrameOrn).
+    geom_type = collision_data[2]
+    dims = collision_data[3]
+    filename = collision_data[4].decode("UTF-8")
+    com_to_pose = Pose(collision_data[5], collision_data[6])
+    if collision_data[1] == -1:
+        origin_to_pose = com_to_pose
+    else:
+        link_state = get_link_state(
+            collision_data[0], collision_data[1], physics_client_id
         )
+        tf = Pose(
+            link_state.localInertialFramePosition,
+            link_state.localInertialFrameOrientation,
+        )
+        origin_to_pose = multiply_poses(tf, com_to_pose)
+    pos = origin_to_pose.position
+    orn = origin_to_pose.orientation
 
-    return urdf_lines
+    return _get_single_collision_urdf_lines_for_link(
+        collision_data[0],
+        collision_data[1],
+        physics_client_id,
+        geom_type,
+        dims,
+        filename,
+        pos,
+        orn,
+    )
 
 
 def _get_single_collision_urdf_lines_for_link(
@@ -276,15 +279,12 @@ def _get_single_collision_urdf_lines_for_link(
 
 
 def _get_inertial_urdf_lines_for_link(
-    body_id: int, link_idx: int, physics_client_id: int
+    inertial_data: tuple,
 ) -> list[tuple[str, int]]:
-    dynamics_info = p.getDynamicsInfo(
-        body_id, link_idx, physicsClientId=physics_client_id
-    )
-    mass = dynamics_info[0]
-    ixx, iyy, izz = dynamics_info[2]
-    inertial_pos = dynamics_info[3]
-    inertial_orn = dynamics_info[4]
+    mass = inertial_data[0]
+    ixx, iyy, izz = inertial_data[2]
+    inertial_pos = inertial_data[3]
+    inertial_orn = inertial_data[4]
 
     urdf_lines = [("<inertial>", 4)]
     inertial_pose_str = _get_urdf_pose_str(inertial_pos, inertial_orn)

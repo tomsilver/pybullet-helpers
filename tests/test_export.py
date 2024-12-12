@@ -148,10 +148,16 @@ def test_capsule_write_urdf_from_body_id(physics_client_id):
 
     p.removeBody(capsule_id, physicsClientId=physics_client_id)
 
+    print(urdf)
+
     # Recreate and compare.
     recreated_capsule_id = p.loadURDF(
         urdf_file, (0, 0, 0), (0, 0, 0, 1), physicsClientId=physics_client_id
     )
+
+    while True:
+        p.stepSimulation(physics_client_id)
+
     recovered_pose = get_pose(recreated_capsule_id, physics_client_id)
     recovered_half_extents = get_half_extents_from_aabb(
         recreated_capsule_id, physics_client_id
