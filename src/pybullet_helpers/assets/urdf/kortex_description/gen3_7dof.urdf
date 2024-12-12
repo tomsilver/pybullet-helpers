@@ -14,11 +14,11 @@
     </inertial>
   </link>
   <joint name="world_to_root" type="fixed">
-    <child link="my_base_link"/>
+    <child link="base_link"/>
     <parent link="world"/>
     <origin rpy="0 0 0" xyz="0 0 0"/>
   </joint>
-  <link name="my_base_link">
+  <link name="base_link">
     <inertial>
       <origin rpy="0 0 0" xyz="-0.000648 -0.000166 0.084487"/>
       <mass value="1.697"/>
@@ -64,7 +64,7 @@
   </link>
   <joint name="joint_1" type="continuous">
     <origin rpy="3.1416 2.7629E-18 -4.9305E-36" xyz="0 0 0.15643"/>
-    <parent link="my_base_link"/>
+    <parent link="base_link"/>
     <child link="shoulder_link"/>
     <axis xyz="0 0 1"/>
     <limit effort="39" velocity="1.3963"/>
@@ -674,5 +674,6 @@
     <child link="right_inner_finger_pad"/>
     <axis xyz="0 0 1"/>
   </joint>
-
+  <!-- Transmissions are loaded in the generic kortex xacro when simulation is enabled -->
+  <!-- <xacro:robotiq_arg2f_transmission prefix="${prefix}"/> -->
 </robot>
