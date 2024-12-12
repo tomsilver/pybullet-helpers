@@ -6,7 +6,7 @@ from dataclasses import dataclass
 import pybullet as p
 
 from pybullet_helpers.geometry import Pose, multiply_poses
-from pybullet_helpers.joint import get_joint_info, get_num_joints
+from pybullet_helpers.joint import get_joint_info, get_num_joints, JointInfo
 from pybullet_helpers.link import get_link_state
 
 
@@ -121,6 +121,138 @@ def _add_urdf_lines_for_link(
         body_id, link_idx, physicsClientId=physics_client_id
     )
 
+    # Handle capsules separately: split them into three links connected with
+    # fixed joints.
+    if visual_data and visual_data[2] == p.GEOM_CAPSULE:
+        urdf_lines = []
+
+        # Create cylinder.
+        cylinder_link_name = link_name  # use original link to preserve joints
+
+        cylinder_visual_data = (
+            visual_data[0],
+            visual_data[1],
+            p.GEOM_CYLINDER,
+            visual_data[3],  # dims
+            visual_data[4],  # filename
+            visual_data[5],  # pos
+            visual_data[6],  # orn
+            visual_data[7],  # color
+        )
+
+        cylinder_collision_data = (
+            collision_data[0],
+            collision_data[1],
+            p.GEOM_CYLINDER,
+            collision_data[3],  # dims
+            collision_data[4],  # filename
+            collision_data[5],  # pos
+            collision_data[6],  # orn
+        )
+
+        cylinder_inertial_data = (
+            inertial_data[0],  # mass
+            inertial_data[1],  # lateral friction
+            inertial_data[2],  # local inertial diagonal
+            inertial_data[3],  # pos
+            inertial_data[4],  # orn
+        )
+
+        urdf_lines.extend(_get_urdf_lines_from_link_data(
+            cylinder_link_name, cylinder_visual_data, cylinder_collision_data, cylinder_inertial_data, physics_client_id
+        ))
+
+        # Create top sphere.
+        top_sphere_link_name = f"{link_name}---top-sphere"
+
+        cylinder_pos = visual_data[5]
+        assert collision_data[5] == cylinder_pos
+        cylinder_dims = visual_data[3]
+        assert collision_data[3] == cylinder_dims
+        top_sphere_pos = (0, 0, 0)
+        top_sphere_orn = (0, 0, 0, 1)
+
+        top_sphere_visual_data = (
+            visual_data[0],
+            visual_data[1],
+            p.GEOM_SPHERE,
+            [cylinder_dims[1], 0.0, 0.0],  # dims
+            visual_data[4],  # filename
+            top_sphere_pos,  # pos
+            top_sphere_orn,  # orn
+            visual_data[7],  # color
+        )
+
+        top_sphere_collision_data = (
+            collision_data[0],
+            collision_data[1],
+            p.GEOM_SPHERE,
+            [cylinder_dims[1], 0.0, 0.0],  # dims
+            collision_data[4],  # filename
+            top_sphere_pos,  # pos
+            top_sphere_orn,  # orn
+        )
+
+        top_sphere_inertial_data = (
+            0.0,  # mass
+            0.0,  # lateral friction
+            (0, 0, 0),  # local inertial diagonal
+            top_sphere_pos,  # pos
+            top_sphere_orn,  # orn
+        )
+
+        urdf_lines.extend(_get_urdf_lines_from_link_data(
+            top_sphere_link_name, top_sphere_visual_data, top_sphere_collision_data, top_sphere_inertial_data, physics_client_id
+        ))
+
+        # Add fixed joint between top sphere and cylinder.
+        top_sphere_pos_frame = (
+            cylinder_pos[0],
+            cylinder_pos[1],
+            cylinder_pos[2] + cylinder_dims[0] / 2,
+        )
+        top_sphere_orn_frame = (0, 0, 0, 1)
+
+        top_sphere_joint_name = top_sphere_link_name + "-fixed-joint"
+        top_sphere_joint_info = JointInfo(
+            jointIndex=-1,  # not used
+            jointName=top_sphere_joint_name,
+            jointType=p.JOINT_FIXED,
+            qIndex=-1,  # not used
+            uIndex=-1,  # not used
+            flags=-1,  # not used
+            jointDamping=0.0,
+            jointFriction=0.0,
+            jointLowerLimit=0.0,
+            jointUpperLimit=-1.0,
+            jointMaxForce=0.0,
+            jointMaxVelocity=0.0,
+            linkName=top_sphere_link_name,
+            jointAxis=(0, 0, 0),
+            parentFramePos=top_sphere_pos_frame,
+            parentFrameOrn=top_sphere_orn_frame,
+            parentIndex=link_idx,
+        )
+        joint_urdf_lines = _get_joint_urdf_from_data(top_sphere_joint_info,
+                                                     parent_name=cylinder_link_name)
+        
+        container.joint_strs.extend(joint_urdf_lines)
+
+    else:
+        urdf_lines = _get_urdf_lines_from_link_data(
+            link_name, visual_data, collision_data, inertial_data, physics_client_id
+        )
+
+    container.link_strs.extend(urdf_lines)
+
+
+def _get_urdf_lines_from_link_data(
+    link_name: str,
+    visual_data: tuple,
+    collision_data: tuple,
+    inertial_data: tuple,
+    physics_client_id: int,
+) -> list[tuple[str, int]]:
     # Start the URDF for the link.
     urdf_lines = [(f'<link name="{link_name}">', 2)]
 
@@ -142,8 +274,7 @@ def _add_urdf_lines_for_link(
 
     # Finish the URDF for the link.
     urdf_lines.append(("</link>", 2))
-
-    container.link_strs.extend(urdf_lines)
+    return urdf_lines
 
 
 def _get_visual_urdf_lines_for_link(
@@ -307,32 +438,25 @@ def _add_urdf_lines_for_joint(
     physics_client_id: int,
     container: URDFStringContainer,
 ) -> list[tuple[str, int]]:
-
     joint_info = get_joint_info(body_id, joint_idx, physics_client_id)
-    joint_name = joint_info.jointName
-    joint_type = joint_info.jointType
-    jtype_str = _get_urdf_joint_type(joint_type)
-
     parent_idx = joint_info.parentIndex
-    child_name = joint_info.linkName
     parent_name = (
         "base_link"
         if parent_idx == -1
         else get_joint_info(body_id, parent_idx, physics_client_id).linkName
     )
 
+    urdf_lines = _get_joint_urdf_from_data(joint_info, parent_name)
+    container.joint_strs.extend(urdf_lines)
+
+
+def _get_joint_urdf_from_data(joint_info: JointInfo, parent_name: str) -> str:
+    joint_name = joint_info.jointName
+    joint_type = joint_info.jointType
+    jtype_str = _get_urdf_joint_type(joint_type)
+    child_name = joint_info.linkName
     parent_frame_pos = joint_info.parentFramePos
     parent_frame_orn = joint_info.parentFrameOrn
-
-    if parent_idx != -1:
-        parent_link_state = get_link_state(body_id, parent_idx, physics_client_id)
-        tf = Pose(
-            parent_link_state.localInertialFramePosition,
-            parent_link_state.localInertialFrameOrientation,
-        )
-        local_frame = multiply_poses(tf, Pose(parent_frame_pos, parent_frame_orn))
-        parent_frame_pos = local_frame.position
-        parent_frame_orn = local_frame.orientation
 
     peuler = p.getEulerFromQuaternion(parent_frame_orn)
 
@@ -363,8 +487,8 @@ def _add_urdf_lines_for_joint(
         urdf_lines.append((limit_str, 4))
 
     urdf_lines.append(("</joint>", 2))
-
-    container.joint_strs.extend(urdf_lines)
+    return urdf_lines
+    
 
 
 def create_urdf_from_body_id(

@@ -148,8 +148,6 @@ def test_capsule_write_urdf_from_body_id(physics_client_id):
 
     p.removeBody(capsule_id, physicsClientId=physics_client_id)
 
-    print(urdf)
-
     # Recreate and compare.
     recreated_capsule_id = p.loadURDF(
         urdf_file, (0, 0, 0), (0, 0, 0, 1), physicsClientId=physics_client_id
