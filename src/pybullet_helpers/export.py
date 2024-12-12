@@ -124,7 +124,7 @@ def _add_urdf_lines_for_link(
     # Handle capsules separately: split them into three links connected with
     # fixed joints.
     if visual_data and visual_data[2] == p.GEOM_CAPSULE:
-        return _add_urdf_lines_for_capsule(
+        _add_urdf_lines_for_capsule(
             link_name,
             visual_data,
             collision_data,
@@ -133,12 +133,12 @@ def _add_urdf_lines_for_link(
             container,
         )
 
-    urdf_lines = _get_urdf_lines_from_link_data(
-        link_name, visual_data, collision_data, inertial_data, physics_client_id
-    )
+    else:
+        urdf_lines = _get_urdf_lines_from_link_data(
+            link_name, visual_data, collision_data, inertial_data, physics_client_id
+        )
 
-    container.link_strs.extend(urdf_lines)
-    return
+        container.link_strs.extend(urdf_lines)
 
 
 def _add_urdf_lines_for_capsule(
