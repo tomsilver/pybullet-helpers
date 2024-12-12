@@ -17,7 +17,7 @@ def test_assistive_human_pybullet_robot(physics_client_id):
         physics_client_id,
         base_pose=base_pose,
     )
-    assert robot.get_name() == "assistive_human"
+    assert robot.get_name() == "assistive-human"
 
     ee_pose = robot.get_end_effector_pose()
     ee_target_position = np.add(ee_pose.position, (0.05, -0.1, 0.05))
@@ -26,3 +26,6 @@ def test_assistive_human_pybullet_robot(physics_client_id):
     joint_target = inverse_kinematics(robot, ee_target, validate=True)
     robot.set_joints(joint_target)
     assert robot.get_end_effector_pose().allclose(ee_target, atol=1e-3)
+
+    while True:
+        p.stepSimulation(physics_client_id)

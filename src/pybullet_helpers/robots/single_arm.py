@@ -72,6 +72,7 @@ class SingleArmPyBulletRobot(abc.ABC):
         )
 
         # Make sure the home joint positions are within limits.
+        assert len(self._home_joint_positions) == len(self.joint_lower_limits)
         assert self.check_joint_limits(
             self._home_joint_positions
         ), "Home joint positions are out of the limit range"
