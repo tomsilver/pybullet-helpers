@@ -35,6 +35,7 @@ def get_kinematic_plan_to_pick_object(
     object_link_id: int | None = None,
     surface_link_id: int | None = None,
     pregrasp_pad_scale: float = 1.1,
+    postgrasp_translation: Pose | None = None,
     postgrasp_translation_magnitude: float = 0.05,
     max_motion_planning_time: float = 1.0,
     max_motion_planning_candidates: int | None = None,
@@ -69,13 +70,14 @@ def get_kinematic_plan_to_pick_object(
 
     # Calculate once the direction to move after grasping succeeds. Using the
     # contact normal with the surface.
-    postgrasp_translation = _get_approach_pose_from_contact_normals(
-        object_id,
-        surface_id,
-        robot.physics_client_id,
-        surface_link_id=surface_link_id,
-        translation_magnitude=postgrasp_translation_magnitude,
-    )
+    if postgrasp_translation is None:
+        postgrasp_translation = _get_approach_pose_from_contact_normals(
+            object_id,
+            surface_id,
+            robot.physics_client_id,
+            surface_link_id=surface_link_id,
+            translation_magnitude=postgrasp_translation_magnitude,
+        )
 
     # Prepare to transform grasps relative to the link into the object frame.
     if object_link_id is None:
