@@ -141,6 +141,7 @@ def _add_urdf_lines_for_link(
     # Handle capsules separately: split them into three links connected with
     # fixed joints.
     if visual_data and visual_data[2] == p.GEOM_CAPSULE:
+        assert collision_data is not None
         _add_urdf_lines_for_capsule(
             link_name,
             visual_data,
@@ -369,8 +370,8 @@ def _add_urdf_lines_for_capsule(
 
 def _get_urdf_lines_from_link_data(
     link_name: str,
-    visual_data: tuple,
-    collision_data: tuple,
+    visual_data: tuple | None,
+    collision_data: tuple | None,
     inertial_data: tuple,
     physics_client_id: int,
 ) -> list[tuple[str, int]]:
