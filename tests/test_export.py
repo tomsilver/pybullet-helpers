@@ -204,9 +204,6 @@ def test_fat_capsule_write_urdf_from_body_id(physics_client_id):
     with open(urdf_file, mode="w", encoding="utf-8") as f:
         f.write(urdf)
 
-    # while True:
-    #     p.stepSimulation(physics_client_id)
-
     p.removeBody(capsule_id, physicsClientId=physics_client_id)
 
     # Recreate and compare.
@@ -222,13 +219,10 @@ def test_fat_capsule_write_urdf_from_body_id(physics_client_id):
     assert original_pose.allclose(recovered_pose, atol=1e-6)
     assert np.isclose(original_mass, recovered_mass)
 
-    while True:
-        p.stepSimulation(physics_client_id)
-
 
 def test_capsule_on_joint_write_urdf_from_body_id_v1(physics_client_id):
     """Tests for write_urdf_from_body_id() with a capsule on a joint.
-    
+
     Version 1: the offset is in the visual and collision frame.
     """
     radius_sphere = 0.25
@@ -304,9 +298,6 @@ def test_capsule_on_joint_write_urdf_from_body_id_v1(physics_client_id):
     with open(urdf_file, mode="w", encoding="utf-8") as f:
         f.write(urdf)
 
-    # while True:
-    #     p.stepSimulation(physics_client_id)
-
     p.removeBody(body_id, physicsClientId=physics_client_id)
 
     # Recreate and compare.
@@ -322,13 +313,10 @@ def test_capsule_on_joint_write_urdf_from_body_id_v1(physics_client_id):
     assert original_pose.allclose(recovered_pose, atol=1e-6)
     assert np.isclose(original_mass, recovered_mass)
 
-    # while True:
-    #     p.stepSimulation(physics_client_id)
-
 
 def test_capsule_on_joint_write_urdf_from_body_id_v2(physics_client_id):
     """Tests for write_urdf_from_body_id() with a capsule on a joint.
-    
+
     Version 1: the offset is in joint frame.
     """
     radius_sphere = 0.25
@@ -393,7 +381,7 @@ def test_capsule_on_joint_write_urdf_from_body_id_v2(physics_client_id):
 
     original_pose = get_pose(body_id, physics_client_id)
     original_mass = p.getDynamicsInfo(body_id, -1, physicsClientId=physics_client_id)[0]
-    
+
     urdf = create_urdf_from_body_id(body_id, physics_client_id)
 
     urdf_file = tempfile.NamedTemporaryFile(delete=False, suffix=".urdf").name
@@ -414,9 +402,6 @@ def test_capsule_on_joint_write_urdf_from_body_id_v2(physics_client_id):
 
     assert original_pose.allclose(recovered_pose, atol=1e-6)
     assert np.isclose(original_mass, recovered_mass)
-
-    while True:
-        p.stepSimulation(physics_client_id)
 
 
 def test_revolute_joint_write_urdf_from_body_id(physics_client_id):
@@ -482,18 +467,9 @@ def test_revolute_joint_write_urdf_from_body_id(physics_client_id):
     with open(original_urdf_file, mode="w", encoding="utf-8") as f:
         f.write(original_urdf)
 
-    from pybullet_helpers.utils import get_assets_path
-
-    original_urdf_file = str(
-        get_assets_path() / "urdf" / "human_description" / "assistive_human.urdf"
-    )
-
     original_robot_id = p.loadURDF(
         original_urdf_file, (0, 0, 0), (0, 0, 0, 1), physicsClientId=physics_client_id
     )
-
-    while True:
-        p.stepSimulation(physics_client_id)
 
     original_pose = get_pose(original_robot_id, physics_client_id)
     original_half_extents = get_half_extents_from_aabb(
@@ -566,6 +542,3 @@ def test_two_link_robot_write_urdf_from_body_id(physics_client_id):
     # because of some conservative thing that pybullet is doing.
     assert np.allclose(original_half_extents, recovered_half_extents, atol=1e-2)
     assert np.isclose(original_mass, recovered_mass)
-
-    # while True:
-    #     p.stepSimulation(physics_client_id)

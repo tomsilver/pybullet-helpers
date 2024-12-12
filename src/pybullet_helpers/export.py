@@ -1,4 +1,8 @@
-"""Code for exporting to URDF."""
+"""Code for exporting to URDF.
+
+NOTE: this code is less tested than other code in this repository. It's very
+likely that there are bugs.
+"""
 
 import os
 from dataclasses import dataclass
@@ -277,7 +281,8 @@ def _add_urdf_lines_for_capsule(
         parentIndex=visual_data[1],
     )
     top_sphere_joint_urdf_lines = _get_joint_urdf_from_data(
-        top_sphere_joint_info, parent_name=cylinder_link_name,
+        top_sphere_joint_info,
+        parent_name=cylinder_link_name,
         parent_inertial_frame=Pose.identity(),
     )
 
@@ -354,7 +359,8 @@ def _add_urdf_lines_for_capsule(
         parentIndex=visual_data[1],
     )
     bottom_sphere_joint_urdf_lines = _get_joint_urdf_from_data(
-        bottom_sphere_joint_info, parent_name=cylinder_link_name,
+        bottom_sphere_joint_info,
+        parent_name=cylinder_link_name,
         parent_inertial_frame=Pose.identity(),
     )
 
@@ -567,25 +573,28 @@ def _add_urdf_lines_for_joint(
     else:
         parent_name = get_joint_info(body_id, parent_idx, physics_client_id).linkName
         parent_state = get_link_state(body_id, parent_idx, physics_client_id)
-        parent_inertial_frame = Pose(parent_state.localInertialFramePosition, parent_state.localInertialFrameOrientation)
+        parent_inertial_frame = Pose(
+            parent_state.localInertialFramePosition,
+            parent_state.localInertialFrameOrientation,
+        )
 
-    urdf_lines = _get_joint_urdf_from_data(joint_info, parent_name, parent_inertial_frame)
+    urdf_lines = _get_joint_urdf_from_data(
+        joint_info, parent_name, parent_inertial_frame
+    )
     container.joint_strs.extend(urdf_lines)
 
 
 def _get_joint_urdf_from_data(
-    joint_info: JointInfo, parent_name: str,
-    parent_inertial_frame: Pose
+    joint_info: JointInfo, parent_name: str, parent_inertial_frame: Pose
 ) -> list[tuple[str, int]]:
     joint_name = joint_info.jointName
     joint_type = joint_info.jointType
     jtype_str = _get_urdf_joint_type(joint_type)
     child_name = joint_info.linkName
     parent_frame_pos = joint_info.parentFramePos
-    parent_frame_orn = joint_info.parentFrameOrn   
+    parent_frame_orn = joint_info.parentFrameOrn
     parent_frame_pose = Pose(parent_frame_pos, parent_frame_orn)
-    
-    # TODO remove?
+
     inverted_orn = Pose((0, 0, 0), parent_frame_orn).invert().orientation
     parent_frame_pose = Pose(parent_frame_pos, inverted_orn)
 
