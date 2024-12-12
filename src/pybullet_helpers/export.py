@@ -258,8 +258,7 @@ def _add_urdf_lines_for_capsule(
     )
 
     # Add fixed joint between top sphere and cylinder.
-    top_sphere_pos_frame = (0, 0, cylinder_dims[1] / 2)
-    top_sphere_orn_frame = (0, 0, 0, 1)
+    top_sphere_pose = Pose((0, 0, cylinder_dims[1]))
 
     top_sphere_joint_name = top_sphere_link_name + "-fixed-joint"
     top_sphere_joint_info = JointInfo(
@@ -277,8 +276,8 @@ def _add_urdf_lines_for_capsule(
         jointMaxVelocity=0.0,
         linkName=top_sphere_link_name,
         jointAxis=(0, 0, 0),
-        parentFramePos=top_sphere_pos_frame,
-        parentFrameOrn=top_sphere_orn_frame,
+        parentFramePos=top_sphere_pose.position,
+        parentFrameOrn=top_sphere_pose.orientation,
         parentIndex=visual_data[1],
     )
     top_sphere_joint_urdf_lines = _get_joint_urdf_from_data(
@@ -333,8 +332,7 @@ def _add_urdf_lines_for_capsule(
     )
 
     # Add fixed joint between top sphere and cylinder.
-    bottom_sphere_pos_frame = (0, 0, -cylinder_dims[1] / 2)
-    bottom_sphere_orn_frame = (0, 0, 0, 1)
+    bottom_sphere_pose = Pose((0, 0, -cylinder_dims[1]))
 
     bottom_sphere_joint_name = bottom_sphere_link_name + "-fixed-joint"
     bottom_sphere_joint_info = JointInfo(
@@ -352,8 +350,8 @@ def _add_urdf_lines_for_capsule(
         jointMaxVelocity=0.0,
         linkName=bottom_sphere_link_name,
         jointAxis=(0, 0, 0),
-        parentFramePos=bottom_sphere_pos_frame,
-        parentFrameOrn=bottom_sphere_orn_frame,
+        parentFramePos=bottom_sphere_pose.position,
+        parentFrameOrn=bottom_sphere_pose.orientation,
         parentIndex=visual_data[1],
     )
     bottom_sphere_joint_urdf_lines = _get_joint_urdf_from_data(

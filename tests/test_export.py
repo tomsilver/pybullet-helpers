@@ -107,6 +107,7 @@ def test_capsule_write_urdf_from_body_id(physics_client_id):
     radius = 0.25
     length = 0.5
     position = (0, 0, 0)
+    # orientation = (0.5, 0.5, 0.5, 0.5)
     orientation = (0, 0, 0, 1)
     color = (0.5, 0.2, 0.9, 1.0)
     mass = 1.0
@@ -136,7 +137,6 @@ def test_capsule_write_urdf_from_body_id(physics_client_id):
     )
 
     original_pose = get_pose(capsule_id, physics_client_id)
-    original_half_extents = get_half_extents_from_aabb(capsule_id, physics_client_id)
     original_mass = p.getDynamicsInfo(
         capsule_id, -1, physicsClientId=physics_client_id
     )[0]
@@ -152,6 +152,9 @@ def test_capsule_write_urdf_from_body_id(physics_client_id):
     recreated_capsule_id = p.loadURDF(
         urdf_file, (0, 0, 0), (0, 0, 0, 1), physicsClientId=physics_client_id
     )
+
+    while True:
+        p.stepSimulation(physics_client_id)
 
     recovered_pose = get_pose(recreated_capsule_id, physics_client_id)
     recovered_mass = p.getDynamicsInfo(
