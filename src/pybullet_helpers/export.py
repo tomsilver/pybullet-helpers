@@ -252,7 +252,7 @@ def _add_urdf_lines_for_capsule(
     )
 
     # Add fixed joint between top sphere and cylinder.
-    top_sphere_pose = Pose((0, 0, cylinder_dims[1]))
+    top_sphere_pose = Pose((0, 0, cylinder_dims[1] / 2))
     visual_frame = Pose(visual_data[5], visual_data[6])
     top_sphere_pose = multiply_poses(visual_frame, top_sphere_pose)
 
@@ -329,7 +329,7 @@ def _add_urdf_lines_for_capsule(
     )
 
     # Add fixed joint between top sphere and cylinder.
-    bottom_sphere_pose = Pose((0, 0, -cylinder_dims[1]))
+    bottom_sphere_pose = Pose((0, 0, -cylinder_dims[1] / 2))
     visual_frame = Pose(visual_data[5], visual_data[6])
     bottom_sphere_pose = multiply_poses(visual_frame, bottom_sphere_pose)
 
