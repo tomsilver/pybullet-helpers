@@ -178,24 +178,30 @@ def test_capsule_on_joint_write_urdf_from_body_id(physics_client_id):
         p.GEOM_SPHERE, radius=radius_sphere, physicsClientId=physics_client_id
     )
     sphere_visual_id = p.createVisualShape(
-        p.GEOM_SPHERE, radius=radius_sphere, rgbaColor=color_sphere, physicsClientId=physics_client_id
+        p.GEOM_SPHERE,
+        radius=radius_sphere,
+        rgbaColor=color_sphere,
+        physicsClientId=physics_client_id,
     )
 
     # Create the collision and visual shapes for the capsule.
     capsule_collision_id = p.createCollisionShape(
-        p.GEOM_CAPSULE, radius=radius_capsule, height=length_capsule, physicsClientId=physics_client_id
+        p.GEOM_CYLINDER,
+        radius=radius_capsule,
+        height=length_capsule,
+        physicsClientId=physics_client_id,
     )
     capsule_visual_id = p.createVisualShape(
-        p.GEOM_CAPSULE,
+        p.GEOM_CYLINDER,
         radius=radius_capsule,
         length=length_capsule,
         rgbaColor=color_capsule,
         physicsClientId=physics_client_id,
     )
 
-    # Define the relative position and orientation of the capsule with respect to the sphere.
-    capsule_offset_position = (radius_sphere + length_capsule / 2, 0, 0)
-    capsule_offset_orientation = (0.5, 0.5, 0.5, 0.5)
+    # Define the relative position and orientation of the capsule.
+    capsule_offset_position = (radius_sphere + 2 * length_capsule, 0, 0)
+    capsule_offset_orientation = p.getQuaternionFromEuler((0.0, np.pi / 2, 0.0))
 
     # Create the multi-body with two links.
     body_id = p.createMultiBody(
@@ -217,13 +223,11 @@ def test_capsule_on_joint_write_urdf_from_body_id(physics_client_id):
         physicsClientId=physics_client_id,
     )
 
-
     original_pose = get_pose(body_id, physics_client_id)
-    original_mass = p.getDynamicsInfo(
-        body_id, -1, physicsClientId=physics_client_id
-    )[0]
+    original_mass = p.getDynamicsInfo(body_id, -1, physicsClientId=physics_client_id)[0]
 
     urdf = create_urdf_from_body_id(body_id, physics_client_id)
+
     urdf_file = tempfile.NamedTemporaryFile(delete=False, suffix=".urdf").name
     with open(urdf_file, mode="w", encoding="utf-8") as f:
         f.write(urdf)
@@ -242,9 +246,6 @@ def test_capsule_on_joint_write_urdf_from_body_id(physics_client_id):
 
     assert original_pose.allclose(recovered_pose, atol=1e-6)
     assert np.isclose(original_mass, recovered_mass)
-
-    while True:
-        p.stepSimulation(physics_client_id)
 
 
 def test_revolute_joint_write_urdf_from_body_id(physics_client_id):
@@ -306,22 +307,22 @@ def test_revolute_joint_write_urdf_from_body_id(physics_client_id):
   </joint>
 </robot>
 """
-    # original_urdf_file = tempfile.NamedTemporaryFile(delete=False, suffix=".urdf").name
-    # with open(original_urdf_file, mode="w", encoding="utf-8") as f:
-    #     f.write(original_urdf)
+    original_urdf_file = tempfile.NamedTemporaryFile(delete=False, suffix=".urdf").name
+    with open(original_urdf_file, mode="w", encoding="utf-8") as f:
+        f.write(original_urdf)
 
-    from pybullet_helpers.utils import get_assets_path
+    # from pybullet_helpers.utils import get_assets_path
 
-    original_urdf_file = str(
-        get_assets_path() / "urdf" / "human_description" / "assistive_human.urdf"
-    )
+    # original_urdf_file = str(
+    #     get_assets_path() / "urdf" / "human_description" / "assistive_human.urdf"
+    # )
 
     original_robot_id = p.loadURDF(
         original_urdf_file, (0, 0, 0), (0, 0, 0, 1), physicsClientId=physics_client_id
     )
 
-    while True:
-        p.stepSimulation(physics_client_id)
+    # while True:
+    #     p.stepSimulation(physics_client_id)
 
     original_pose = get_pose(original_robot_id, physics_client_id)
     original_half_extents = get_half_extents_from_aabb(

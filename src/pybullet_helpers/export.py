@@ -57,11 +57,10 @@ def _get_collision_shape_data_for_link(
 def _get_urdf_pose_str(
     pos: tuple[float, float, float], orn: tuple[float, float, float, float]
 ) -> str:
-    euler = p.getEulerFromQuaternion(orn)
-    return (
-        f'<origin xyz="{pos[0]} {pos[1]} {pos[2]}" '
-        f'rpy="{euler[0]} {euler[1]} {euler[2]}"/>'
-    )
+    x, y, z = pos
+    pose = Pose(pos, orn)
+    roll, pitch, yaw = pose.rpy
+    return f'<origin xyz="{x} {y} {z}" ' f'rpy="{roll} {pitch} {yaw}"/>'
 
 
 def _get_urdf_geometry_str(
@@ -127,12 +126,7 @@ def _add_urdf_lines_for_link(
     all_collision_data = _get_collision_shape_data_for_link(
         body_id, link_idx, physics_client_id
     )
-    try:
-        assert len(all_collision_data) <= 1
-    except:
-        import ipdb
-
-        ipdb.set_trace()
+    assert len(all_collision_data) <= 1
     collision_data = all_collision_data[0] if all_collision_data else None
 
     # Get inertial data.
@@ -578,12 +572,11 @@ def _get_joint_urdf_from_data(
     child_name = joint_info.linkName
     parent_frame_pos = joint_info.parentFramePos
     parent_frame_orn = joint_info.parentFrameOrn
+    inverted_orn = Pose((0, 0, 0), parent_frame_orn).invert().orientation
 
-    peuler = p.getEulerFromQuaternion(parent_frame_orn)
-
-    pose_str = (
-        f'<origin xyz="{parent_frame_pos[0]} {parent_frame_pos[1]} '
-        f'{parent_frame_pos[2]}" rpy="{peuler[0]} {peuler[1]} {peuler[2]}"/>'
+    parent_frame_pose = Pose(parent_frame_pos, inverted_orn)
+    pose_str = _get_urdf_pose_str(
+        parent_frame_pose.position, parent_frame_pose.orientation
     )
 
     urdf_lines = [(f'<joint name="{joint_name}" type="{jtype_str}">\n', 2)]
