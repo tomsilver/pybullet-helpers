@@ -693,7 +693,7 @@
     <visual>
       <origin xyz="0.09 0.08 -0.060000000000000005" rpy="1.5707963267948966 -0.0 0.0"/>
       <geometry>
-        <mesh filename="/Users/tom/multitask-personalization/venv/lib/python3.10/site-packages/assistive_gym/envs/assets/head_female_male/BaseHeadMeshes_v5_male_cropped_reduced_compressed.obj" scale="0.89 0.89 0.89"/>
+        <mesh filename="package://head_female_male/BaseHeadMeshes_v5_male_cropped_reduced_compressed.obj" scale="0.89 0.89 0.89"/>
       </geometry>
       <material name="color-171-128-85-255">
         <color rgba="0.672940731048584 0.504705548286438 0.336470365524292 1.0"/>
