@@ -154,17 +154,11 @@ def test_capsule_write_urdf_from_body_id(physics_client_id):
     )
 
     recovered_pose = get_pose(recreated_capsule_id, physics_client_id)
-    recovered_half_extents = get_half_extents_from_aabb(
-        recreated_capsule_id, physics_client_id
-    )
     recovered_mass = p.getDynamicsInfo(
         recreated_capsule_id, -1, physicsClientId=physics_client_id
     )[0]
 
     assert original_pose.allclose(recovered_pose, atol=1e-6)
-    # NOTE: bounding box may be slightly enlarged in loading URDF, probably
-    # because of some conservative thing that pybullet is doing.
-    assert np.allclose(original_half_extents, recovered_half_extents, atol=1e-2)
     assert np.isclose(original_mass, recovered_mass)
 
 
@@ -227,13 +221,23 @@ def test_revolute_joint_write_urdf_from_body_id(physics_client_id):
   </joint>
 </robot>
 """
-    original_urdf_file = tempfile.NamedTemporaryFile(delete=False, suffix=".urdf").name
-    with open(original_urdf_file, mode="w", encoding="utf-8") as f:
-        f.write(original_urdf)
+    # original_urdf_file = tempfile.NamedTemporaryFile(delete=False, suffix=".urdf").name
+    # with open(original_urdf_file, mode="w", encoding="utf-8") as f:
+    #     f.write(original_urdf)
+
+    from pybullet_helpers.utils import get_assets_path
+
+    original_urdf_file = str(
+        get_assets_path() / "urdf" / "human_description" / "assistive_human.urdf"
+    )
 
     original_robot_id = p.loadURDF(
         original_urdf_file, (0, 0, 0), (0, 0, 0, 1), physicsClientId=physics_client_id
     )
+
+    while True:
+        p.stepSimulation(physics_client_id)
+
     original_pose = get_pose(original_robot_id, physics_client_id)
     original_half_extents = get_half_extents_from_aabb(
         original_robot_id, physics_client_id

@@ -40,6 +40,20 @@ def _get_visual_shape_data_for_link(
     ]
 
 
+def _get_collision_shape_data_for_link(
+    body_id: int, link_idx: int, physics_client_id: int
+) -> list:
+    # I'm not sure why this filtering is needed. Sometimes there are returned
+    # collision values with link IDs that don't match the input...
+    return [
+        v
+        for v in p.getCollisionShapeData(
+            body_id, link_idx, physicsClientId=physics_client_id
+        )
+        if v[1] == link_idx
+    ]
+
+
 def _get_urdf_pose_str(
     pos: tuple[float, float, float], orn: tuple[float, float, float, float]
 ) -> str:
@@ -110,10 +124,15 @@ def _add_urdf_lines_for_link(
     visual_data = all_visual_data[0] if all_visual_data else None
 
     # Get collision data.
-    all_collision_data = p.getCollisionShapeData(
-        body_id, link_idx, physicsClientId=physics_client_id
+    all_collision_data = _get_collision_shape_data_for_link(
+        body_id, link_idx, physics_client_id
     )
-    assert len(all_collision_data) <= 1
+    try:
+        assert len(all_collision_data) <= 1
+    except:
+        import ipdb
+
+        ipdb.set_trace()
     collision_data = all_collision_data[0] if all_collision_data else None
 
     # Get inertial data.
@@ -152,7 +171,7 @@ def _add_urdf_lines_for_capsule(
 
     # Create cylinder.
     cylinder_link_name = link_name  # use original link to preserve joints
-    cylinder_dims = [visual_data[3][0] * 2, visual_data[3][1], visual_data[3][2]]
+    cylinder_dims = [visual_data[3][0], visual_data[3][1], visual_data[3][2]]
 
     cylinder_visual_data = (
         visual_data[0],
@@ -196,7 +215,6 @@ def _add_urdf_lines_for_capsule(
     # Create top sphere.
     top_sphere_link_name = f"{link_name}---top-sphere"
 
-    cylinder_pos = visual_data[5]
     top_sphere_pos = (0, 0, 0)
     top_sphere_orn = (0, 0, 0, 1)
 
@@ -240,11 +258,7 @@ def _add_urdf_lines_for_capsule(
     )
 
     # Add fixed joint between top sphere and cylinder.
-    top_sphere_pos_frame = (
-        cylinder_pos[0],
-        cylinder_pos[1],
-        cylinder_pos[2] + cylinder_dims[0] / 2,
-    )
+    top_sphere_pos_frame = (0, 0, cylinder_dims[1] / 2)
     top_sphere_orn_frame = (0, 0, 0, 1)
 
     top_sphere_joint_name = top_sphere_link_name + "-fixed-joint"
@@ -276,8 +290,6 @@ def _add_urdf_lines_for_capsule(
     # Create bottom sphere.
     bottom_sphere_link_name = f"{link_name}---bottom-sphere"
 
-    cylinder_pos = visual_data[5]
-    cylinder_dims = visual_data[3]
     bottom_sphere_pos = (0, 0, 0)
     bottom_sphere_orn = (0, 0, 0, 1)
 
@@ -321,11 +333,7 @@ def _add_urdf_lines_for_capsule(
     )
 
     # Add fixed joint between top sphere and cylinder.
-    bottom_sphere_pos_frame = (
-        cylinder_pos[0],
-        cylinder_pos[1],
-        cylinder_pos[2] - cylinder_dims[0] / 2,
-    )
+    bottom_sphere_pos_frame = (0, 0, -cylinder_dims[1] / 2)
     bottom_sphere_orn_frame = (0, 0, 0, 1)
 
     bottom_sphere_joint_name = bottom_sphere_link_name + "-fixed-joint"
@@ -501,10 +509,14 @@ def _get_single_collision_urdf_lines_for_link(
             body_id, link_idx, physics_client_id
         )
         if len(matching_link_visuals) == 1:
-            print("WARNING: using visual geometry for collisions.")
             v = matching_link_visuals[0]
             geom_type = v[2]
             dims = v[3]
+            if geom_type == p.GEOM_MESH:
+                print("WARNING: using sphere instead of unknown mesh.")
+                geom_type = p.GEOM_SPHERE
+            else:
+                print("WARNING: using visual geometry for collisions.")
             geometry_str = _get_urdf_geometry_str(geom_type, dims, filename)
         else:
             raise NotImplementedError
