@@ -1,12 +1,33 @@
 """Code for exporting to URDF."""
 
 import os
+from dataclasses import dataclass
 
 import pybullet as p
 
 from pybullet_helpers.geometry import Pose, multiply_poses
 from pybullet_helpers.joint import get_joint_info, get_num_joints
 from pybullet_helpers.link import get_link_state
+
+
+@dataclass
+class URDFStringContainer:
+    """Light container around URDF strings."""
+
+    link_strs: list[tuple[str, int]]
+    joint_strs: list[tuple[str, int]]
+
+    def to_string(self, urdf_name: str = "pybullet-extracted") -> str:
+        """Get the full URDF string."""
+        urdf_lines = [('<?xml version="1.0"?>', 0)]
+        urdf_lines.append((f'<robot name="{urdf_name}">', 0))
+        urdf_lines.extend(self.link_strs)
+        urdf_lines.extend(self.joint_strs)
+        urdf_lines.append(("</robot>", 0))
+        urdf_content = ""
+        for urdf_str, indent in urdf_lines:
+            urdf_content += " " * indent + urdf_str + "\n"
+        return urdf_content
 
 
 def _get_visual_shape_data_for_link(
@@ -67,9 +88,12 @@ def _get_urdf_joint_type(joint_type: int) -> str:
     return jtype_str
 
 
-def _get_urdf_lines_for_link(
-    body_id: int, link_idx: int, physics_client_id: int
-) -> list[tuple[str, int]]:
+def _add_urdf_lines_for_link(
+    body_id: int,
+    link_idx: int,
+    physics_client_id: int,
+    container: URDFStringContainer,
+) -> None:
     # Get the link name.
     if link_idx == -1:
         link_name = "base_link"
@@ -102,7 +126,7 @@ def _get_urdf_lines_for_link(
     # Finish the URDF for the link.
     urdf_lines.append(("</link>", 2))
 
-    return urdf_lines
+    container.link_strs.extend(urdf_lines)
 
 
 def _get_visual_urdf_lines_for_link(
@@ -240,9 +264,6 @@ def _get_single_collision_urdf_lines_for_link(
             dims = v[3]
             geometry_str = _get_urdf_geometry_str(geom_type, dims, filename)
         else:
-            import ipdb
-
-            ipdb.set_trace()
             raise NotImplementedError
 
     urdf_lines.append(("<geometry>", 6))
@@ -280,8 +301,11 @@ def _get_inertial_urdf_lines_for_link(
     return urdf_lines
 
 
-def _get_urdf_lines_for_joint(
-    body_id: int, joint_idx: int, physics_client_id: int
+def _add_urdf_lines_for_joint(
+    body_id: int,
+    joint_idx: int,
+    physics_client_id: int,
+    container: URDFStringContainer,
 ) -> list[tuple[str, int]]:
 
     joint_info = get_joint_info(body_id, joint_idx, physics_client_id)
@@ -340,7 +364,7 @@ def _get_urdf_lines_for_joint(
 
     urdf_lines.append(("</joint>", 2))
 
-    return urdf_lines
+    container.joint_strs.extend(urdf_lines)
 
 
 def create_urdf_from_body_id(
@@ -349,27 +373,15 @@ def create_urdf_from_body_id(
     """Create a URDF string for a body that's loaded into pybullet."""
 
     # Start building the URDF content.
-    urdf_lines = [('<?xml version="1.0"?>', 0)]
-    urdf_lines.append((f'<robot name="{name}">', 0))
-
+    container = URDFStringContainer([], [])
     num_joints = get_num_joints(body_id, physics_client_id)
 
     # Handle each link, including the base link (which is index -1 in PyBullet).
     for link_idx in range(-1, num_joints):
-        link_urdf_lines = _get_urdf_lines_for_link(body_id, link_idx, physics_client_id)
-        urdf_lines.extend(link_urdf_lines)
+        _add_urdf_lines_for_link(body_id, link_idx, physics_client_id, container)
 
     # Handle joints.
     for joint_idx in range(num_joints):
-        joint_urdf_lines = _get_urdf_lines_for_joint(
-            body_id, joint_idx, physics_client_id
-        )
-        urdf_lines.extend(joint_urdf_lines)
+        _add_urdf_lines_for_joint(body_id, joint_idx, physics_client_id, container)
 
-    urdf_lines.append(("</robot>", 0))
-
-    urdf_content = ""
-    for urdf_str, indent in urdf_lines:
-        urdf_content += " " * indent + urdf_str + "\n"
-
-    return urdf_content
+    return container.to_string(name)
