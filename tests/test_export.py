@@ -161,8 +161,11 @@ def test_capsule_write_urdf_from_body_id(physics_client_id):
     assert np.isclose(original_mass, recovered_mass)
 
 
-def test_capsule_on_joint_write_urdf_from_body_id(physics_client_id):
-    """Tests for write_urdf_from_body_id() with a capsule on a joint."""
+def test_capsule_on_joint_write_urdf_from_body_id_v1(physics_client_id):
+    """Tests for write_urdf_from_body_id() with a capsule on a joint.
+    
+    Version 1: the offset is in the visual and collision frame.
+    """
     radius_sphere = 0.25
     radius_capsule = 0.2
     length_capsule = 0.5
@@ -184,24 +187,124 @@ def test_capsule_on_joint_write_urdf_from_body_id(physics_client_id):
         physicsClientId=physics_client_id,
     )
 
+    # Define the relative position and orientation of the capsule.
+    capsule_offset_position = (radius_sphere + length_capsule / 2, 0, 0)
+    capsule_offset_orientation = p.getQuaternionFromEuler((0.0, np.pi / 2, 0.0))
+
     # Create the collision and visual shapes for the capsule.
     capsule_collision_id = p.createCollisionShape(
-        p.GEOM_CYLINDER,
+        p.GEOM_CAPSULE,
+        radius=radius_capsule,
+        height=length_capsule,
+        collisionFramePosition=capsule_offset_position,
+        collisionFrameOrientation=capsule_offset_orientation,
+        physicsClientId=physics_client_id,
+    )
+    capsule_visual_id = p.createVisualShape(
+        p.GEOM_CAPSULE,
+        radius=radius_capsule,
+        length=length_capsule,
+        rgbaColor=color_capsule,
+        visualFramePosition=capsule_offset_position,
+        visualFrameOrientation=capsule_offset_orientation,
+        physicsClientId=physics_client_id,
+    )
+
+    # Create the multi-body with two links.
+    body_id = p.createMultiBody(
+        baseMass=mass_sphere,
+        baseCollisionShapeIndex=sphere_collision_id,
+        baseVisualShapeIndex=sphere_visual_id,
+        basePosition=position_sphere,
+        baseOrientation=orientation_sphere,
+        linkMasses=[mass_capsule],
+        linkCollisionShapeIndices=[capsule_collision_id],
+        linkVisualShapeIndices=[capsule_visual_id],
+        linkPositions=[(0, 0, 0)],
+        linkOrientations=[(0, 0, 0, 1)],
+        linkInertialFramePositions=[(0, 0, 0)],
+        linkInertialFrameOrientations=[(0, 0, 0, 1)],
+        linkParentIndices=[0],
+        linkJointTypes=[p.JOINT_FIXED],
+        linkJointAxis=[(0, 0, 0)],
+        physicsClientId=physics_client_id,
+    )
+
+    original_pose = get_pose(body_id, physics_client_id)
+    original_mass = p.getDynamicsInfo(body_id, -1, physicsClientId=physics_client_id)[0]
+
+    urdf = create_urdf_from_body_id(body_id, physics_client_id)
+
+    urdf_file = tempfile.NamedTemporaryFile(delete=False, suffix=".urdf").name
+    with open(urdf_file, mode="w", encoding="utf-8") as f:
+        f.write(urdf)
+
+    # while True:
+    #     p.stepSimulation(physics_client_id)
+
+    p.removeBody(body_id, physicsClientId=physics_client_id)
+
+    # Recreate and compare.
+    recreated_capsule_id = p.loadURDF(
+        urdf_file, (0, 0, 0), (0, 0, 0, 1), physicsClientId=physics_client_id
+    )
+
+    recovered_pose = get_pose(recreated_capsule_id, physics_client_id)
+    recovered_mass = p.getDynamicsInfo(
+        recreated_capsule_id, -1, physicsClientId=physics_client_id
+    )[0]
+
+    assert original_pose.allclose(recovered_pose, atol=1e-6)
+    assert np.isclose(original_mass, recovered_mass)
+
+    # while True:
+    #     p.stepSimulation(physics_client_id)
+
+
+def test_capsule_on_joint_write_urdf_from_body_id_v2(physics_client_id):
+    """Tests for write_urdf_from_body_id() with a capsule on a joint.
+    
+    Version 1: the offset is in joint frame.
+    """
+    radius_sphere = 0.25
+    radius_capsule = 0.2
+    length_capsule = 0.5
+    position_sphere = (0, 0, 0)
+    orientation_sphere = (0, 0, 0, 1)
+    color_sphere = (0.2, 0.8, 0.4, 1.0)
+    color_capsule = (0.5, 0.2, 0.9, 1.0)
+    mass_sphere = 1.0
+    mass_capsule = 0.5
+
+    # Create the collision and visual shapes for the sphere.
+    sphere_collision_id = p.createCollisionShape(
+        p.GEOM_SPHERE, radius=radius_sphere, physicsClientId=physics_client_id
+    )
+    sphere_visual_id = p.createVisualShape(
+        p.GEOM_SPHERE,
+        radius=radius_sphere,
+        rgbaColor=color_sphere,
+        physicsClientId=physics_client_id,
+    )
+
+    # Define the relative position and orientation of the capsule.
+    capsule_offset_position = (radius_sphere + length_capsule / 2, 0, 0)
+    capsule_offset_orientation = (0.5, 0.5, 0.5, 0.5)
+
+    # Create the collision and visual shapes for the capsule.
+    capsule_collision_id = p.createCollisionShape(
+        p.GEOM_CAPSULE,
         radius=radius_capsule,
         height=length_capsule,
         physicsClientId=physics_client_id,
     )
     capsule_visual_id = p.createVisualShape(
-        p.GEOM_CYLINDER,
+        p.GEOM_CAPSULE,
         radius=radius_capsule,
         length=length_capsule,
         rgbaColor=color_capsule,
         physicsClientId=physics_client_id,
     )
-
-    # Define the relative position and orientation of the capsule.
-    capsule_offset_position = (radius_sphere + 2 * length_capsule, 0, 0)
-    capsule_offset_orientation = p.getQuaternionFromEuler((0.0, np.pi / 2, 0.0))
 
     # Create the multi-body with two links.
     body_id = p.createMultiBody(
@@ -225,7 +328,7 @@ def test_capsule_on_joint_write_urdf_from_body_id(physics_client_id):
 
     original_pose = get_pose(body_id, physics_client_id)
     original_mass = p.getDynamicsInfo(body_id, -1, physicsClientId=physics_client_id)[0]
-
+    
     urdf = create_urdf_from_body_id(body_id, physics_client_id)
 
     urdf_file = tempfile.NamedTemporaryFile(delete=False, suffix=".urdf").name
@@ -246,6 +349,9 @@ def test_capsule_on_joint_write_urdf_from_body_id(physics_client_id):
 
     assert original_pose.allclose(recovered_pose, atol=1e-6)
     assert np.isclose(original_mass, recovered_mass)
+
+    while True:
+        p.stepSimulation(physics_client_id)
 
 
 def test_revolute_joint_write_urdf_from_body_id(physics_client_id):
@@ -395,3 +501,6 @@ def test_two_link_robot_write_urdf_from_body_id(physics_client_id):
     # because of some conservative thing that pybullet is doing.
     assert np.allclose(original_half_extents, recovered_half_extents, atol=1e-2)
     assert np.isclose(original_mass, recovered_mass)
+
+    # while True:
+    #     p.stepSimulation(physics_client_id)

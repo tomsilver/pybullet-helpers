@@ -253,6 +253,8 @@ def _add_urdf_lines_for_capsule(
 
     # Add fixed joint between top sphere and cylinder.
     top_sphere_pose = Pose((0, 0, cylinder_dims[1]))
+    visual_frame = Pose(visual_data[5], visual_data[6])
+    top_sphere_pose = multiply_poses(visual_frame, top_sphere_pose)
 
     top_sphere_joint_name = top_sphere_link_name + "-fixed-joint"
     top_sphere_joint_info = JointInfo(
@@ -275,7 +277,8 @@ def _add_urdf_lines_for_capsule(
         parentIndex=visual_data[1],
     )
     top_sphere_joint_urdf_lines = _get_joint_urdf_from_data(
-        top_sphere_joint_info, parent_name=cylinder_link_name
+        top_sphere_joint_info, parent_name=cylinder_link_name,
+        parent_inertial_frame=Pose.identity(),
     )
 
     container.joint_strs.extend(top_sphere_joint_urdf_lines)
@@ -327,6 +330,8 @@ def _add_urdf_lines_for_capsule(
 
     # Add fixed joint between top sphere and cylinder.
     bottom_sphere_pose = Pose((0, 0, -cylinder_dims[1]))
+    visual_frame = Pose(visual_data[5], visual_data[6])
+    bottom_sphere_pose = multiply_poses(visual_frame, bottom_sphere_pose)
 
     bottom_sphere_joint_name = bottom_sphere_link_name + "-fixed-joint"
     bottom_sphere_joint_info = JointInfo(
@@ -349,7 +354,8 @@ def _add_urdf_lines_for_capsule(
         parentIndex=visual_data[1],
     )
     bottom_sphere_joint_urdf_lines = _get_joint_urdf_from_data(
-        bottom_sphere_joint_info, parent_name=cylinder_link_name
+        bottom_sphere_joint_info, parent_name=cylinder_link_name,
+        parent_inertial_frame=Pose.identity(),
     )
 
     container.joint_strs.extend(bottom_sphere_joint_urdf_lines)
@@ -553,33 +559,43 @@ def _add_urdf_lines_for_joint(
 ) -> None:
     joint_info = get_joint_info(body_id, joint_idx, physics_client_id)
     parent_idx = joint_info.parentIndex
-    parent_name = (
-        "base_link"
-        if parent_idx == -1
-        else get_joint_info(body_id, parent_idx, physics_client_id).linkName
-    )
 
-    urdf_lines = _get_joint_urdf_from_data(joint_info, parent_name)
+    if parent_idx == -1:
+        parent_name = "base_link"
+        parent_inertial_frame = Pose.identity()
+
+    else:
+        parent_name = get_joint_info(body_id, parent_idx, physics_client_id).linkName
+        parent_state = get_link_state(body_id, parent_idx, physics_client_id)
+        parent_inertial_frame = Pose(parent_state.localInertialFramePosition, parent_state.localInertialFrameOrientation)
+
+    urdf_lines = _get_joint_urdf_from_data(joint_info, parent_name, parent_inertial_frame)
     container.joint_strs.extend(urdf_lines)
 
 
 def _get_joint_urdf_from_data(
-    joint_info: JointInfo, parent_name: str
+    joint_info: JointInfo, parent_name: str,
+    parent_inertial_frame: Pose
 ) -> list[tuple[str, int]]:
     joint_name = joint_info.jointName
     joint_type = joint_info.jointType
     jtype_str = _get_urdf_joint_type(joint_type)
     child_name = joint_info.linkName
     parent_frame_pos = joint_info.parentFramePos
-    parent_frame_orn = joint_info.parentFrameOrn
+    parent_frame_orn = joint_info.parentFrameOrn   
+    parent_frame_pose = Pose(parent_frame_pos, parent_frame_orn)
+    
+    # TODO remove?
     inverted_orn = Pose((0, 0, 0), parent_frame_orn).invert().orientation
-
     parent_frame_pose = Pose(parent_frame_pos, inverted_orn)
+
+    parent_frame_pose = multiply_poses(parent_inertial_frame, parent_frame_pose)
+
     pose_str = _get_urdf_pose_str(
         parent_frame_pose.position, parent_frame_pose.orientation
     )
 
-    urdf_lines = [(f'<joint name="{joint_name}" type="{jtype_str}">\n', 2)]
+    urdf_lines = [(f'<joint name="{joint_name}" type="{jtype_str}">', 2)]
     urdf_lines.append((f'<parent link="{parent_name}"/>', 4))
     urdf_lines.append((f'<child link="{child_name}"/>', 4))
     urdf_lines.append((pose_str, 4))
@@ -595,8 +611,8 @@ def _get_joint_urdf_from_data(
         max_velocity = joint_info.jointMaxVelocity
         max_effort = joint_info.jointMaxForce
         limit_str = (
-            f'    <limit effort="{max_effort}" '
-            f'velocity="{max_velocity}" lower="{lower}" upper="{upper}"/>\n'
+            f'<limit effort="{max_effort}" '
+            f'velocity="{max_velocity}" lower="{lower}" upper="{upper}"/>'
         )
         urdf_lines.append((limit_str, 4))
 
