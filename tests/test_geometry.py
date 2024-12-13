@@ -9,6 +9,7 @@ from pybullet_helpers.geometry import (
     interpolate_poses,
     iter_between_poses,
     matrix_from_quat,
+    rotate_pose,
 )
 
 
@@ -47,6 +48,18 @@ def test_matrix_from_quat():
         ]
     )
     assert np.allclose(mat, expected_mat)
+
+
+def test_rotate_pose():
+    """Tests for rotate_pose()."""
+    pose = Pose.identity()
+    new_pose = rotate_pose(pose, roll=np.pi / 2, pitch=np.pi / 3, yaw=np.pi / 4)
+    assert np.allclose(new_pose.rpy, [np.pi / 2, np.pi / 3, np.pi / 4])
+    inv_pose = new_pose.invert()
+    old_pose = rotate_pose(
+        new_pose, roll=inv_pose.rpy[0], pitch=inv_pose.rpy[1], yaw=inv_pose.rpy[2]
+    )
+    assert pose.allclose(old_pose)
 
 
 def test_get_pose(physics_client_id):

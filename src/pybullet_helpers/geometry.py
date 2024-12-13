@@ -117,6 +117,19 @@ def quat_from_matrix(matrix: npt.NDArray[np.float64]) -> Quaternion:
     return tuple(quaternion_from_matrix(M))
 
 
+def rotate_pose(
+    pose: Pose, roll: float = 0.0, pitch: float = 0.0, yaw: float = 0.0
+) -> Pose:
+    """Rotate a pose by the given rpy to make a new pose."""
+    current_orn = pose.orientation
+    rot_orn = quaternion_from_euler(roll, pitch, yaw)
+    current_mat = matrix_from_quat(current_orn)
+    rot_mat = matrix_from_quat(rot_orn)
+    new_mat = current_mat @ rot_mat
+    new_orn = quat_from_matrix(new_mat)
+    return Pose(pose.position, new_orn)
+
+
 def get_pose(body: int, physics_client_id: int) -> Pose:
     """Get the pose of a body."""
     pybullet_pose = p.getBasePositionAndOrientation(
