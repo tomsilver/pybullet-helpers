@@ -4,7 +4,6 @@ from pathlib import Path
 
 import numpy as np
 
-from pybullet_helpers.ikfast import IKFastInfo
 from pybullet_helpers.joint import JointPositions
 from pybullet_helpers.robots.single_arm import (
     SingleArmPyBulletRobot,
@@ -35,13 +34,3 @@ class AssistiveHumanPyBulletRobot(SingleArmPyBulletRobot):
     @property
     def tool_link_name(self) -> str:
         return "end_effector_link"
-
-    @classmethod
-    def ikfast_info(cls) -> IKFastInfo | None:
-        return IKFastInfo(
-            module_dir="assistive_human",
-            module_name="ikfast_assistive_human",
-            base_link="base_link",
-            ee_link="end_effector_link",
-            free_joints=["joint14"],
-        )
