@@ -43,6 +43,7 @@ def inverse_kinematics(
     robot: SingleArmPyBulletRobot,
     end_effector_pose: Pose,
     validate: bool = True,
+    best_effort: bool = False,
     set_joints: bool = True,
     validation_atol: float = 1e-3,
 ) -> JointPositions:
@@ -62,15 +63,21 @@ def inverse_kinematics(
     would result in end_effector_pose if run through
     forward_kinematics.
 
+    If best_effort is True and validate is False, return the best found solution
+    after maximum effort is expended.
+
     WARNING: if validate is True, physics may be overridden, and so it
     should not be used within simulation.
     """
+    assert not (validate and best_effort), "Cannot validate in best effort mode"
+
     if robot.default_inverse_kinematics_method == "custom":
         joint_positions = robot.custom_inverse_kinematics(
-            end_effector_pose, validate, validation_atol
+            end_effector_pose, validate, best_effort, validation_atol
         )
 
     elif robot.default_inverse_kinematics_method == "ikfast":
+        assert not best_effort, "Best effort not implemented for IKFast"
 
         ik_solutions = ikfast_closest_inverse_kinematics(
             robot,
@@ -106,6 +113,7 @@ def inverse_kinematics(
             robot.arm_joints,
             physics_client_id=robot.physics_client_id,
             validate=validate,
+            best_effort=best_effort,
         )
 
     else:
@@ -319,6 +327,7 @@ def pybullet_inverse_kinematics(
     joints: Sequence[int],
     physics_client_id: int,
     validate: bool = True,
+    best_effort: bool = False,
     hyperparameters: InverseKinematicsHyperparameters | None = None,
 ) -> JointPositions:
     """Runs IK and returns joint positions for the given (free) joints.
@@ -360,7 +369,7 @@ def pybullet_inverse_kinematics(
             physicsClientId=physics_client_id,
         )
         assert len(free_joints) == len(free_joint_vals)
-        if not validate:
+        if not validate and not best_effort:
             break
         # Update the robot state and check if the desired position and
         # orientation are reached.
