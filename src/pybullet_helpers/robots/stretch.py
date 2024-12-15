@@ -143,6 +143,7 @@ class StretchPyBulletRobot(FingeredSingleArmPyBulletRobot[float]):
         self,
         end_effector_pose: Pose,
         validate: bool = True,
+        best_effort: bool = False,
         validation_atol: float = 1e-3,
     ) -> JointPositions:
 

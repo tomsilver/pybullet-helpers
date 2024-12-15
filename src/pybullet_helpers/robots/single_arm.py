@@ -380,6 +380,7 @@ class SingleArmPyBulletRobot(abc.ABC):
         self,
         end_effector_pose: Pose,
         validate: bool = True,
+        best_effort: bool = False,
         validation_atol: float = 1e-3,
     ):
         """Robots can implement custom IK; see inverse_kinematics()."""
