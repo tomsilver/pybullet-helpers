@@ -387,7 +387,8 @@ def pybullet_inverse_kinematics(
         ):
             break
     else:
-        raise InverseKinematicsError("Inverse kinematics failed to converge.")
+        if not best_effort:
+            raise InverseKinematicsError("Inverse kinematics failed to converge.")
 
     # Reset the joint state (positions and velocities) to their initial values
     # to avoid modifying the PyBullet internal state.
