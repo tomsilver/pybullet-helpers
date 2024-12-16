@@ -314,6 +314,24 @@ class SingleArmPyBulletRobot(abc.ABC):
             ee_link_state.worldLinkFrameOrientation,
         )
 
+    def get_jacobian(self, joint_positions: JointPositions | None = None) -> np.ndarray:
+        """Get the Jacobian matrix for the end effector."""
+
+        if joint_positions is None:
+            joint_positions = self.get_joint_positions()
+
+        jac_t, jac_r = p.calculateJacobian(
+            bodyUniqueId=self.robot_id,
+            linkIndex=self.end_effector_id,
+            localPosition=[0, 0, 0],
+            objPositions=joint_positions,
+            objVelocities=[0] * len(joint_positions),
+            objAccelerations=[0] * len(joint_positions),
+            physicsClientId=self.physics_client_id,
+        )
+
+        return np.concatenate((np.array(jac_t), np.array(jac_r)), axis=0)
+
     def set_base(self, pose: Pose) -> None:
         """Reset the robot base position and orientation."""
         assert not self.fixed_base, "Cannot set base for fixed-base robot"
