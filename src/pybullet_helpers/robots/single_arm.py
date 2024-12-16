@@ -315,7 +315,7 @@ class SingleArmPyBulletRobot(abc.ABC):
         )
 
     def get_jacobian(
-        self, joint_positions: Optional[JointPositions] | None = None
+        self, joint_positions: JointPositions | None = None
     ) -> np.ndarray:
         """Get the Jacobian matrix for the end effector."""
 
