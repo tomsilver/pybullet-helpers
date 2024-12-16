@@ -313,8 +313,10 @@ class SingleArmPyBulletRobot(abc.ABC):
             ee_link_state.worldLinkFramePosition,
             ee_link_state.worldLinkFrameOrientation,
         )
-    
-    def get_jacobian(self, joint_positions: Optional[JointPositions] | None = None) -> np.ndarray:
+
+    def get_jacobian(
+        self, joint_positions: Optional[JointPositions] | None = None
+    ) -> np.ndarray:
         """Get the Jacobian matrix for the end effector."""
 
         if joint_positions is None:
