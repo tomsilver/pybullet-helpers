@@ -29,6 +29,7 @@ def test_pose():
     assert not pose.allclose(inverted_pose)
     assert pose.allclose(inverted_pose.invert())
     matrix = pose.to_matrix()
+    assert matrix.shape == (4, 4) and np.allclose(matrix[3, :], [0.0, 0.0, 0.0, 1.0])
     reconstructed_pose = Pose.from_matrix(matrix)
     assert pose.allclose(reconstructed_pose)
 
