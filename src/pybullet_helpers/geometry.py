@@ -56,7 +56,7 @@ class Pose(NamedTuple):
 
     def to_matrix(self) -> npt.NDArray:
         """Get the 4x4 homogenous matrix representation."""
-        matrix = np.eye((4, 4))
+        matrix = np.eye(4)
         matrix[:3, :3] = matrix_from_quat(self.orientation)
         matrix[:3, 3] = self.position
         return matrix
