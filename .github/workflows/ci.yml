@@ -3,16 +3,6 @@ name: CI Checks
 on: [pull_request]
 
 jobs:
-  debug:
-    runs-on: ubuntu-latest
-    steps:
-    - name: Install LAPACK and BLAS
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y liblapack-dev libblas-dev
-    - name: Check LAPACK and BLAS
-      run: |
-        ls -l /usr/lib/x86_64-linux-gnu/
   autoformat:
     runs-on: ubuntu-latest
     steps:
@@ -68,6 +58,11 @@ jobs:
       matrix:
         python-version: ["3.10"]
     steps:
+    steps:
+    - name: Install LAPACK and BLAS
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y liblapack-dev libblas-dev
     - uses: actions/checkout@v2
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v2
