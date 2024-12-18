@@ -25,7 +25,7 @@ def compile_ikfast(module_name, cpp_filename, remove_build=False):
         # https://github.com/cyberbotics/pyikfast/issues/5
         lapack_dir = os.environ.get("LAPACK_DIR", "/usr/lib/x86_64-linux-gnu/lapack")
         libgfortran_dir = os.environ.get("LIBGFORTRAN_DIR", "/usr/lib/x86_64-linux-gnu")
-        blas_dir = os.environ.get("BLAS_DIR", "/usr/lib/x86_64-linux-gnu/blas")
+        blas_dir = os.environ.get("BLAS_DIR", "/usr/lib/x86_64-linux-gnu")
         extra_objects = [
             os.path.join(lapack_dir, 'liblapack.a'),
             os.path.join(libgfortran_dir, 'libgfortran.so.5.0.0'),
