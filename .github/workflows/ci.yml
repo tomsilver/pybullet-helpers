@@ -58,7 +58,6 @@ jobs:
       matrix:
         python-version: ["3.10"]
     steps:
-    steps:
     - name: Install LAPACK and BLAS
       run: |
         sudo apt-get update
