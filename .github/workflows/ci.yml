@@ -3,6 +3,12 @@ name: CI Checks
 on: [pull_request]
 
 jobs:
+  debug:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check LAPACK and BLAS
+      run: |
+        ls -l /usr/lib/x86_64-linux-gnu/
   autoformat:
     runs-on: ubuntu-latest
     steps:
