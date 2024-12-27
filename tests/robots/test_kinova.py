@@ -1,5 +1,9 @@
 """Tests for Kinova robots."""
 
+import shutil
+import tempfile
+from pathlib import Path
+
 import numpy as np
 import pybullet as p
 import pytest
@@ -64,6 +68,21 @@ def test_kinova_gen3_no_gripper_pybullet_robot(physics_client_id):
     # Test forward kinematics.
     fk_result = robot.forward_kinematics(action_arr)
     assert np.allclose(fk_result.position, ee_target_position, atol=1e-2)
+
+    # Test creating a robot with a custom URDF file. Note that the file needs
+    # to be in the same directory as the original URDF file for rel paths.
+    with tempfile.NamedTemporaryFile(
+        dir=robot.urdf_path.parent, suffix=".urdf"
+    ) as temp_urdf:
+        shutil.copy2(robot.urdf_path, temp_urdf.name)
+        custom_urdf_robot = KinovaGen3NoGripperPyBulletRobot(
+            physics_client_id,
+            base_pose=base_pose,
+            custom_urdf_path=Path(temp_urdf.name),
+        )
+        # Kinematics should be the same as before.
+        custom_fk_result = custom_urdf_robot.forward_kinematics(action_arr)
+        assert custom_fk_result.allclose(fk_result, atol=1e-5)
 
 
 def test_kinova_gen3_robotiq_gripper_pybullet_robot(physics_client_id):

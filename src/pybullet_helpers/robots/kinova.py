@@ -22,8 +22,8 @@ class KinovaGen3NoGripperPyBulletRobot(SingleArmPyBulletRobot):
     def get_name(cls) -> str:
         return "kinova-gen3-no-gripper"
 
-    @classmethod
-    def urdf_path(cls) -> Path:
+    @property
+    def default_urdf_path(self) -> Path:
         dir_path = get_assets_path() / "urdf"
         return dir_path / "kinova_no_gripper" / "GEN3_URDF_V12.urdf"
 
@@ -51,8 +51,8 @@ class KinovaGen3RobotiqGripperPyBulletRobot(FingeredSingleArmPyBulletRobot[float
     def get_name(cls) -> str:
         return "kinova-gen3"
 
-    @classmethod
-    def urdf_path(cls) -> Path:
+    @property
+    def default_urdf_path(self) -> Path:
         dir_path = get_assets_path() / "urdf"
         return dir_path / "kortex_description" / "gen3_7dof.urdf"
 
