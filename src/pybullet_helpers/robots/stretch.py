@@ -83,8 +83,8 @@ class StretchPyBulletRobot(FingeredSingleArmPyBulletRobot[float]):
     def get_name(cls) -> str:
         return "stretch"
 
-    @classmethod
-    def urdf_path(cls) -> Path:
+    @property
+    def default_urdf_path(self) -> Path:
         pkg = Path(str(importlib_resources.files("stretch_urdf")))
         filepath = pkg / "SE3" / "stretch_description_SE3_eoa_wrist_dw3_tool_sg3.urdf"
         with open(filepath, "r", encoding="utf-8") as f:

@@ -37,7 +37,7 @@ class SingleArmPyBulletRobot(abc.ABC):
         control_mode: str = "position",
         home_joint_positions: JointPositions | None = None,
         fixed_base: bool = True,
-        custom_urdf_path: Optional[Path] = None,
+        custom_urdf_path: Path | None = None,
     ) -> None:
         self.physics_client_id = physics_client_id
 
@@ -46,6 +46,9 @@ class SingleArmPyBulletRobot(abc.ABC):
 
         # Whether the base is fixed.
         self.fixed_base = fixed_base
+
+        # Allow user to use custom urdf.
+        self._custom_urdf_path = custom_urdf_path
 
         # Control mode for the robot.
         self._control_mode = control_mode
@@ -60,8 +63,9 @@ class SingleArmPyBulletRobot(abc.ABC):
         if self.self_collision_link_names:
             flags |= p.URDF_USE_SELF_COLLISION
             flags |= p.URDF_USE_SELF_COLLISION_EXCLUDE_ALL_PARENTS
+        print(str(self.urdf_path))
         self.robot_id = p.loadURDF(
-            str(custom_urdf_path if custom_urdf_path else self.urdf_path()),
+            str(self.urdf_path),
             basePosition=self._base_pose.position,
             baseOrientation=self._base_pose.orientation,
             # Even if the robot has a mobile base, we treat it as static in
@@ -81,17 +85,32 @@ class SingleArmPyBulletRobot(abc.ABC):
         # Robot initially at home pose.
         self.set_joints(self.home_joint_positions)
 
+        # Give a one-time warning about using IKFast with custom URDFs.
+        if self.ikfast_info() is not None:
+            print(
+                "WARNING: running IKFast with a custom URDF file may not work "
+                "if the URDF is importantly different from what was used to "
+                "create the IKFast model."
+            )
+
     @classmethod
     @abc.abstractmethod
     def get_name(cls) -> str:
         """Get the name of the robot."""
         raise NotImplementedError("Override me!")
 
-    @classmethod
+    @property
     @abc.abstractmethod
-    def urdf_path(cls) -> Path:
-        """Get the path to the URDF file for the robot."""
+    def default_urdf_path(self) -> Path:
+        """Get the default path to the URDF file for the robot."""
         raise NotImplementedError("Override me!")
+
+    @property
+    def urdf_path(self) -> Path:
+        """Get the path to the URDF file for the robot."""
+        if self._custom_urdf_path is not None:
+            return self._custom_urdf_path
+        return self.default_urdf_path
 
     @property
     @abc.abstractmethod

@@ -21,8 +21,8 @@ class PandaPyBulletRobot(FingeredSingleArmPyBulletRobot[float]):
     def get_name(cls) -> str:
         return "panda"
 
-    @classmethod
-    def urdf_path(cls) -> Path:
+    @property
+    def default_urdf_path(self) -> Path:
         dir_path = get_assets_path() / "urdf"
         return dir_path / "franka_description" / "robots" / "panda_arm_hand.urdf"
 

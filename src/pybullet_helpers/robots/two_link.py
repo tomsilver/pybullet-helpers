@@ -14,8 +14,8 @@ class TwoLinkPyBulletRobot(SingleArmPyBulletRobot):
     def get_name(cls) -> str:
         return "two-link"
 
-    @classmethod
-    def urdf_path(cls) -> Path:
+    @property
+    def default_urdf_path(self) -> Path:
         dir_path = get_assets_path() / "urdf"
         return dir_path / "two_link" / "two_link_robot.urdf"
 

@@ -19,8 +19,8 @@ class FetchPyBulletRobot(FingeredSingleArmPyBulletRobot[float]):
     def get_name(cls) -> str:
         return "fetch"
 
-    @classmethod
-    def urdf_path(cls) -> Path:
+    @property
+    def default_urdf_path(self) -> Path:
         dir_path = get_assets_path() / "urdf"
         return dir_path / "fetch_description" / "robots" / "fetch.urdf"
 
