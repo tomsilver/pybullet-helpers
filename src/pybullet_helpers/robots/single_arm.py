@@ -63,7 +63,6 @@ class SingleArmPyBulletRobot(abc.ABC):
         if self.self_collision_link_names:
             flags |= p.URDF_USE_SELF_COLLISION
             flags |= p.URDF_USE_SELF_COLLISION_EXCLUDE_ALL_PARENTS
-        print(str(self.urdf_path))
         self.robot_id = p.loadURDF(
             str(self.urdf_path),
             basePosition=self._base_pose.position,
