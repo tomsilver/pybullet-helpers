@@ -37,6 +37,7 @@ class SingleArmPyBulletRobot(abc.ABC):
         control_mode: str = "position",
         home_joint_positions: JointPositions | None = None,
         fixed_base: bool = True,
+        custom_urdf_path: Optional[Path] = None,
     ) -> None:
         self.physics_client_id = physics_client_id
 
@@ -60,7 +61,7 @@ class SingleArmPyBulletRobot(abc.ABC):
             flags |= p.URDF_USE_SELF_COLLISION
             flags |= p.URDF_USE_SELF_COLLISION_EXCLUDE_ALL_PARENTS
         self.robot_id = p.loadURDF(
-            str(self.urdf_path()),
+            str(custom_urdf_path if custom_urdf_path else self.urdf_path()),
             basePosition=self._base_pose.position,
             baseOrientation=self._base_pose.orientation,
             # Even if the robot has a mobile base, we treat it as static in
