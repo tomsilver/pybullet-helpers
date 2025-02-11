@@ -226,11 +226,13 @@ def get_half_extents_from_aabb(
     body_id: int,
     physics_client_id: int,
     link_id: int | None = None,
+    rotation_okay: bool = False,
 ) -> tuple[float, float, float]:
     """Get box half extents based on AABB."""
-    pose = get_pose(body_id, physics_client_id)
-    if not pose.allclose(Pose(pose.position)):
-        raise NotImplementedError("This is too confusing when objects are rotated.")
+    if not rotation_okay:
+        pose = get_pose(body_id, physics_client_id)
+        if not pose.allclose(Pose(pose.position)):
+            raise NotImplementedError("This is too confusing when objects are rotated.")
     if link_id is None:
         aabb_min, aabb_max = p.getAABB(body_id, physicsClientId=physics_client_id)
     else:

@@ -495,13 +495,19 @@ def _get_approach_distance_from_aabbs(
     pad_scale: float = 1.1,
 ) -> float:
     object_half_extents = get_half_extents_from_aabb(
-        object_id, physics_client_id=robot.physics_client_id, link_id=object_link_id
+        object_id,
+        physics_client_id=robot.physics_client_id,
+        link_id=object_link_id,
+        rotation_okay=True,
     )
     object_radius = max(object_half_extents)
     robot_end_effector_radius = 0.0  # find max value over fingers
     for finger_id in robot.finger_ids:
         robot_end_effector_half_extents = get_half_extents_from_aabb(
-            robot.robot_id, physics_client_id=robot.physics_client_id, link_id=finger_id
+            robot.robot_id,
+            physics_client_id=robot.physics_client_id,
+            link_id=finger_id,
+            rotation_okay=True,
         )
         robot_end_effector_radius = max(
             robot_end_effector_radius,
