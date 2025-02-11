@@ -5,7 +5,6 @@ import pybullet as p
 
 from pybullet_helpers.geometry import (
     Pose,
-    get_half_extents_from_aabb,
     multiply_poses,
     set_pose,
 )
@@ -171,9 +170,7 @@ def test_kinematic_pick_place():
     initial_state.set_pybullet(robot)
 
     # Get a plan.
-    obj_half_extents = get_half_extents_from_aabb(
-        object_id, physics_client_id, link_id=1
-    )
+    obj_half_extents = (handle_size, handle_size, handle_size)
     placement_generator = generate_surface_placements(
         table_id, obj_half_extents, rng, physics_client_id, surface_link_id=0
     )
