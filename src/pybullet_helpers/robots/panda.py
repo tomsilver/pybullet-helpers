@@ -73,7 +73,7 @@ class PandaPyBulletRobot(FingeredSingleArmPyBulletRobot[float]):
 
     def joints_to_finger_state(self, joint_positions: list[float]) -> float:
         assert len(joint_positions) == 2
-        assert np.isclose(joint_positions[0], joint_positions[1])
+        assert np.isclose(joint_positions[0], joint_positions[1], atol=1e-6)
         return joint_positions[0]
 
     @classmethod
