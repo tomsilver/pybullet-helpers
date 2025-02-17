@@ -136,7 +136,7 @@ def get_kinematic_plan_to_pick_object(
                 robot,
                 end_effector_path,
                 state.robot_joints,
-                collision_ids,
+                collision_ids - {object_id, surface_id},
                 joint_distance_fn,
                 max_time=max_motion_planning_time,
                 max_smoothing_iters_per_step=max_smoothing_iters_per_step,
