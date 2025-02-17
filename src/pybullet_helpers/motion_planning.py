@@ -21,6 +21,7 @@ from pybullet_helpers.inverse_kinematics import (
     InverseKinematicsError,
     check_body_collisions,
     check_collisions_with_held_object,
+    filter_collision_free_joint_generator,
     pybullet_inverse_kinematics,
     sample_collision_free_inverse_kinematics,
 )
@@ -315,9 +316,18 @@ def smoothly_follow_end_effector_path(
                 robot.physics_client_id,
                 validate=True,
             )
-            closest_dist = joint_distance_fn(current_joints, neighbor)
-            closest_neighbor = neighbor
-            remaining_candidates -= 1
+            generator = iter([neighbor])
+            for candidate in filter_collision_free_joint_generator(
+                generator,
+                robot,
+                collision_ids,
+                robot.physics_client_id,
+                held_object,
+                base_link_to_held_obj,
+            ):
+                closest_dist = joint_distance_fn(current_joints, candidate)
+                closest_neighbor = candidate
+                remaining_candidates -= 1
         except InverseKinematicsError:
             pass
         for neighbor in sample_collision_free_inverse_kinematics(
