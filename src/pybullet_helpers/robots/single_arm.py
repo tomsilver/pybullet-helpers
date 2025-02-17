@@ -85,7 +85,7 @@ class SingleArmPyBulletRobot(abc.ABC):
         self.set_joints(self.home_joint_positions)
 
         # Give a one-time warning about using IKFast with custom URDFs.
-        if self.ikfast_info() is not None:
+        if custom_urdf_path is not None and self.ikfast_info() is not None:
             print(
                 "WARNING: running IKFast with a custom URDF file may not work "
                 "if the URDF is importantly different from what was used to "
