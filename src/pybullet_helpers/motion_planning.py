@@ -286,10 +286,15 @@ def smoothly_follow_end_effector_path(
     max_time: float = 5.0,
     max_smoothing_iters_per_step: int = 1000000,
     include_start: bool = True,
+    allow_skipping_intermediates: bool = True,
     seed: int = 0,
 ) -> list[JointPositions]:
     """Find a smooth (short) joint trajectory that follows the given end
-    effector path while avoiding collisions."""
+    effector path while avoiding collisions.
+
+    NOTE: if allow_skipping_intermediates is True, then some intermediate
+    waypoints may be skipped if inverse kinematics fails.
+    """
 
     joint_position_path: list[JointPositions] = []
     if include_start:
@@ -298,7 +303,7 @@ def smoothly_follow_end_effector_path(
 
     max_time_per_step = max_time / len(end_effector_path)
     rng = np.random.default_rng(seed)
-    for end_effector_pose in end_effector_path:
+    for i, end_effector_pose in enumerate(end_effector_path):
         # Get the closest neighbor in joint space.
         robot.set_joints(current_joints)  # for warm starting IK
         closest_neighbor: JointPositions | None = None
@@ -345,6 +350,8 @@ def smoothly_follow_end_effector_path(
                 closest_dist = dist
                 closest_neighbor = neighbor
         if closest_neighbor is None:
+            if allow_skipping_intermediates and 0 < i < len(end_effector_path) - 1:
+                continue
             raise InverseKinematicsError
         joint_position_path.append(closest_neighbor)
         current_joints = closest_neighbor
