@@ -464,6 +464,7 @@ def generate_surface_placements(
     rng: np.random.Generator,
     physics_client_id: int,
     surface_link_id: int | None = None,
+    parallel_yaws_only: bool = False,
 ) -> Iterator[Pose]:
     """Generate placement poses relative to the object (link)."""
     surface_half_extents = get_half_extents_from_aabb(
@@ -481,7 +482,11 @@ def generate_surface_placements(
             ),
             object_half_extents_at_placement[2] + surface_half_extents[2],
         )
-        relative_placement_yaw = rng.uniform(-np.pi, np.pi)
+        if parallel_yaws_only:
+            yaw_choices = [-np.pi / 2, 0, np.pi / 2, np.pi]
+            relative_placement_yaw = yaw_choices[rng.choice(len(yaw_choices))]
+        else:
+            relative_placement_yaw = rng.uniform(-np.pi, np.pi)
         relative_placement_orn = tuple(
             p.getQuaternionFromEuler([0, 0, relative_placement_yaw])
         )
