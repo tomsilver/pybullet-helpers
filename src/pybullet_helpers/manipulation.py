@@ -1,6 +1,6 @@
 """Utilities for object manipulation."""
 
-from typing import Iterator
+from typing import Callable, Iterator
 
 import numpy as np
 import pybullet as p
@@ -8,20 +8,30 @@ import pybullet as p
 from pybullet_helpers.geometry import (
     Pose,
     get_half_extents_from_aabb,
+    interpolate_poses,
     iter_between_poses,
     matrix_from_quat,
     multiply_poses,
     set_pose,
 )
 from pybullet_helpers.inverse_kinematics import InverseKinematicsError
+from pybullet_helpers.joint import get_joint_infos, interpolate_joints
 from pybullet_helpers.link import get_relative_link_pose
 from pybullet_helpers.motion_planning import (
     create_joint_distance_fn,
     run_smooth_motion_planning_to_pose,
     smoothly_follow_end_effector_path,
 )
-from pybullet_helpers.robots.single_arm import FingeredSingleArmPyBulletRobot
+from pybullet_helpers.robots.single_arm import (
+    FingeredSingleArmPyBulletRobot,
+    SingleArmPyBulletRobot,
+)
 from pybullet_helpers.states import KinematicState
+from pybullet_helpers.trajectory import (
+    TrajectorySegment,
+    concatenate_trajectories,
+    iter_traj_with_max_distance,
+)
 from pybullet_helpers.utils import get_closest_points_with_optional_links
 
 
@@ -548,3 +558,129 @@ def _get_approach_pose_from_contact_normals(
     translation_direction = vec / np.linalg.norm(vec)
     translation = translation_direction * translation_magnitude
     return Pose(tuple(translation))
+
+
+def remap_kinematic_state_plan_to_constant_distance(
+    plan: list[KinematicState],
+    robot: SingleArmPyBulletRobot,
+    max_distance: float = 0.1,
+    distance_fn: Callable[[KinematicState, KinematicState], float] | None = None,
+) -> list[KinematicState]:
+    """Re-interpolate a plan of KinematicState so that the points are separated
+    by a constant distance (bounded by `max_distance`)."""
+
+    # 1) Prepare joint info for interpolation of the robot_joints.
+    joint_infos = get_joint_infos(
+        robot.robot_id, robot.arm_joints, robot.physics_client_id
+    )
+
+    # 2) Define how we interpolate between two KinematicStates,
+    def _interpolate_kinematic_states(
+        ks1: KinematicState, ks2: KinematicState, t: float
+    ) -> KinematicState:
+        """Interpolate the robot joints (and optionally the base pose).
+
+        For object poses and attachments, either interpolate or hold
+        them fixed.
+        """
+        # Interpolate the robot joint positions.
+        new_robot_joints = interpolate_joints(
+            joint_infos, ks1.robot_joints, ks2.robot_joints, t
+        )
+
+        # Interpolate the robot base pose, if present in both states.
+        if ks1.robot_base_pose is not None and ks2.robot_base_pose is not None:
+            new_robot_base_pose: Pose | None = interpolate_poses(
+                ks1.robot_base_pose, ks2.robot_base_pose, t
+            )
+        else:
+            # If exactly one of them has a base pose, keep whichever is not None.
+            new_robot_base_pose = (
+                ks1.robot_base_pose if ks1.robot_base_pose else ks2.robot_base_pose
+            )
+
+        # For object poses and attachments:
+        # - This example simply chooses the second state's values at t=1.0
+        #   (otherwise keep the first state's values).
+        if t >= 1.0:
+            new_object_poses = ks2.object_poses
+            new_attachments = ks2.attachments
+        else:
+            new_object_poses = ks1.object_poses
+            new_attachments = ks1.attachments
+
+        return KinematicState(
+            robot_joints=new_robot_joints,
+            object_poses=new_object_poses,
+            attachments=new_attachments,
+            robot_base_pose=new_robot_base_pose,
+        )
+
+    # 3) Define distance function between two KinematicStates, if none was provided
+    if distance_fn is None:
+        # 3a) We'll use the existing joint distance function for the joints:
+        joint_distance = create_joint_distance_fn(robot)
+
+        # 3b) Then define a base distance function for xy + yaw.
+        def base_distance(pose1: Pose, pose2: Pose) -> float:
+            # We'll compute the planar distance in xy plus absolute difference in yaw.
+            (x1, y1, _), (x2, y2, _) = pose1.position, pose2.position
+            # Euclidean distance in XY
+            d_xy = np.hypot(x2 - x1, y2 - y1)
+
+            # Extract yaw from each quaternion
+            _, _, yaw1 = pose1.rpy
+            _, _, yaw2 = pose2.rpy
+
+            # Normalized yaw difference in [-pi, pi]
+            d_yaw = yaw2 - yaw1
+            # A simple way to normalize is:
+            d_yaw = (d_yaw + np.pi) % (2 * np.pi) - np.pi
+
+            return d_xy + abs(d_yaw)
+
+        def distance_fn(ks1: KinematicState, ks2: KinematicState) -> float:
+            # Joint distance
+            d_joints = joint_distance(ks1.robot_joints, ks2.robot_joints)
+
+            # Base distance (if both have a base pose)
+            d_base = 0.0
+            if ks1.robot_base_pose is not None and ks2.robot_base_pose is not None:
+                d_base = base_distance(ks1.robot_base_pose, ks2.robot_base_pose)
+
+            # Combine them – here we do a simple sum
+            return d_joints + d_base
+
+    # 4) Compute segment distances.
+    distances = []
+    for s1, s2 in zip(plan[:-1], plan[1:], strict=True):
+        dist = distance_fn(s1, s2)
+        distances.append(dist)
+
+    # Remove any zero distances.
+    keep_idxs = [i for i, d in enumerate(distances) if d > 0]
+    assert keep_idxs
+    plan = [plan[i] for i in keep_idxs]
+    distances = [distances[i] for i in keep_idxs]
+
+    # 5) Convert each consecutive pair into a TrajectorySegment
+    segments = []
+    for i in range(len(plan) - 1):
+        seg = TrajectorySegment(
+            start=plan[i],
+            end=plan[i + 1],
+            duration=distances[i],
+            interpolate_fn=_interpolate_kinematic_states,
+            distance_fn=distance_fn,
+        )
+        segments.append(seg)
+
+    # 6) Concatenate segments into one continuous “trajectory”
+    continuous_time_trajectory = concatenate_trajectories(segments)
+
+    # 7) Finally, sample with a max spacing using iter_traj_with_max_distance
+    remapped_plan = list(
+        iter_traj_with_max_distance(continuous_time_trajectory, max_distance)
+    )
+
+    return remapped_plan
