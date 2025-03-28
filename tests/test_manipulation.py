@@ -13,6 +13,7 @@ from pybullet_helpers.manipulation import (
     get_kinematic_plan_to_pick_object,
     get_kinematic_plan_to_place_object,
     get_kinematic_plan_to_retract,
+    remap_kinematic_state_plan_to_constant_distance,
 )
 from pybullet_helpers.math_utils import get_poses_facing_line
 from pybullet_helpers.robots import create_pybullet_robot
@@ -28,6 +29,12 @@ def test_kinematic_pick_place():
 
     # Set up a scene to test manipuation.
     physics_client_id = p.connect(p.DIRECT)
+
+    # Uncomment to debug.
+    # from pybullet_helpers.gui import create_gui_connection
+    # physics_client_id = create_gui_connection(camera_yaw=0)
+
+    full_plan = []
 
     # Uncomment to debug.
     # from pybullet_helpers.gui import create_gui_connection
@@ -164,6 +171,7 @@ def test_kinematic_pick_place():
     )
 
     assert plan is not None
+    full_plan.extend(remap_kinematic_state_plan_to_constant_distance(plan, robot))
 
     # Advance to the end of the plan.
     initial_state = plan[-1]
@@ -186,8 +194,7 @@ def test_kinematic_pick_place():
         surface_link_id=0,  # table surface
         retract_after=False,
     )
-
-    assert plan is not None
+    full_plan.extend(remap_kinematic_state_plan_to_constant_distance(plan, robot))
 
     # Advance to the end of the plan.
     initial_state = plan[-1]
@@ -200,6 +207,14 @@ def test_kinematic_pick_place():
         collision_ids={table_id, object_id},
         translation_magnitude=0.1,
     )
+    assert plan is not None
+    full_plan.extend(remap_kinematic_state_plan_to_constant_distance(plan, robot))
+
+    # Uncomment to debug.
+    # import time
+    # for state in full_plan:
+    #     state.set_pybullet(robot)
+    #     time.sleep(0.1)
 
     p.disconnect(physics_client_id)
 
