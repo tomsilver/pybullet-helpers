@@ -421,11 +421,14 @@ def pybullet_inverse_kinematics(
             break
 
         # Check joint limits.
+        limits_violated = False
         for lo, val, hi in zip(
             lower_limits, free_joint_vals, upper_limits, strict=True
         ):
             if not lo <= val <= hi:
-                continue
+                limits_violated = True
+        if limits_violated:
+            continue
 
         # Update the robot state and check if the desired position and
         # orientation are reached.
