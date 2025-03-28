@@ -4,20 +4,29 @@ The IKFast solver is preferred over PyBullet IK, if available for the
 given robot.
 """
 
+import time
 from dataclasses import dataclass
 from functools import partial
 from itertools import islice
-from typing import Collection, Iterator, Sequence
+from typing import Collection, Iterator
 
 import numpy as np
 import pybullet as p
 
-from pybullet_helpers.geometry import Pose, Pose3D, Quaternion, multiply_poses
+from pybullet_helpers.geometry import Pose, multiply_poses
 from pybullet_helpers.ikfast.utils import (
     ikfast_closest_inverse_kinematics,
     ikfast_inverse_kinematics,
 )
-from pybullet_helpers.joint import JointPositions, get_joint_infos, get_joints
+from pybullet_helpers.joint import (
+    JointPositions,
+    get_joint_infos,
+    get_joint_lower_limits,
+    get_joint_positions,
+    get_joint_upper_limits,
+    get_joint_velocities,
+    get_joints,
+)
 from pybullet_helpers.link import get_link_pose, get_link_state
 from pybullet_helpers.robots.single_arm import (
     FingeredSingleArmPyBulletRobot,
@@ -106,12 +115,8 @@ def inverse_kinematics(
 
     elif robot.default_inverse_kinematics_method == "pybullet":
         joint_positions = pybullet_inverse_kinematics(
-            robot.robot_id,
-            robot.end_effector_id,
-            end_effector_pose.position,
-            end_effector_pose.orientation,
-            robot.arm_joints,
-            physics_client_id=robot.physics_client_id,
+            robot,
+            end_effector_pose,
             validate=validate,
             best_effort=best_effort,
         )
@@ -274,6 +279,28 @@ def filter_collision_free_joint_generator(
             yield candidate
 
 
+def sample_inverse_kinematics(
+    robot: SingleArmPyBulletRobot,
+    end_effector_pose: Pose,
+    rng: np.random.Generator,
+    max_time: float = 0.05,
+    max_attempts: int = 1000000000,
+) -> Iterator[JointPositions]:
+    """Repeatedly sample inverse kinematics."""
+    start_time = time.perf_counter()
+    for _ in range(max_attempts):
+        if time.perf_counter() - start_time > max_time:
+            break
+        init_joints = rng.uniform(robot.joint_lower_limits, robot.joint_upper_limits)
+        robot.set_joints(init_joints.tolist())
+        try:
+            result = inverse_kinematics(robot, end_effector_pose)
+        except InverseKinematicsError:
+            continue
+        if result is not None:
+            yield result
+
+
 def sample_collision_free_inverse_kinematics(
     robot: SingleArmPyBulletRobot,
     end_effector_pose: Pose,
@@ -290,18 +317,22 @@ def sample_collision_free_inverse_kinematics(
     """Sample in joints consistent with the end effector pose that also avoid
     collisions with the given objects."""
 
-    if not robot.ikfast_info():
-        raise NotImplementedError("Only implemented for IKFast robots so far.")
+    if robot.ikfast_info():
+        generator = ikfast_inverse_kinematics(
+            robot,
+            end_effector_pose,
+            max_time=max_time,
+            max_distance=max_distance,
+            max_attempts=max_attempts,
+            norm=norm,
+            rng=rng,
+        )
 
-    generator = ikfast_inverse_kinematics(
-        robot,
-        end_effector_pose,
-        max_time=max_time,
-        max_distance=max_distance,
-        max_attempts=max_attempts,
-        norm=norm,
-        rng=rng,
-    )
+    else:
+        assert np.isinf(max_distance), "Not yet implemented"
+        generator = sample_inverse_kinematics(
+            robot, end_effector_pose, rng, max_time, max_attempts
+        )
 
     generator = islice(generator, max_candidates)
 
@@ -320,12 +351,8 @@ def sample_collision_free_inverse_kinematics(
 
 
 def pybullet_inverse_kinematics(
-    robot: int,
-    end_effector: int,
-    target_position: Pose3D,
-    target_orientation: Quaternion,
-    joints: Sequence[int],
-    physics_client_id: int,
+    robot: SingleArmPyBulletRobot,
+    target_pose: Pose,
     validate: bool = True,
     best_effort: bool = False,
     hyperparameters: InverseKinematicsHyperparameters | None = None,
@@ -340,51 +367,81 @@ def pybullet_inverse_kinematics(
     if hyperparameters is None:
         hyperparameters = InverseKinematicsHyperparameters()
 
+    # PyBullet IK optimizes over all free joints, but we only want to optimize
+    # over the arm joints. So we figure out the correspondence and then limit
+    # the lower and upper bounds for the non-optimized free joints.
     # Figure out which joint each dimension of the return of IK corresponds to.
-    all_joints = get_joints(robot, physics_client_id=physics_client_id)
+    all_joints = get_joints(robot.robot_id, physics_client_id=robot.physics_client_id)
     joint_infos = get_joint_infos(
-        robot, all_joints, physics_client_id=physics_client_id
+        robot.robot_id, all_joints, physics_client_id=robot.physics_client_id
     )
     free_joints = [
         joint_info.jointIndex for joint_info in joint_infos if joint_info.qIndex > -1
     ]
-    assert set(joints).issubset(set(free_joints))
+    assert set(robot.arm_joints).issubset(set(free_joints))
+    current_joint_positions = get_joint_positions(
+        robot.robot_id, free_joints, robot.physics_client_id
+    )
+    lower_limits = []
+    upper_limits = []
+    for idx, joint in enumerate(free_joints):
+        if joint in robot.arm_joints:
+            lower_limit = get_joint_lower_limits(
+                robot.robot_id, [joint], robot.physics_client_id
+            )[0]
+            upper_limit = get_joint_upper_limits(
+                robot.robot_id, [joint], robot.physics_client_id
+            )[0]
+            lower_limits.append(lower_limit)
+            upper_limits.append(upper_limit)
+        else:
+            lower_limits.append(current_joint_positions[idx])
+            upper_limits.append(current_joint_positions[idx])
 
     # Record the initial state of the joints (positions and velocities) so
     # that we can reset them after.
-    initial_joints_states = p.getJointStates(
-        robot, free_joints, physicsClientId=physics_client_id
+    current_joint_velocities = get_joint_velocities(
+        robot.robot_id, free_joints, robot.physics_client_id
     )
-    if validate:
-        assert len(initial_joints_states) == len(free_joints)
 
     # Running IK once is often insufficient, so we run it multiple times until
     # convergence. If it does not converge, an error is raised.
     for _ in range(hyperparameters.max_iters):
         free_joint_vals = p.calculateInverseKinematics(
-            robot,
-            end_effector,
-            target_position,
-            targetOrientation=target_orientation,
-            physicsClientId=physics_client_id,
+            robot.robot_id,
+            robot.end_effector_id,
+            target_pose.position,
+            targetOrientation=target_pose.orientation,
+            lowerLimits=lower_limits,
+            upperLimits=upper_limits,
+            physicsClientId=robot.physics_client_id,
         )
         assert len(free_joints) == len(free_joint_vals)
         if not validate and not best_effort:
             break
+
+        # Check joint limits.
+        for lo, val, hi in zip(
+            lower_limits, free_joint_vals, upper_limits, strict=True
+        ):
+            if not lo <= val <= hi:
+                continue
+
         # Update the robot state and check if the desired position and
         # orientation are reached.
         for joint, joint_val in zip(free_joints, free_joint_vals):
             p.resetJointState(
-                robot, joint, targetValue=joint_val, physicsClientId=physics_client_id
+                robot.robot_id,
+                joint,
+                targetValue=joint_val,
+                physicsClientId=robot.physics_client_id,
             )
 
-        # Note: we are checking end-effector positions only for convergence.
-        ee_link_pose = get_link_pose(robot, end_effector, physics_client_id)
-        if np.allclose(
-            ee_link_pose.position,
-            target_position,
-            atol=hyperparameters.convergence_atol,
-        ):
+        # If there is a match, this succeeded, so break.
+        ee_link_pose = get_link_pose(
+            robot.robot_id, robot.end_effector_id, robot.physics_client_id
+        )
+        if ee_link_pose.allclose(target_pose, atol=hyperparameters.convergence_atol):
             break
     else:
         if not best_effort:
@@ -393,17 +450,20 @@ def pybullet_inverse_kinematics(
     # Reset the joint state (positions and velocities) to their initial values
     # to avoid modifying the PyBullet internal state.
     if validate:
-        for joint, (pos, vel, _, _) in zip(free_joints, initial_joints_states):
+        for joint, pos, vel in zip(
+            free_joints, current_joint_positions, current_joint_velocities, strict=True
+        ):
             p.resetJointState(
-                robot,
+                robot.robot_id,
                 joint,
                 targetValue=pos,
                 targetVelocity=vel,
-                physicsClientId=physics_client_id,
+                physicsClientId=robot.physics_client_id,
             )
+
     # Order the found free_joint_vals based on the requested joints.
     joint_vals = []
-    for joint in joints:
+    for joint in robot.arm_joints:
         free_joint_idx = free_joints.index(joint)
         joint_val = free_joint_vals[free_joint_idx]
         joint_vals.append(joint_val)
