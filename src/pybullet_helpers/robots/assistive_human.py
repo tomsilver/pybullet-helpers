@@ -25,7 +25,7 @@ class AssistiveHumanPyBulletRobot(SingleArmPyBulletRobot):
 
     @property
     def default_home_joint_positions(self) -> JointPositions:
-        return [0.0, 0.0, 0.0, np.pi / 2, 0.0, 0.0, -np.pi / 2]
+        return [0.0, 0.0, 0.0, 0.1, 0.0, 0.0, -np.pi / 2]
 
     @property
     def end_effector_name(self) -> str:
