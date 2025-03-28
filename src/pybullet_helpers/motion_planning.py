@@ -313,12 +313,8 @@ def smoothly_follow_end_effector_path(
         remaining_candidates = max_smoothing_iters_per_step
         try:
             neighbor = pybullet_inverse_kinematics(
-                robot.robot_id,
-                robot.end_effector_id,
-                end_effector_pose.position,
-                end_effector_pose.orientation,
-                robot.arm_joints,
-                robot.physics_client_id,
+                robot,
+                end_effector_pose,
                 validate=True,
             )
             generator = iter([neighbor])
