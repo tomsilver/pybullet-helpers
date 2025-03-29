@@ -119,7 +119,7 @@
     <parent link="base_link_0"/>
     <child link="base_link_1"/>
     <axis xyz="1.0 0.0 0.0"/>
-    <!-- <limit effort="100" lower="-1.57" upper="1.57" velocity="5.0"/> -->
+    <limit effort="100" lower="-1.57" upper="1.57" velocity="5.0"/>
   </joint>
 
   <joint name="base_y" type="continuous">
@@ -127,7 +127,7 @@
     <parent link="base_link_1"/>
     <child link="base_link_2"/>
     <axis xyz="0.0 1.0 0.0"/>
-    <!-- <limit effort="100" lower="-1.57" upper="0" velocity="5.0"/> -->
+    <limit effort="100" lower="-0.25" upper="1.57" velocity="5.0"/>
   </joint>
 
   <joint name="base_z" type="continuous">
@@ -135,7 +135,7 @@
     <parent link="base_link_2"/>
     <child link="upper_arm"/>
     <axis xyz="0.0 0.0 1.0"/>
-    <!-- <limit effort="100" lower="0.0" upper="1.57" velocity="5.0"/> -->
+    <limit effort="100" lower="-1.57" upper="0.25" velocity="5.0"/>
   </joint>
 
   <joint name="upper_to_lower" type="continuous">
@@ -143,7 +143,7 @@
     <parent link="upper_arm"/>
     <child link="lower_arm"/>
     <axis xyz="0.0 1.0 0.0"/>
-    <!-- <limit effort="100" lower="-2.0944" upper="0.0" velocity="5.0"/> -->
+    <limit effort="100" lower="-2.0944" upper="0.25" velocity="5.0"/>
   </joint>
 
 
@@ -152,7 +152,7 @@
     <parent link="lower_arm"/>
     <child link="hand_x"/>
     <axis xyz="1.0 0.0 0.0"/>
-    <!-- <limit effort="100" lower="-2.0944" upper="0.0" velocity="5.0"/> -->
+    <limit effort="100" lower="-2.0944" upper="0.25" velocity="5.0"/>
   </joint>
 
 
@@ -161,7 +161,7 @@
     <parent link="hand_x"/>
     <child link="hand"/>
     <axis xyz="0.0 1.0 0.0"/>
-    <!-- <limit effort="100" lower="-2.0944" upper="0.0" velocity="5.0"/> -->
+    <limit effort="100" lower="-2.0944" upper="0.25" velocity="5.0"/>
   </joint>
 
 
