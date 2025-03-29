@@ -57,6 +57,11 @@ def create_gui_connection(
 
 def run_interactive_joint_gui(robot: SingleArmPyBulletRobot) -> None:
     """Visualize a robot's joint space."""
+
+    p.configureDebugVisualizer(
+        p.COV_ENABLE_GUI, True, physicsClientId=robot.physics_client_id
+    )
+
     initial_joints = robot.get_joint_positions()
 
     slider_ids: list[int] = []
@@ -80,7 +85,6 @@ def run_interactive_joint_gui(robot: SingleArmPyBulletRobot) -> None:
         "Show end effector", 0, -1, 0, physicsClientId=robot.physics_client_id
     )
 
-    p.setRealTimeSimulation(True, physicsClientId=robot.physics_client_id)
     frame_ids: set[int] = set()
     current_button_value = p.readUserDebugParameter(
         show_end_effector_button_id, physicsClientId=robot.physics_client_id
@@ -94,7 +98,10 @@ def run_interactive_joint_gui(robot: SingleArmPyBulletRobot) -> None:
                 )
             except p.error:
                 print("WARNING: failed to read parameter, skipping")
+                break
             joint_positions.append(v)
+        if len(joint_positions) != len(slider_ids):
+            continue
         robot.set_joints(joint_positions)
         try:
             button_value = p.readUserDebugParameter(
@@ -224,3 +231,78 @@ def visualize_aabb(
         debug_line_ids.add(line_id)
 
     return debug_line_ids
+
+
+def interactively_visualize_pose(
+    init_pose: Pose,
+    physics_client_id: int,
+    min_position: float = -10.0,
+    max_position: float = 10.0,
+) -> None:
+    """Interactively tweak a pose."""
+
+    p.configureDebugVisualizer(
+        p.COV_ENABLE_GUI, True, physicsClientId=physics_client_id
+    )
+
+    visualized_pose_ids = visualize_pose(init_pose, physics_client_id)
+
+    slider_ids: list[int] = []
+    for i, position_name in enumerate(["x", "y", "z"]):
+        slider_id = p.addUserDebugParameter(
+            paramName=position_name,
+            rangeMin=min_position,
+            rangeMax=max_position,
+            startValue=init_pose.position[i],
+            physicsClientId=physics_client_id,
+        )
+        slider_ids.append(slider_id)
+    for i, angle_name in enumerate(["roll", "pitch", "yaw"]):
+        slider_id = p.addUserDebugParameter(
+            paramName=angle_name,
+            rangeMin=-np.pi,
+            rangeMax=np.pi,
+            startValue=init_pose.rpy[i],
+            physicsClientId=physics_client_id,
+        )
+        slider_ids.append(slider_id)
+
+    print_pose_button_id = p.addUserDebugParameter(
+        "Print Pose", 0, -1, 0, physicsClientId=physics_client_id
+    )
+
+    current_button_value = p.readUserDebugParameter(
+        print_pose_button_id, physicsClientId=physics_client_id
+    )
+    pose = init_pose
+    while True:
+        pose_values = []
+        for slider_id in slider_ids:
+            try:
+                v = p.readUserDebugParameter(
+                    slider_id, physicsClientId=physics_client_id
+                )
+            except p.error:
+                print("WARNING: failed to read parameter, skipping")
+                break
+            pose_values.append(v)
+        if len(pose_values) != 6:
+            continue  # some parameter reading failed
+        new_pose = Pose.from_rpy(tuple(pose_values[:3]), tuple(pose_values[3:]))
+        if not pose.allclose(new_pose):
+            # Update the visualized pose if it has changed.
+            pose = new_pose
+            for frame_id in visualized_pose_ids:
+                p.removeUserDebugItem(frame_id, physicsClientId=physics_client_id)
+            visualized_pose_ids = visualize_pose(pose, physics_client_id)
+
+        try:
+            button_value = p.readUserDebugParameter(
+                print_pose_button_id, physicsClientId=physics_client_id
+            )
+            if button_value != current_button_value:
+                print(f"Current Pose: {pose}")
+                print(f"with orientation as rpy: {pose.rpy}")
+                current_button_value = button_value
+        except p.error:
+            print("WARNING: failed to read button value")
