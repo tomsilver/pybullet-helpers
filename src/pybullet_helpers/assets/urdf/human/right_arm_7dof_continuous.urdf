@@ -177,7 +177,7 @@
     <parent link="hand_y"/>
     <child link="hand"/>
     <axis xyz="0.0 0.0 1.0"/>
-    <limit effort="100" lower="-2.0944" upper="1.0" velocity="5.0"/>
+    <limit effort="100" lower="-3.14" upper="1.0" velocity="5.0"/>
   </joint>
 
   <joint name="grasp_fixed_joint" type="fixed">
