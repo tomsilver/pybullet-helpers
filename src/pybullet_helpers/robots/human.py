@@ -23,11 +23,11 @@ class RightArmHumanPyBulletRobot(SingleArmPyBulletRobot):
     @property
     def default_urdf_path(self) -> Path:
         dir_path = get_assets_path() / "urdf"
-        return dir_path / "human" / "right_arm_6dof_continuous.urdf"
+        return dir_path / "human" / "right_arm_7dof_continuous.urdf"
 
     @property
     def default_home_joint_positions(self) -> JointPositions:
-        return [0.0, 0.1, 0.1, -1.08786023, 0.0, 0.0]
+        return [0.0, 0.1, 0.1, -1.08786023, 0.0, 0.0, 0.0]
 
     @property
     def end_effector_name(self) -> str:
