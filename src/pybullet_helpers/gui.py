@@ -57,6 +57,11 @@ def create_gui_connection(
 
 def run_interactive_joint_gui(robot: SingleArmPyBulletRobot) -> None:
     """Visualize a robot's joint space."""
+
+    p.configureDebugVisualizer(
+        p.COV_ENABLE_GUI, True, physicsClientId=robot.physics_client_id
+    )
+
     initial_joints = robot.get_joint_positions()
 
     slider_ids: list[int] = []
@@ -80,7 +85,6 @@ def run_interactive_joint_gui(robot: SingleArmPyBulletRobot) -> None:
         "Show end effector", 0, -1, 0, physicsClientId=robot.physics_client_id
     )
 
-    p.setRealTimeSimulation(True, physicsClientId=robot.physics_client_id)
     frame_ids: set[int] = set()
     current_button_value = p.readUserDebugParameter(
         show_end_effector_button_id, physicsClientId=robot.physics_client_id
@@ -94,7 +98,10 @@ def run_interactive_joint_gui(robot: SingleArmPyBulletRobot) -> None:
                 )
             except p.error:
                 print("WARNING: failed to read parameter, skipping")
+                break
             joint_positions.append(v)
+        if len(joint_positions) != len(slider_ids):
+            continue
         robot.set_joints(joint_positions)
         try:
             button_value = p.readUserDebugParameter(
@@ -277,6 +284,7 @@ def interactively_visualize_pose(
                 )
             except p.error:
                 print("WARNING: failed to read parameter, skipping")
+                break
             pose_values.append(v)
         if len(pose_values) != 6:
             continue  # some parameter reading failed
