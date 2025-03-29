@@ -27,7 +27,7 @@ class RightArmHumanPyBulletRobot(SingleArmPyBulletRobot):
 
     @property
     def default_home_joint_positions(self) -> JointPositions:
-        return [0.0, -0.1, 0.1, -1.08786023, 0.0, 0.0]
+        return [0.0, 0.1, 0.1, -1.08786023, 0.0, 0.0]
 
     @property
     def end_effector_name(self) -> str:
@@ -176,7 +176,7 @@ class Human:
         self.left_leg = LeftLegHumanPyBulletRobot(
             physics_client_id=self.physics_client_id,
             base_pose=left_leg_base_pose,
-            **right_leg_kwargs,
+            **left_leg_kwargs,
         )
 
     @property
