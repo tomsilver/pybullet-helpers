@@ -90,3 +90,23 @@ def rotate_about_point(point: Pose3D, rotation: Quaternion, current_pose: Pose) 
 def geometric_sequence(base: float, length: int, start_value: float = 1.0) -> ArrayLike:
     """E.g., if base = 0.5, then this outputs 1.0, 0.5, 0.25, 0.125, ..."""
     return start_value * np.power(base, np.arange(length))
+
+
+def sample_within_sphere(
+    center: Pose3D, min_radius: float, max_radius: float, rng: np.random.Generator
+) -> Pose3D:
+    """Sample a random point within a sphere of given radius and center."""
+    return sample_on_sphere(center, rng.uniform(min_radius, max_radius), rng)
+
+
+def sample_on_sphere(center: Pose3D, radius: float, rng: np.random.Generator) -> Pose3D:
+    """Sample a random point on a sphere of given radius and center."""
+    # Sample a random point on the unit sphere.
+    vec = rng.normal(size=(3,))
+    vec /= np.linalg.norm(vec, axis=0)
+
+    vec = radius * vec
+
+    # Translate to the center.
+    vec = np.add(center, vec)
+    return vec.tolist()

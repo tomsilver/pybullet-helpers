@@ -4,6 +4,12 @@ from typing import Type
 
 from pybullet_helpers.robots.assistive_human import AssistiveHumanPyBulletRobot
 from pybullet_helpers.robots.fetch import FetchPyBulletRobot
+from pybullet_helpers.robots.human import (
+    LeftArmHumanPyBulletRobot,
+    LeftLegHumanPyBulletRobot,
+    RightArmHumanPyBulletRobot,
+    RightLegHumanPyBulletRobot,
+)
 from pybullet_helpers.robots.kinova import (
     KinovaGen3NoGripperPyBulletRobot,
     KinovaGen3RobotiqGripperPyBulletRobot,
@@ -21,6 +27,10 @@ _BUILT_IN_ROBOT_CLASSES: list[Type[SingleArmPyBulletRobot]] = [
     TwoLinkPyBulletRobot,
     StretchPyBulletRobot,
     AssistiveHumanPyBulletRobot,
+    RightArmHumanPyBulletRobot,
+    LeftArmHumanPyBulletRobot,
+    RightLegHumanPyBulletRobot,
+    LeftLegHumanPyBulletRobot,
 ]
 
 

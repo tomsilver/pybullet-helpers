@@ -21,7 +21,7 @@ class AssistiveHumanPyBulletRobot(SingleArmPyBulletRobot):
     @property
     def default_urdf_path(self) -> Path:
         dir_path = get_assets_path() / "urdf"
-        return dir_path / "human_description" / "human.urdf"
+        return dir_path / "assistive_human" / "human.urdf"
 
     @property
     def default_home_joint_positions(self) -> JointPositions:
