@@ -169,7 +169,7 @@
   <joint name="grasp_fixed_joint" type="fixed">
     <parent link="hand"/>
     <child link="ee_link"/>
-    <origin rpy="0.0 0.0 0.0" xyz="0.07 0.0 -0.07"/>
+    <origin rpy="3.1415926535 0.0 3.1415926535" xyz="-0.01 0.0 -0.07"/>
   </joint>
 
   <link name="ee_link">
