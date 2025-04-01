@@ -3,7 +3,7 @@
 import numpy as np
 import pybullet as p
 
-from pybullet_helpers.geometry import Pose, Pose3D, matrix_from_quat
+from pybullet_helpers.geometry import Pose, Pose3D, matrix_from_quat, set_pose
 from pybullet_helpers.robots.single_arm import SingleArmPyBulletRobot
 
 
@@ -236,8 +236,9 @@ def visualize_aabb(
 def interactively_visualize_pose(
     init_pose: Pose,
     physics_client_id: int,
-    min_position: float = -10.0,
-    max_position: float = 10.0,
+    min_position: float = -1.0,
+    max_position: float = 1.0,
+    object_id: int | None = None,
 ) -> None:
     """Interactively tweak a pose."""
 
@@ -295,6 +296,8 @@ def interactively_visualize_pose(
             for frame_id in visualized_pose_ids:
                 p.removeUserDebugItem(frame_id, physicsClientId=physics_client_id)
             visualized_pose_ids = visualize_pose(pose, physics_client_id)
+            if object_id is not None:
+                set_pose(object_id, pose, physics_client_id=physics_client_id)
 
         try:
             button_value = p.readUserDebugParameter(
