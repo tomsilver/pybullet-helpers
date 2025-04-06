@@ -57,7 +57,7 @@ class PoseSpace(gym.spaces.Space[Pose]):
             self._yaw_max,
         ]
 
-    def sample(self, mask: Any | None = None, probability: Any | None = None) -> Pose:
+    def sample(self, mask: Any | None = None, _probability: Any | None = None) -> Pose:
         # See docstring note!
         x, y, z, roll, pitch, yaw = self.np_random.uniform(self._min, self._max)
         return Pose.from_rpy((x, y, z), (roll, pitch, yaw))

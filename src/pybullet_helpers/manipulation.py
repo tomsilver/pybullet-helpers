@@ -42,6 +42,7 @@ def get_kinematic_plan_to_pick_object(
     surface_id: int,
     collision_ids: set[int],
     grasp_generator: Iterator[Pose],
+    grasp_generator_iters: int = int(1e6),
     object_link_id: int | None = None,
     surface_link_id: int | None = None,
     pregrasp_pad_scale: float = 1.1,
@@ -97,6 +98,7 @@ def get_kinematic_plan_to_pick_object(
             object_id, object_link_id, -1, robot.physics_client_id
         )
 
+    num_attempts = 0
     for relative_grasp in grasp_generator:
         # Reset the simulator to the initial state to restart the planning.
         initial_state.set_pybullet(robot)
@@ -122,8 +124,11 @@ def get_kinematic_plan_to_pick_object(
             max_time=max_motion_planning_time,
             max_candidate_plans=max_motion_planning_candidates,
         )
+        num_attempts += 1
         # If motion planning failed, try a different grasp.
         if plan_to_pregrasp is None:
+            if num_attempts >= grasp_generator_iters:
+                return None
             continue
         # Motion planning succeeded, so update the plan.
         for robot_joints in plan_to_pregrasp:
@@ -156,6 +161,8 @@ def get_kinematic_plan_to_pick_object(
             pregrasp_to_grasp_plan = None
         # If motion planning failed, try a different grasp.
         if pregrasp_to_grasp_plan is None:
+            if num_attempts >= grasp_generator_iters:
+                return None
             continue
         # Motion planning succeeded, so update the plan.
         for robot_joints in pregrasp_to_grasp_plan:
@@ -198,6 +205,8 @@ def get_kinematic_plan_to_pick_object(
             grasp_to_postgrasp_plan = None
         # If motion planning failed, try a different grasp.
         if grasp_to_postgrasp_plan is None:
+            if num_attempts >= grasp_generator_iters:
+                return None
             continue
         # Motion planning succeeded, so update the plan.
         for robot_joints in grasp_to_postgrasp_plan:
@@ -218,6 +227,7 @@ def get_kinematic_plan_to_place_object(
     surface_id: int,
     collision_ids: set[int],
     placement_generator: Iterator[Pose],
+    placement_generator_iters: int = int(1e6),
     object_link_id: int | None = None,
     surface_link_id: int | None = None,
     preplace_translation_magnitude: float = 0.05,
@@ -261,6 +271,7 @@ def get_kinematic_plan_to_place_object(
             surface_id, surface_link_id, -1, robot.physics_client_id
         )
 
+    num_attempts = 0
     for relative_placement in placement_generator:
         # Reset the simulator to the initial state to restart the planning.
         initial_state.set_pybullet(robot)
@@ -310,8 +321,11 @@ def get_kinematic_plan_to_place_object(
             held_object=object_id,
             base_link_to_held_obj=initial_state.attachments[object_id],
         )
+        num_attempts += 1
         # If motion planning failed, try a different placement.
         if plan_to_preplace is None:
+            if num_attempts >= placement_generator_iters:
+                return None
             continue
         # Motion planning succeeded, so update the plan.
         for robot_joints in plan_to_preplace:
@@ -346,6 +360,8 @@ def get_kinematic_plan_to_place_object(
             preplace_to_place_plan = None
         # If motion planning failed, try a different placement.
         if preplace_to_place_plan is None:
+            if num_attempts >= placement_generator_iters:
+                return None
             continue
         # Motion planning succeeded, so update the plan.
         for robot_joints in preplace_to_place_plan:
@@ -389,6 +405,8 @@ def get_kinematic_plan_to_place_object(
                 place_to_postplace_plan = None
             # If motion planning failed, try a different placement.
             if place_to_postplace_plan is None:
+                if num_attempts >= placement_generator_iters:
+                    return None
                 continue
             # Motion planning succeeded, so update the plan.
             for robot_joints in place_to_postplace_plan:
