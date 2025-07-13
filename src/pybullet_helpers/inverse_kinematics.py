@@ -195,6 +195,7 @@ def check_collisions_with_held_object(
             body,
             physics_client_id,
             perform_collision_detection=False,
+            distance_threshold=distance_threshold,
         ):
             return True
     return False
