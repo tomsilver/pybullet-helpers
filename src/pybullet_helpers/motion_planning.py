@@ -68,6 +68,7 @@ def run_motion_planning(
     additional_state_constraint_fn: Callable[[JointPositions], bool] | None = None,
     sampling_fn: Callable[[JointPositions], JointPositions] | None = None,
     direct_path_only: bool = False,
+    distance_threshold: float = 1e-6,
 ) -> Optional[list[JointPositions]]:
     """Run BiRRT to find a collision-free sequence of joint positions.
 
@@ -100,6 +101,7 @@ def run_motion_planning(
         physics_client_id,
         held_object,
         base_link_to_held_obj,
+        distance_threshold=distance_threshold,
     )
     if additional_state_constraint_fn is not None:
         _initial_collision_fn = _collision_fn
@@ -192,6 +194,7 @@ def run_smooth_motion_planning_to_pose(
     birrt_num_attempts: int = 10,
     birrt_num_iters: int = 100,
     sampling_fn: Callable[[JointPositions], JointPositions] | None = None,
+    distance_threshold: float = 1e-6,
 ) -> Optional[list[JointPositions]]:
     """A naive smooth motion planner that reruns motion planning multiple times
     and then picks the "smoothest" result according to a geometric weighting of
@@ -263,6 +266,7 @@ def run_smooth_motion_planning_to_pose(
                     birrt_num_attempts=birrt_num_attempts,
                     birrt_num_iters=birrt_num_iters,
                 ),
+                distance_threshold=distance_threshold,
             )
             # Score the motion plan.
             if motion_plan is not None:
