@@ -7,6 +7,7 @@ import numpy.typing as npt
 
 from pybullet_helpers.geometry import Pose, multiply_poses
 from pybullet_helpers.joint import JointPositions
+from pybullet_helpers.link import get_relative_link_pose
 from pybullet_helpers.robots.single_arm import (
     FingeredSingleArmPyBulletRobot,
 )
@@ -41,7 +42,7 @@ class SpotPyBulletRobot(FingeredSingleArmPyBulletRobot):
 
     @property
     def end_effector_name(self) -> str:
-        return "arm_wr1"
+        return "hand_frame_joint"
 
     @property
     def tool_link_name(self) -> str:
@@ -86,11 +87,23 @@ class SpotPyBulletRobot(FingeredSingleArmPyBulletRobot):
         # robot shoulder frame.
         world_to_base = self.get_base_pose()
         world_to_shoulder = multiply_poses(world_to_base, Pose((0.292, 0.0, 0.873)))
-        shoulder_to_target = multiply_poses(
+        shoulder_to_ee_target = multiply_poses(
             world_to_shoulder.invert(), end_effector_pose
         )
+
+        # The analytic IK code is in terms of the arm_wr1 frame, but the end effector
+        # is hand_frame_joint, so we need to transform.
+        arm_wr1_to_ee = get_relative_link_pose(
+            self.robot_id,
+            self.link_from_name("arm_link_wr1"),
+            self.link_from_name("hand_frame"),
+            self.physics_client_id,
+        )
+        shoulder_to_arm_wr1_target = multiply_poses(
+            shoulder_to_ee_target, arm_wr1_to_ee
+        )
         solns = _analytic_spot_ik_6(
-            shoulder_to_target.to_matrix(),
+            shoulder_to_arm_wr1_target.to_matrix(),
             self.joint_lower_limits[:6],
             self.joint_upper_limits[:6],
         )
