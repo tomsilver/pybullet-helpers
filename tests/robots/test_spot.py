@@ -65,7 +65,9 @@ def test_spot_pybullet_robot(physics_client_id):
         joint_positions = inverse_kinematics(
             robot, end_effector_pose=pose, validate=True
         )
+        robot.set_joints(joint_positions)
         recovered_pose = robot.forward_kinematics(joint_positions)
+        # IK is analytic, so this should be extremely close.
         assert np.allclose(
-            recovered_pose.position, pose.position
+            recovered_pose.position, pose.position, atol=1e-6
         ), f"IK failed for {name}"

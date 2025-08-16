@@ -62,7 +62,7 @@
       <inertia ixx="0.0021147398873455382" ixy="0.0" ixz="0.0" iyy="0.0018129577956607131" iyz="0.0" izz="0.002265435737304666" />
     </inertial>
   </link>
-  <joint name="fl_hx" type="revolute">
+  <joint name="fl_hx" type="fixed">
     <origin rpy="0 0 0" xyz="0.29785 0.05500 0.00000" />
     <axis xyz="1 0 0" />
     <parent link="body" />
@@ -90,7 +90,7 @@
       <inertia ixx="0.02755964961185679" ixy="0.0" ixz="0.0" iyy="0.027354914287651046" iyz="0.0" izz="0.002848145546743553" />
     </inertial>
   </link>
-  <joint name="fl_hy" type="revolute">
+  <joint name="fl_hy" type="fixed">
     <origin rpy="0 0 0" xyz="0.0 0.11080 0.0" />
     <axis xyz="0 1      0" />
     <parent link="fl_hip" />
@@ -118,7 +118,7 @@
       <inertia ixx="0.003999022654901177" ixy="0.0" ixz="0.0" iyy="0.0040503157598010785" iyz="0.0" izz="0.0001493402097647426" />
     </inertial>
   </link>
-  <joint name="fl_kn" type="revolute">
+  <joint name="fl_kn" type="fixed">
     <origin rpy="0 0 0" xyz="0.025 0.000 -0.3200" />
     <axis xyz="0 1 0" />
     <parent link="fl_uleg" />
@@ -146,7 +146,7 @@
       <inertia ixx="0.0021147398873455382" ixy="0.0" ixz="0.0" iyy="0.0018129577956607131" iyz="0.0" izz="0.002265435737304666" />
     </inertial>
   </link>
-  <joint name="fr_hx" type="revolute">
+  <joint name="fr_hx" type="fixed">
     <origin rpy="0 0 0" xyz="0.29785 -0.05500 0.00000" />
     <axis xyz="1 0 0" />
     <parent link="body" />
@@ -174,7 +174,7 @@
       <inertia ixx="0.02755964678927691" ixy="0.0" ixz="0.0" iyy="0.02735491706466737" iyz="0.0" izz="0.0028481453594764797" />
     </inertial>
   </link>
-  <joint name="fr_hy" type="revolute">
+  <joint name="fr_hy" type="fixed">
     <origin rpy="0 0 0" xyz="0.0 -0.11080 0.0" />
     <axis xyz="0  1      0" />
     <parent link="fr_hip" />
@@ -202,7 +202,7 @@
       <inertia ixx="0.003999022654901177" ixy="0.0" ixz="0.0" iyy="0.0040503157598010785" iyz="0.0" izz="0.0001493402097647426" />
     </inertial>
   </link>
-  <joint name="fr_kn" type="revolute">
+  <joint name="fr_kn" type="fixed">
     <origin rpy="0 0 0" xyz="0.025 0.000 -0.3200" />
     <axis xyz="0 1 0" />
     <parent link="fr_uleg" />
@@ -230,7 +230,7 @@
       <inertia ixx="0.0021147398873455382" ixy="0.0" ixz="0.0" iyy="0.0018129577956607131" iyz="0.0" izz="0.002265435737304666" />
     </inertial>
   </link>
-  <joint name="hl_hx" type="revolute">
+  <joint name="hl_hx" type="fixed">
     <origin rpy="0 0 0" xyz="-0.29785 0.05500 0.00000" />
     <axis xyz="1 0 0" />
     <parent link="body" />
@@ -258,7 +258,7 @@
       <inertia ixx="0.02755964961185679" ixy="0.0" ixz="0.0" iyy="0.027354914287651046" iyz="0.0" izz="0.002848145546743553" />
     </inertial>
   </link>
-  <joint name="hl_hy" type="revolute">
+  <joint name="hl_hy" type="fixed">
     <origin rpy="0 0 0" xyz="0.0 0.11080 0.0" />
     <axis xyz="0 1      0" />
     <parent link="hl_hip" />
@@ -286,7 +286,7 @@
       <inertia ixx="0.003999022654901177" ixy="0.0" ixz="0.0" iyy="0.0040503157598010785" iyz="0.0" izz="0.0001493402097647426" />
     </inertial>
   </link>
-  <joint name="hl_kn" type="revolute">
+  <joint name="hl_kn" type="fixed">
     <origin rpy="0 0 0" xyz="0.025 0.000 -0.3200" />
     <axis xyz="0 1 0" />
     <parent link="hl_uleg" />
@@ -314,7 +314,7 @@
       <inertia ixx="0.0021147398873455382" ixy="0.0" ixz="0.0" iyy="0.0018129577956607131" iyz="0.0" izz="0.002265435737304666" />
     </inertial>
   </link>
-  <joint name="hr_hx" type="revolute">
+  <joint name="hr_hx" type="fixed">
     <origin rpy="0 0 0" xyz="-0.29785 -0.05500 0.00000" />
     <axis xyz="1 0 0" />
     <parent link="body" />
@@ -342,7 +342,7 @@
       <inertia ixx="0.02755964678927691" ixy="0.0" ixz="0.0" iyy="0.02735491706466737" iyz="0.0" izz="0.0028481453594764797" />
     </inertial>
   </link>
-  <joint name="hr_hy" type="revolute">
+  <joint name="hr_hy" type="fixed">
     <origin rpy="0 0 0" xyz="0.0 -0.11080 0.0" />
     <axis xyz="0  1      0" />
     <parent link="hr_hip" />
@@ -370,7 +370,7 @@
       <inertia ixx="0.003999022654901177" ixy="0.0" ixz="0.0" iyy="0.0040503157598010785" iyz="0.0" izz="0.0001493402097647426" />
     </inertial>
   </link>
-  <joint name="hr_kn" type="revolute">
+  <joint name="hr_kn" type="fixed">
     <origin rpy="0 0 0" xyz="0.025 0.000 -0.3200" />
     <axis xyz="0 1 0" />
     <parent link="hr_uleg" />
