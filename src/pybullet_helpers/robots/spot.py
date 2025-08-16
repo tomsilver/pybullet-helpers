@@ -85,7 +85,7 @@ class SpotPyBulletRobot(FingeredSingleArmPyBulletRobot):
         # The target end_effector_pose is in the world frame. Convert it into the
         # robot shoulder frame.
         world_to_base = self.get_base_pose()
-        world_to_shoulder = multiply_poses(Pose((0.292, 0.0, 0.873)), world_to_base)
+        world_to_shoulder = multiply_poses(world_to_base, Pose((0.292, 0.0, 0.873)))
         shoulder_to_target = multiply_poses(
             world_to_shoulder.invert(), end_effector_pose
         )
