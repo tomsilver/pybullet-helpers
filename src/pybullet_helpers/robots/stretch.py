@@ -145,7 +145,7 @@ class StretchPyBulletRobot(FingeredSingleArmPyBulletRobot[float]):
         validate: bool = True,
         best_effort: bool = False,
         validation_atol: float = 1e-3,
-    ) -> JointPositions:
+    ) -> JointPositions | None:
 
         # Start by transforming the end effector pose into the robot frame.
         initial_joints = self.get_joint_positions()

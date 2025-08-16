@@ -84,6 +84,8 @@ def inverse_kinematics(
         joint_positions = robot.custom_inverse_kinematics(
             end_effector_pose, validate, best_effort, validation_atol
         )
+        if joint_positions is None:
+            raise InverseKinematicsError()
 
     elif robot.default_inverse_kinematics_method == "ikfast":
         assert not best_effort, "Best effort not implemented for IKFast"
