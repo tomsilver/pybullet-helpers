@@ -419,7 +419,7 @@ class SingleArmPyBulletRobot(abc.ABC):
         validate: bool = True,
         best_effort: bool = False,
         validation_atol: float = 1e-3,
-    ):
+    ) -> JointPositions | None:
         """Robots can implement custom IK; see inverse_kinematics()."""
         raise NotImplementedError
 

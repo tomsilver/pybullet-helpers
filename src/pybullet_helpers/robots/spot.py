@@ -78,7 +78,7 @@ class SpotPyBulletRobot(FingeredSingleArmPyBulletRobot):
         validate: bool = True,
         best_effort: bool = False,
         validation_atol: float = 1e-3,
-    ) -> JointPositions:
+    ) -> JointPositions | None:
         """Analytic IK for 6-DOF spot arm.
 
         I believe the original author of this is Tomas Lozano-Perez.
@@ -107,8 +107,9 @@ class SpotPyBulletRobot(FingeredSingleArmPyBulletRobot):
             self.joint_lower_limits[:6],
             self.joint_upper_limits[:6],
         )
+        if not solns:
+            return None
         # Arbitrarily select the first one. Later, might want to use distances.
-        assert solns
         return list(solns[0]) + [self.get_finger_state()]
 
 
