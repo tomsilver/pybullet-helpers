@@ -4,13 +4,13 @@ from pathlib import Path
 
 import numpy as np
 
+from pybullet_helpers.geometry import Pose, multiply_poses
 from pybullet_helpers.joint import JointPositions
+from pybullet_helpers.link import get_link_pose, get_link_state
 from pybullet_helpers.robots.single_arm import (
     FingeredSingleArmPyBulletRobot,
 )
 from pybullet_helpers.utils import get_assets_path
-from pybullet_helpers.geometry import Pose, multiply_poses
-from pybullet_helpers.link import get_link_pose, get_link_state
 
 
 class SpotPyBulletRobot(FingeredSingleArmPyBulletRobot):
@@ -66,7 +66,7 @@ class SpotPyBulletRobot(FingeredSingleArmPyBulletRobot):
         assert len(joint_positions) == 1
         finger_state = joint_positions[0]
         return finger_state
-    
+
     @property
     def default_inverse_kinematics_method(self) -> str:
         return "custom"
@@ -79,23 +79,28 @@ class SpotPyBulletRobot(FingeredSingleArmPyBulletRobot):
         validation_atol: float = 1e-3,
     ) -> JointPositions:
         """Analytic IK for 6-DOF spot arm.
-        
+
         I believe the original author of this is Tomas Lozano-Perez.
         """
         # The target end_effector_pose is in the world frame. Convert it into the
         # robot shoulder frame.
         world_to_base = self.get_base_pose()
-        world_to_shoulder = multiply_poses(world_to_base, Pose((0.292, 0., 0.873)))
-        shoulder_to_target = multiply_poses(world_to_shoulder.invert(), end_effector_pose)
-        solns = analytic_spot_ik_6(shoulder_to_target.to_matrix(), self.joint_lower_limits[:6], self.joint_upper_limits[:6])
+        world_to_shoulder = multiply_poses(world_to_base, Pose((0.292, 0.0, 0.873)))
+        shoulder_to_target = multiply_poses(
+            world_to_shoulder.invert(), end_effector_pose
+        )
+        solns = analytic_spot_ik_6(
+            shoulder_to_target.to_matrix(),
+            self.joint_lower_limits[:6],
+            self.joint_upper_limits[:6],
+        )
         # Arbitrarily select the first one. Later, might want to use distances.
         assert solns
         return list(solns[0]) + [self.get_finger_state()]
 
 
-
 def analytic_spot_ik_6(wrist_pose_rel_shoulder, min_limits, max_limits):
-    px, py, pz = wrist_pose_rel_shoulder[:3, 3]   # wrist position
+    px, py, pz = wrist_pose_rel_shoulder[:3, 3]  # wrist position
     l2 = 0.3385
     l3 = np.sqrt(0.40330**2 + 0.0750**2)
     q3_off = np.arctan2(0.0750, 0.40330)
@@ -106,26 +111,28 @@ def analytic_spot_ik_6(wrist_pose_rel_shoulder, min_limits, max_limits):
     if q23 is None:
         return []
     q1 = np.arctan2(py, px)
-    for (q2, q3) in q23:
+    for q2, q3 in q23:
         q123_sols.append((q1, q2, q3 + q3_off))
     q23 = IK2R(l2, l3, -xl, -pz)
     assert q23 is not None
     q1 = q1 + np.pi
-    for (q2, q3) in q23:
+    for q2, q3 in q23:
         q123_sols.append((q1, q2, q3 + q3_off))
 
     # Solve for the wrist angles
     qfull_sols = []
-    for (q1, q2, q3) in q123_sols:
+    for q1, q2, q3 in q123_sols:
         r3_inv = inverse_matrix(
-                  concatenate_matrices(rotation_matrix(q1, (0, 0, 1)),
-                                       rotation_matrix(q2+q3, (0, 1, 0))))
+            concatenate_matrices(
+                rotation_matrix(q1, (0, 0, 1)), rotation_matrix(q2 + q3, (0, 1, 0))
+            )
+        )
         W = concatenate_matrices(r3_inv, wrist_pose_rel_shoulder)
         q5 = np.arccos(W[0, 0])
         for q in (q5, -q5):
             s5 = np.sin(q)
-            q4 = np.arctan2(W[1, 0]/s5, -W[2, 0]/s5)
-            q6 = np.arctan2(W[0, 1]/s5, W[0, 2]/s5)
+            q4 = np.arctan2(W[1, 0] / s5, -W[2, 0] / s5)
+            q6 = np.arctan2(W[0, 1] / s5, W[0, 2] / s5)
             angles = (q1, q2, q3, q4, q, q6)
             if all_between(min_limits, angles, max_limits):
                 qfull_sols.append(angles)
@@ -134,44 +141,49 @@ def analytic_spot_ik_6(wrist_pose_rel_shoulder, min_limits, max_limits):
 
 def IK2R(L1, L2, x, y):
     xy_sq = x**2 + y**2
-    c2 = (xy_sq - L1**2 - L2**2)/(2*L1*L2)
+    c2 = (xy_sq - L1**2 - L2**2) / (2 * L1 * L2)
     if abs(c2) > 1:
         return None
     elif c2 == 1.0:
         return [(np.arctan2(y, x), 0)]
-    elif c2 == -1.0 and xy_sq != 0.:
+    elif c2 == -1.0 and xy_sq != 0.0:
         return [(np.arctan2(y, x), np.pi)]
-    elif c2 == -1.0 and xy_sq == 0.:
-        return [(q1, np.pi) for q1 in [0, 2*np.pi]]
+    elif c2 == -1.0 and xy_sq == 0.0:
+        return [(q1, np.pi) for q1 in [0, 2 * np.pi]]
     else:
         q2_1 = np.arccos(c2)
         q2_2 = -q2_1
         theta = np.arctan2(y, x)
-        q1q2 = [(theta - np.arctan2(L2*np.sin(q2_i), L1+L2*np.cos(q2_i)), q2_i) \
-                for q2_i in (q2_1, q2_2)]
+        q1q2 = [
+            (theta - np.arctan2(L2 * np.sin(q2_i), L1 + L2 * np.cos(q2_i)), q2_i)
+            for q2_i in (q2_1, q2_2)
+        ]
         for q1, q2 in q1q2:
-            xk = (L1*np.cos(q1) + L2*np.cos(q1 + q2))
-            yk = (L1*np.sin(q1) + L2*np.sin(q1 + q2))
+            xk = L1 * np.cos(q1) + L2 * np.cos(q1 + q2)
+            yk = L1 * np.sin(q1) + L2 * np.sin(q1 + q2)
             assert abs(x - xk) < 0.0001
             assert abs(y - yk) < 0.0001
         return q1q2
 
 
 def angle_diff(x, y):
-    twoPi = 2*np.pi
+    twoPi = 2 * np.pi
     z = (x - y) % twoPi
     return z - twoPi if z > np.pi else z
 
-        
+
 def all_between(lower_limits, values, upper_limits):
     assert len(lower_limits) == len(values)
     assert len(values) == len(upper_limits)
-    return np.less_equal(lower_limits, values).all() and \
-           np.less_equal(values, upper_limits).all()
+    return (
+        np.less_equal(lower_limits, values).all()
+        and np.less_equal(values, upper_limits).all()
+    )
 
 
 def inverse_matrix(matrix):
     """Return inverse of square transformation matrix.
+
     >>> M0 = random_rotation_matrix()
     >>> M1 = inverse_matrix(M0.T)
     >>> np.allclose(M1, np.linalg.inv(M0.T))
@@ -184,9 +196,9 @@ def inverse_matrix(matrix):
     return np.linalg.inv(matrix)
 
 
-
 def concatenate_matrices(*matrices):
     """Return concatenation of series of transformation matrices.
+
     >>> M = np.random.rand(16).reshape((4, 4)) - 0.5
     >>> np.allclose(M, concatenate_matrices(M))
     True
@@ -201,6 +213,7 @@ def concatenate_matrices(*matrices):
 
 def rotation_matrix(angle, direction, point=None):
     """Return matrix to rotate about axis defined by point and direction.
+
     >>> angle = (random.random() - 0.5) * (2*math.pi)
     >>> direc = np.random.random(3) - 0.5
     >>> point = np.random.random(3) - 0.5
@@ -223,15 +236,19 @@ def rotation_matrix(angle, direction, point=None):
     cosa = np.cos(angle)
     direction = unit_vector(direction[:3])
     # rotation matrix around unit vector
-    R = np.array(((cosa, 0.0,  0.0),
-                     (0.0,  cosa, 0.0),
-                     (0.0,  0.0,  cosa)), dtype=np.float64)
+    R = np.array(
+        ((cosa, 0.0, 0.0), (0.0, cosa, 0.0), (0.0, 0.0, cosa)), dtype=np.float64
+    )
     R += np.outer(direction, direction) * (1.0 - cosa)
     direction *= sina
-    R += np.array((( 0.0,         -direction[2],  direction[1]),
-                      ( direction[2], 0.0,          -direction[0]),
-                      (-direction[1], direction[0],  0.0)),
-                     dtype=np.float64)
+    R += np.array(
+        (
+            (0.0, -direction[2], direction[1]),
+            (direction[2], 0.0, -direction[0]),
+            (-direction[1], direction[0], 0.0),
+        ),
+        dtype=np.float64,
+    )
     M = np.identity(4)
     M[:3, :3] = R
     if point is not None:
@@ -243,6 +260,7 @@ def rotation_matrix(angle, direction, point=None):
 
 def unit_vector(data, axis=None, out=None):
     """Return ndarray normalized by length, i.e. eucledian norm, along axis.
+
     >>> v0 = np.random.random(3)
     >>> v1 = unit_vector(v0)
     >>> np.allclose(v1, v0 / np.linalg.norm(v0))
@@ -274,7 +292,7 @@ def unit_vector(data, axis=None, out=None):
         if out is not data:
             out[:] = np.array(data, copy=False)
         data = out
-    length = np.atleast_1d(np.sum(data*data, axis))
+    length = np.atleast_1d(np.sum(data * data, axis))
     np.sqrt(length, length)
     if axis is not None:
         length = np.expand_dims(length, axis)

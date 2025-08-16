@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from pybullet_helpers.geometry import Pose
+from pybullet_helpers.geometry import Pose, multiply_poses
 from pybullet_helpers.inverse_kinematics import inverse_kinematics
 from pybullet_helpers.robots.spot import (
     SpotPyBulletRobot,
@@ -58,24 +58,24 @@ def test_spot_pybullet_robot(physics_client_id):
         ),
     )
 
-    for base_position_offset in [(0, 0, 0), (0, 1, 0)]:
-        robot.set_base(Pose(base_position_offset))
+    for base_pose_offset in [
+        Pose((0, 0, 0)),
+        Pose((0, 1, 0)),
+        Pose.from_rpy((0, 0, 0), (np.pi / 2, 0, 0)),
+    ]:
+        robot.set_base(base_pose_offset)
         for name, pose in [
             ("retract", retract_ee_pose),
             ("raised", raised_ee_pose),
             ("right", right_ee_pose),
         ]:
-            offset_pose = Pose((
-                pose.position[0] + base_position_offset[0],
-                pose.position[1] + base_position_offset[1],
-                pose.position[2] + base_position_offset[2],
-            ), pose.orientation)
+            offset_target_pose = multiply_poses(base_pose_offset, pose)
             joint_positions = inverse_kinematics(
-                robot, end_effector_pose=offset_pose, validate=True
+                robot, end_effector_pose=offset_target_pose, validate=True
             )
             robot.set_joints(joint_positions)
             recovered_pose = robot.forward_kinematics(joint_positions)
             # IK is analytic, so this should be extremely close.
             assert np.allclose(
-                recovered_pose.position, offset_pose.position, atol=1e-6
-            ), f"IK failed for {name} with offset {base_position_offset}"
+                recovered_pose.position, offset_target_pose.position, atol=1e-6
+            ), f"IK failed for {name} with offset {base_pose_offset}"
