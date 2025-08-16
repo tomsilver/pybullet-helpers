@@ -16,6 +16,7 @@ from pybullet_helpers.robots.kinova import (
 )
 from pybullet_helpers.robots.panda import PandaPyBulletRobot
 from pybullet_helpers.robots.single_arm import SingleArmPyBulletRobot
+from pybullet_helpers.robots.spot import SpotPyBulletRobot
 from pybullet_helpers.robots.stretch import StretchPyBulletRobot
 from pybullet_helpers.robots.two_link import TwoLinkPyBulletRobot
 
@@ -31,6 +32,7 @@ _BUILT_IN_ROBOT_CLASSES: list[Type[SingleArmPyBulletRobot]] = [
     LeftArmHumanPyBulletRobot,
     RightLegHumanPyBulletRobot,
     LeftLegHumanPyBulletRobot,
+    SpotPyBulletRobot,
 ]
 
 
