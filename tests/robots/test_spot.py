@@ -13,6 +13,7 @@ def test_spot_pybullet_robot(physics_client_id):
     """Tests for SpotPyBulletRobot()."""
     robot = SpotPyBulletRobot(
         physics_client_id,
+        fixed_base=False,
     )
     assert robot.get_name() == "spot"
     assert robot.arm_joint_names == [
@@ -57,17 +58,24 @@ def test_spot_pybullet_robot(physics_client_id):
         ),
     )
 
-    for name, pose in [
-        ("retract", retract_ee_pose),
-        ("raised", raised_ee_pose),
-        ("right", right_ee_pose),
-    ]:
-        joint_positions = inverse_kinematics(
-            robot, end_effector_pose=pose, validate=True
-        )
-        robot.set_joints(joint_positions)
-        recovered_pose = robot.forward_kinematics(joint_positions)
-        # IK is analytic, so this should be extremely close.
-        assert np.allclose(
-            recovered_pose.position, pose.position, atol=1e-6
-        ), f"IK failed for {name}"
+    for base_position_offset in [(0, 0, 0), (0, 1, 0)]:
+        robot.set_base(Pose(base_position_offset))
+        for name, pose in [
+            ("retract", retract_ee_pose),
+            ("raised", raised_ee_pose),
+            ("right", right_ee_pose),
+        ]:
+            offset_pose = Pose((
+                pose.position[0] + base_position_offset[0],
+                pose.position[1] + base_position_offset[1],
+                pose.position[2] + base_position_offset[2],
+            ), pose.orientation)
+            joint_positions = inverse_kinematics(
+                robot, end_effector_pose=offset_pose, validate=True
+            )
+            robot.set_joints(joint_positions)
+            recovered_pose = robot.forward_kinematics(joint_positions)
+            # IK is analytic, so this should be extremely close.
+            assert np.allclose(
+                recovered_pose.position, offset_pose.position, atol=1e-6
+            ), f"IK failed for {name} with offset {base_position_offset}"
